@@ -1387,8 +1387,11 @@ interface ProtocolContext {
   readonly index: LineIndex;
 }
 
-/** A field a protocol writes: `**Corpus**: every module`, `- **Last result:** none yet`. */
-const PROTOCOL_FIELD = /^(?:[-*+]\s+)?\*\*([^*]+?):?\*\*:?\s*(.*)/;
+/**
+ * A field a protocol writes: `**Corpus**: every module`, `- **Last result:** none
+ * yet`. Its value is what follows the match, read from the text.
+ */
+const PROTOCOL_FIELD = /^(?:[-*+]\s+)?\*\*([^*]+?):?\*\*:?/;
 
 /** A result that says when it was measured, by an ISO date. */
 const DATED = /\b\d{4}-\d{2}-\d{2}\b/;
@@ -1430,7 +1433,9 @@ function extractProtocols(context: ProtocolContext): { item: ItemNode; protocol:
       if (line.start < section.end || line.start >= end || !isMarkdownLine(line)) continue;
       const found = PROTOCOL_FIELD.exec(scanned.masks.structure.slice(line.contentStart, line.end));
       if (found === null) continue;
-      fields.push({ name: found[1]!.trim(), value: scanned.text.slice(line.contentStart, line.end).trim().replace(PROTOCOL_FIELD, '$2'), at: refOf(file, index, line.contentStart, line.end) });
+      // The mask keeps every offset, so the match is as long in the text.
+      const value = scanned.text.slice(line.contentStart + found[0].length, line.end).trim();
+      fields.push({ name: found[1]!.trim(), value, at: refOf(file, index, line.contentStart, line.end) });
     }
     const documentId = ownerAt(section.start);
     const id = `${documentId}#${section.anchor}`;

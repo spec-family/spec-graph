@@ -51,7 +51,7 @@ describe('a code span that reads as a path', () => {
   });
 
   it('is no command, error code, code, scheme, glob, option, scope, home or number', () => {
-    const none = ['npm run lint', 'E0310', '.to<U>()', 'https://example.com/a', 'spec/*.md', 'src/{a,b}', '--spec', '-x/y', '@spec-family/spec-guard', '~/notes.md', '2026/11', 'refunds.rs', 'a(b)/c', 'a/b"', '', 'src/a.ts:3/b.ts'];
+    const none = ['npm run lint', 'E0420', '.into<T>()', 'https://example.com/a', 'spec/*.md', 'src/{a,b}', '--spec', '-x/y', '@spec-family/spec-guard', '~/notes.md', '2026/11', 'refunds.rs', 'a(b)/c', 'a/b"', '', 'src/a.ts:3/b.ts', '.md', '.MD'];
     expect(none.map((t) => pathIn(t, ['.md']))).toEqual(none.map(() => null));
   });
 });
@@ -106,6 +106,29 @@ describe('an orientation document', () => {
     ]);
     expect(findings({ 'docs/ops-brief.md': doc('# B', '', '`/spec/missing.md`', '') })).toEqual([
       'missing-path docs/ops-brief.md:3 `/spec/missing.md` names no file or directory the repository holds',
+    ]);
+  });
+
+  it('reads a slashed name with no extension as a path only where the directory it opens with is there', () => {
+    const brief = doc(
+      '# Brief',
+      '',
+      'Built on `TCP/IP`, from `origin/main`, with `async/await`, `/nowhere/at-all` and `ghost/.config`; `.md` and `.TS` are extensions.',
+      'Missing: `src/payments`, `/src/payments`, `ghost/`, `ghost/plan.md`, `ghost/a.b`, `./ghost/y`.',
+      '',
+    );
+    expect(findings({ 'docs/ops-brief.md': brief })).toEqual(
+      ['src/payments', '/src/payments', 'ghost/', 'ghost/plan.md', 'ghost/a.b', './ghost/y'].map((path) => `missing-path docs/ops-brief.md:4 \`${path}\` names no file or directory the repository holds`),
+    );
+    // The directory it opens with may be beside the document.
+    // The directory it opens with may be beside the document, and a rooted one is at the root.
+    expect(findings({ 'docs/ops-brief.md': doc('# B', '', '`drafts/missing`, `/drafts/missing` and `elsewhere/missing`', '') }, { tree: new Set([...TREE, 'docs/drafts']) })).toEqual([
+      'missing-path docs/ops-brief.md:3 `drafts/missing` names no file or directory the repository holds',
+    ]);
+    // A path that opens with . or .. is one, wherever it leads.
+    expect(findings({ 'CLAUDE.md': doc('# C', '', '`./ghost/y` and `../outside/y`', '') })).toEqual([
+      'missing-path CLAUDE.md:3 `./ghost/y` names no file or directory the repository holds',
+      'missing-path CLAUDE.md:3 `../outside/y` names no file or directory the repository holds',
     ]);
   });
 

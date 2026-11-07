@@ -1493,7 +1493,7 @@ function protocolItem(protocol: Protocol, documentId: string, section: readonly 
 /**
  * A token that reads as a path: letters, digits and `. _ - / + @ ~` alone, no
  * space, no scheme, no glob, no call. A command, `npm run lint`, an error
- * code, `E0310`, and code, `.to<U>()`, are none of them.
+ * code, `E0420`, and code, `.into<T>()`, are none of them.
  */
 const PATH_TOKEN = /^[\p{L}\p{N}._\-/+@~]+$/u;
 
@@ -1502,7 +1502,8 @@ const PLACE = /(?:#[^#]*|:\d+(?::\d+)?)$/;
 
 /**
  * The path a code span names, or `null` for one that is no path: a token
- * that holds a `/` or ends in a configured extension, with a letter in it,
+ * that holds a `/` or ends in a configured extension after a name, so that
+ * `.md` alone is an extension and no file, with a letter in it,
  * and does not open with `-`, `@` or `~`, the openings of an option, a
  * package scope and a home directory.
  */
@@ -1510,7 +1511,7 @@ export function pathIn(text: string, extensions: readonly string[]): string | nu
   const token = text.replace(PLACE, '');
   if (!PATH_TOKEN.test(token) || !/\p{L}/u.test(token) || /^[-@~]/.test(token)) return null;
   const lower = token.toLowerCase();
-  return token.includes('/') || extensions.some((extension) => lower.endsWith(extension.toLowerCase())) ? token : null;
+  return token.includes('/') || extensions.some((extension) => lower.length > extension.length && lower.endsWith(extension.toLowerCase())) ? token : null;
 }
 
 /** The paths an orientation document names in its code spans, each with the node it is written in. */

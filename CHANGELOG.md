@@ -18,6 +18,12 @@ records.
 - **`diff`'s verdict names a claim's label as what changed**: "1 claim
   label changed.", where 0.23.0 wrote "1 claim relabelled changed.". The
   Claims section of the report, the summary and JSON are as they were.
+- **An orientation document reads less as a path.** An extension alone,
+  `.md`, is no path, and a slashed name with no extension, not ending in
+  `/`, is looked for only where the directory it opens with is there:
+  `TCP/IP` and `origin/main` were `missing-path` in 0.23.0, and
+  `src/payments` still is where `src` exists
+  ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md), amended 2026-11-08).
 
 ## 0.23.0
 

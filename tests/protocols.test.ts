@@ -69,6 +69,7 @@ describe('a measurement protocol', () => {
       ['ROADMAP#refund-latency', 'refund-latency', 'Refund latency', ['Method=1,000 refunds after 100 warm-up runs; the median.', 'Last result=(2026-11-05, a laptop): a median of 4 ms.'], true, false],
       ['ROADMAP#agent-pass-rate', 'agent-pass-rate', 'Agent pass rate', ['Method=the same tasks in two languages.', 'Agent=one model, one harness.', 'Last result=none yet.'], false, true],
     ]);
+    expect(extracted.items.map((item) => [item.conflicts, item.label])).toEqual([[[], null], [[], null]]);
     expect(extracted.items[1]!.body).toBe('Method: the same tasks in two languages.\nAgent: one model, one harness.\nLast result: none yet.');
     expect(extracted.items.map((item) => [item.id, item.declared, item.disposition, item.evidence.source, item.evidence.raw])).toEqual([
       ['ROADMAP#refund-latency', true, 'satisfied', 'marker', '(2026-11-05, a laptop): a median of 4 ms.'],

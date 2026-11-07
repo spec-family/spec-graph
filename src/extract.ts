@@ -1408,7 +1408,7 @@ const NONE_YET = /^(?:\*\*|__|\*|_)?none yet\b/i;
 function extractProtocols(context: ProtocolContext): { item: ItemNode; protocol: Protocol }[] {
   const { scanned, heading, result, ownerAt, file, index } = context;
   const headings = scanned.headings;
-  const top = headings.findIndex((candidate) => candidate.text.trim().toLowerCase() === heading);
+  const top = headings.findIndex((candidate) => candidate.text.toLowerCase() === heading);
   if (top === -1) return [];
   const level = headings[top]!.level;
   const out: { item: ItemNode; protocol: Protocol }[] = [];
@@ -1424,10 +1424,13 @@ function extractProtocols(context: ProtocolContext): { item: ItemNode; protocol:
     }
     const fields: { name: string; value: string; at: SourceRef }[] = [];
     for (const line of scanned.lines) {
+      // A line starts after the heading's line ends and never at it, and a
+      // line that starts where the next heading does is that heading, which
+      // writes no field: `<=` for the `<` and `>` for the `>=` answer alike.
       if (line.start < section.end || line.start >= end || !isMarkdownLine(line)) continue;
       const found = PROTOCOL_FIELD.exec(scanned.masks.structure.slice(line.contentStart, line.end).trim());
       if (found === null) continue;
-      fields.push({ name: found[1]!.replace(/:$/, '').trim(), value: scanned.text.slice(line.contentStart, line.end).trim().replace(PROTOCOL_FIELD, '$2').trim(), at: refOf(file, index, line.contentStart, line.end) });
+      fields.push({ name: found[1]!.replace(/:$/, '').trim(), value: scanned.text.slice(line.contentStart, line.end).trim().replace(PROTOCOL_FIELD, '$2'), at: refOf(file, index, line.contentStart, line.end) });
     }
     const documentId = ownerAt(section.start);
     const id = `${documentId}#${section.anchor}`;

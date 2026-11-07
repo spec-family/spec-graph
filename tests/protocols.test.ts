@@ -26,8 +26,13 @@ const ROADMAP = doc(
   '',
   '### Refund latency',
   '',
-  '- **Method**: 1,000 refunds after 100 warm-up runs; the median.',
+  '- **Method**: 1,000 refunds after 100 warm-up runs; the median.   ',
   '- **Last result** (2026-11-05, a laptop): a median of 4 ms.',
+  'See **Method**: a field only where a line opens with it.',
+  '',
+  '#### Notes',
+  '',
+  'Nothing a protocol of its own.',
   '',
   '### Agent pass rate',
   '',
@@ -64,6 +69,7 @@ describe('a measurement protocol', () => {
       ['ROADMAP#refund-latency', 'refund-latency', 'Refund latency', ['Method=1,000 refunds after 100 warm-up runs; the median.', 'Last result=(2026-11-05, a laptop): a median of 4 ms.'], true, false],
       ['ROADMAP#agent-pass-rate', 'agent-pass-rate', 'Agent pass rate', ['Method=the same tasks in two languages.', 'Agent=one model, one harness.', 'Last result=none yet.'], false, true],
     ]);
+    expect(extracted.items[1]!.body).toBe('Method: the same tasks in two languages.\nAgent: one model, one harness.\nLast result: none yet.');
     expect(extracted.items.map((item) => [item.id, item.declared, item.disposition, item.evidence.source, item.evidence.raw])).toEqual([
       ['ROADMAP#refund-latency', true, 'satisfied', 'marker', '(2026-11-05, a laptop): a median of 4 ms.'],
       ['ROADMAP#agent-pass-rate', true, 'unresolved', 'marker', 'none yet.'],
@@ -75,7 +81,7 @@ describe('a measurement protocol', () => {
     const text = doc('# R', '', '## Measurement protocols', '', '### Fees', '', '```', '**Last result**: 2026-01-01', '```', '');
     const extracted = extractDocument({ path: 'ROADMAP.md', text, protocols: { heading: 'measurement protocols', result: 'last result' } })!;
     expect(extracted.protocols.map((p) => [p.fields, p.result])).toEqual([[[], null]]);
-    expect(extracted.items.map((item) => [item.disposition, item.evidence.raw])).toEqual([['unresolved', '']]);
+    expect(extracted.items.map((item) => [item.disposition, item.evidence.raw, item.evidence.at.span.start.line])).toEqual([['unresolved', '', 5]]);
     expect(extractDocument({ path: 'ROADMAP.md', text: '# R\n\n## Elsewhere\n', protocols: { heading: 'measurement protocols', result: 'last result' } })!.protocols).toEqual([]);
   });
 
@@ -96,8 +102,31 @@ describe('a measurement protocol', () => {
   });
 
   it('fails a result that names no date and does not say none yet', () => {
-    const text = doc('# Roadmap', '', '## Measurement protocols', '', '### Fees', '', '- **Method**: cents.', '- **Last result**: last week, roughly.', '', '### Banks', '', '- **Method**: each.', '- **Last result**: **none yet**', '');
-    expect(findings({ 'ROADMAP.md': text })).toEqual(['undated-result ROADMAP.md:8 "Fees" gives a result that names no date and does not say none yet']);
+    const text = doc(
+      '# Roadmap',
+      '',
+      '## Measurement protocols',
+      '',
+      '### Fees',
+      '',
+      '- **Method**: cents.',
+      '- **Last result**: last week, roughly.',
+      '',
+      '### Banks',
+      '',
+      '- **Method**: each.',
+      '- **Last result**: **none yet**',
+      '',
+      '### Cards',
+      '',
+      '- **Method**: each.',
+      '- **Last result**: measured 2026-11, and none yet since.',
+      '',
+    );
+    expect(findings({ 'ROADMAP.md': text })).toEqual([
+      'undated-result ROADMAP.md:8 "Fees" gives a result that names no date and does not say none yet',
+      'undated-result ROADMAP.md:18 "Cards" gives a result that names no date and does not say none yet',
+    ]);
     const found = analysed({ 'ROADMAP.md': text }).diagnostics.find((d) => d.rule === 'undated-result');
     expect(found).toMatchObject({ nodes: ['ROADMAP#fees'], related: [], hint: 'date the Last result, as 2026-11-05, or say "none yet" until there is one' });
   });
@@ -130,8 +159,16 @@ describe('a claim whose label asks for a measurement', () => {
 describe('a figure marked @spec-figure', () => {
   const report = (record: string): string => doc('# Report', '', `<!-- @spec-figure ${record} -->`, 'Refunds take 4 ms.', '');
 
-  it('passes resting on a protocol with a dated result', () => {
+  it('passes resting on a protocol with a dated result, by a citation of its own', () => {
     expect(findings({ 'docs/report.md': report('record="../ROADMAP.md#refund-latency"') })).toEqual([]);
+    const edge = analysed({ 'docs/report.md': report('record="../ROADMAP.md#refund-latency"') }).corpus.edges.find((candidate) => candidate.from === 'report');
+    expect(edge).toMatchObject({ kind: 'references', to: 'ROADMAP#refund-latency', origin: 'directive', raw: '@spec-figure record="../ROADMAP.md#refund-latency"' });
+  });
+
+  it('is held to its own record, beside a figure at the same place in another document', () => {
+    expect(findings({ 'docs/a.md': report('record="../ROADMAP.md#refund-latency"'), 'docs/b.md': report('record="../ROADMAP.md#agent-pass-rate"') })).toEqual([
+      'unrecorded-figure docs/b.md:3 the figure rests on "Agent pass rate", which has no dated result',
+    ]);
   });
 
   it('fails resting on a protocol with no dated result, pointing at the protocol', () => {

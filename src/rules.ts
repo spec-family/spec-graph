@@ -995,7 +995,8 @@ function protocolFindings(graph: SpecGraph, corpus: ResolvedCorpus, options: Rul
   const check = options.protocols;
   if (check === undefined) return;
   for (const protocol of corpus.protocols.values()) {
-    const asked = [check.resultName, ...(check.fields.get('*') ?? []), ...(check.fields.get(protocol.anchor.toLowerCase()) ?? [])];
+    // An anchor is a slug, in lower case already, as each key of `fields` is made.
+    const asked = [check.resultName, ...(check.fields.get('*') ?? []), ...(check.fields.get(protocol.anchor) ?? [])];
     const written = new Set(protocol.fields.map((field) => field.name.toLowerCase()));
     const missing = asked.filter((name, at) => !written.has(name.toLowerCase()) && asked.findIndex((other) => other.toLowerCase() === name.toLowerCase()) === at);
     if (missing.length > 0) {
@@ -1020,7 +1021,8 @@ function protocolFindings(graph: SpecGraph, corpus: ResolvedCorpus, options: Rul
   }
   for (const item of graph.items) {
     if (item.label === null || !check.claims.has(item.label)) continue;
-    if (graph.out(item.id).some((edge) => edge.kind !== 'contains' && corpus.protocols.has(edge.to))) continue;
+    // An item contains nothing, so every edge from one is a citation.
+    if (graph.out(item.id).some((edge) => corpus.protocols.has(edge.to))) continue;
     emit('target-without-protocol', () => ({
       message: `"${truncate(item.text, 60)}" is \`${item.label!}\` and cites no measurement protocol`,
       at: item.at,

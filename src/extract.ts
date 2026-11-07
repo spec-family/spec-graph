@@ -1090,7 +1090,7 @@ function buildRegion(context: RegionInput): BuiltRegion {
       row:
         region.row === null
           ? null
-          : { cells: region.cells.map((cell) => ({ header: cell.header, text: cell.text, at: at(cell.start, cell.end) })) },
+          : { cells: region.cells!.map((cell) => ({ header: cell.header, text: cell.text, at: at(cell.start, cell.end) })) },
       identity,
       scanned,
       subSpecifications: [],

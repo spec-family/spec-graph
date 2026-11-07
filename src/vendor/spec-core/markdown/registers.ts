@@ -28,8 +28,11 @@ const KEY_COLUMNS = /^(?:id|ids|ref|reference|key|no|number|#|adr|rfc|kep|oi|dec
 /** Column headers that name the row's status. */
 const STATUS_COLUMNS = /^(?:status|state|stage|lifecycle|phase)$/;
 
-/** Cell values that mean "nothing here". */
-const EMPTY_CELL = /^(?:-+|—|–|n\/?a|none|nil|tbd|\.|_+)$/i;
+/**
+ * Cell values that mean "nothing here", read flat, where a run of underscores
+ * is already gone with the emphasis it might have been.
+ */
+const EMPTY_CELL = /^(?:-+|—|–|n\/?a|none|nil|tbd|\.)$/i;
 
 /** A key names something only where it holds a letter or a digit. */
 const NAMES = /[\p{L}\p{N}]/u;
@@ -50,12 +53,15 @@ export function flatCell(text: string): string {
     .trim();
 }
 
-/** A header as a column is named: flat, in lower case, letters, digits and `/#-` alone. */
+/**
+ * A header as a column is named: flat, in lower case, letters, digits and
+ * `/#-` alone. Every name asked of it is one word, so the space left where a
+ * mark was taken out needs folding only at its ends.
+ */
 function headerName(text: string): string {
   return flatCell(text)
     .toLowerCase()
     .replace(/[^a-z0-9/#\s-]/g, '')
-    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -75,8 +81,10 @@ export function findRegisterRows(scan: MarkdownScan): RegisterRow[] {
       if (key === -1 && KEY_COLUMNS.test(name)) key = column;
       else if (status === -1 && STATUS_COLUMNS.test(name)) status = column;
     });
-    if (key === -1 || status === -1) continue;
+    if (status === -1) continue;
     for (const row of table.rows) {
+      // No key column is -1, and no row has a cell there; a row written short
+      // has none under it either.
       const keyCell = row.cells[key];
       if (keyCell === undefined) continue;
       const name = flatCell(keyCell.text);

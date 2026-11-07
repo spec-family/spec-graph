@@ -1773,9 +1773,9 @@ tools share, whose code is copied into `src/vendor/` and checked by hash rather
 than installed. So the whole package is auditable in an afternoon — and nothing
 in the pipeline can take longer than its input.
 
-**Verified, not just covered.** 2,472 tests; 99.35% statement and 99.67% line
+**Verified, not just covered.** 2,473 tests; 99.35% statement and 99.67% line
 coverage. Coverage says a line ran, so the suite is also held to a mutation
-score - 96.95% over 10,460 mutants, measured by CI's full sweep, and a build
+score - 96.95% over 10,462 mutants, measured by CI's full sweep, and a build
 fails under 93 - because a vocabulary entry or a boundary
 condition can be weakened by an ordinary-looking refactor without a single test
 going red. [ADR-0007](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0007-mutation-testing.md) is straight about what

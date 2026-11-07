@@ -67,6 +67,10 @@ export const DEFAULT_SEVERITIES: Readonly<Record<RuleId, Severity>> = Object.fre
   'duplicate-key': 'error',
   'unknown-register-status': 'error',
   'incomplete-register-row': 'error',
+  'incomplete-protocol': 'error',
+  'undated-result': 'error',
+  'target-without-protocol': 'error',
+  'unrecorded-figure': 'error',
 });
 
 export const RULE_IDS = Object.keys(DEFAULT_SEVERITIES) as readonly RuleId[];
@@ -91,6 +95,10 @@ export const RULE_DESCRIPTIONS: Readonly<Record<RuleId, string>> = Object.freeze
   'duplicate-key': 'a configured register gives a key to a second row, which the graph leaves out',
   'unknown-register-status': 'a row of a configured register has a status the configuration does not know',
   'incomplete-register-row': 'a row of a configured register lacks what its status asks for',
+  'incomplete-protocol': 'a measurement protocol lacks a field the configuration asks of it',
+  'undated-result': 'a measurement protocol gives a result that names no date and does not say none yet',
+  'target-without-protocol': 'a claim whose label asks for a measurement cites no protocol',
+  'unrecorded-figure': 'a marked figure names no record, or one with no dated result',
 });
 
 /**
@@ -124,6 +132,10 @@ export const RULE_DECISIONS: Readonly<Record<RuleId, string>> = Object.freeze({
   'duplicate-key': 'docs/adr/0027-a-register-row-is-held-to-its-status.md',
   'unknown-register-status': 'docs/adr/0027-a-register-row-is-held-to-its-status.md',
   'incomplete-register-row': 'docs/adr/0027-a-register-row-is-held-to-its-status.md',
+  'incomplete-protocol': 'docs/adr/0028-a-figure-rests-on-a-record.md',
+  'undated-result': 'docs/adr/0028-a-figure-rests-on-a-record.md',
+  'target-without-protocol': 'docs/adr/0028-a-figure-rests-on-a-record.md',
+  'unrecorded-figure': 'docs/adr/0028-a-figure-rests-on-a-record.md',
 });
 
 /**
@@ -189,6 +201,8 @@ export interface RuleOptions {
   readonly history?: CommitHistory | undefined;
   /** The registers held to a status vocabulary (ADR-0027). */
   readonly registers?: RegisterCheck | undefined;
+  /** The measurement protocols and the claims and figures held to them (ADR-0028). */
+  readonly protocols?: ProtocolCheck | undefined;
   /** Cap on related locations attached to one finding. */
   readonly maxRelated?: number | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
@@ -241,6 +255,7 @@ export function runRules(graph: SpecGraph, corpus: ResolvedCorpus, options: Rule
   completions(graph, corpus, options, emit);
   unknownCommits(corpus, options, emit);
   registerFindings(corpus, options, emit);
+  protocolFindings(graph, corpus, options, emit);
   misreadKeys(corpus, emit);
   selfReferences(graph, emit);
   projectFindings(graph, projectRules, emit);
@@ -921,6 +936,98 @@ function registerFindings(corpus: ResolvedCorpus, options: RuleOptions, emit: Em
       hint: `a row that is ${word} has ${listed(status.needs.map((need) => NEED_WORDS[need]))}: write what it lacks, or give it the status it has`,
     }));
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Protocols                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** A configured protocol check, ready to ask (ADR-0028). */
+export interface ProtocolCheck {
+  readonly holds: (path: string) => boolean;
+  /** The heading the protocols are written under, in lower case. */
+  readonly heading: string;
+  /** The result field's name, in lower case, and as configured. */
+  readonly result: string;
+  readonly resultName: string;
+  /** The fields each protocol must write: `*` for every one, else by its anchor in lower case. */
+  readonly fields: ReadonlyMap<string, readonly string[]>;
+  /** Labels of the claims that must cite a protocol. */
+  readonly claims: ReadonlySet<string>;
+}
+
+/**
+ * Measurement protocols held to what the configuration asks of them, and the
+ * claims and figures that rest on one (ADR-0028): a protocol that lacks a
+ * field, a result with no date that does not say none yet, a claim whose
+ * label asks for a measurement and cites no protocol, and a marked figure
+ * whose record is no protocol or has no dated result.
+ */
+function protocolFindings(graph: SpecGraph, corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
+  // A figure is held wherever it is marked, protocols configured or not: one
+  // marked where none are has no record to rest on.
+  for (const figure of corpus.figures) {
+    const edge = corpus.edges.find((candidate) => candidate.origin === 'directive' && sameStart(candidate.declaredAt, figure.recordAt));
+    // A record that does not resolve is a broken reference already, and one
+    // defect is one finding.
+    if (figure.record.length > 0 && edge === undefined) continue;
+    const protocol = edge === undefined ? undefined : corpus.protocols.get(edge.to);
+    if (protocol?.result?.dated === true) continue;
+    emit('unrecorded-figure', () => ({
+      message:
+        protocol !== undefined
+          ? `the figure rests on "${protocol.title}", which has no dated result`
+          : figure.record.length === 0
+            ? 'the figure names no record'
+            : `the figure's record, ${figure.record}, is no measurement protocol`,
+      at: figure.at,
+      nodes: [figure.owner],
+      target: figure.record,
+      related: protocol === undefined ? [] : [related(protocol.at, `${protocol.id} is the protocol`)],
+      hint: 'mark a figure with the record that measured it, record="ROADMAP.md#protocol-anchor", once the protocol has a dated result',
+    }));
+  }
+  const check = options.protocols;
+  if (check === undefined) return;
+  for (const protocol of corpus.protocols.values()) {
+    const asked = [check.resultName, ...(check.fields.get('*') ?? []), ...(check.fields.get(protocol.anchor.toLowerCase()) ?? [])];
+    const written = new Set(protocol.fields.map((field) => field.name.toLowerCase()));
+    const missing = asked.filter((name, at) => !written.has(name.toLowerCase()) && asked.findIndex((other) => other.toLowerCase() === name.toLowerCase()) === at);
+    if (missing.length > 0) {
+      emit('incomplete-protocol', () => ({
+        message: `"${protocol.title}" lacks ${listed(missing.map((name) => `"${name}"`))}`,
+        at: protocol.at,
+        nodes: [protocol.id],
+        related: [],
+        hint: 'write each under the protocol, as **Name**: what it is',
+      }));
+    }
+    const { result } = protocol;
+    if (result !== null && !result.dated && !result.none) {
+      emit('undated-result', () => ({
+        message: `"${protocol.title}" gives a result that names no date and does not say none yet`,
+        at: result.at,
+        nodes: [protocol.id],
+        related: [],
+        hint: `date the ${check.resultName}, as 2026-11-05, or say "none yet" until there is one`,
+      }));
+    }
+  }
+  for (const item of graph.items) {
+    if (item.label === null || !check.claims.has(item.label)) continue;
+    if (graph.out(item.id).some((edge) => edge.kind !== 'contains' && corpus.protocols.has(edge.to))) continue;
+    emit('target-without-protocol', () => ({
+      message: `"${truncate(item.text, 60)}" is \`${item.label!}\` and cites no measurement protocol`,
+      at: item.at,
+      nodes: [item.id],
+      related: [],
+      hint: 'link the protocol that measures it, as [the protocol](ROADMAP.md#its-anchor)',
+    }));
+  }
+}
+
+function sameStart(a: SourceRef, b: SourceRef): boolean {
+  return a.file === b.file && a.span.start.offset === b.span.start.offset;
 }
 
 function listed(parts: readonly string[]): string {

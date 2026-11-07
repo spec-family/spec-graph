@@ -20,7 +20,7 @@
 
 import { isMarkdownLine, type HtmlComment, type ListItem, type ScannedDocument } from './markdown.js';
 
-export type DirectiveName = 'spec-node' | 'spec-item' | 'spec-edge' | 'spec-ignore' | 'spec-history';
+export type DirectiveName = 'spec-node' | 'spec-item' | 'spec-edge' | 'spec-ignore' | 'spec-history' | 'spec-figure';
 
 const KNOWN: ReadonlySet<string> = new Set<DirectiveName>([
   'spec-node',
@@ -28,6 +28,7 @@ const KNOWN: ReadonlySet<string> = new Set<DirectiveName>([
   'spec-edge',
   'spec-ignore',
   'spec-history',
+  'spec-figure',
 ]);
 
 export interface Attribute {
@@ -60,6 +61,8 @@ const SCHEMA: Readonly<Record<DirectiveName, readonly string[]>> = {
   'spec-item': ['id', 'state', 'title', 'owner', 'note'],
   'spec-edge': ['kind', 'to', 'from', 'reason'],
   'spec-ignore': ['reason'],
+  // A figure the document states, and the record it rests on (ADR-0028).
+  'spec-figure': ['record', 'reason'],
 };
 
 /**

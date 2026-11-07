@@ -321,6 +321,52 @@ export interface RegistersConfig {
   readonly statuses: Readonly<Record<string, { readonly closes?: boolean | undefined; readonly needs?: readonly string[] | undefined }>>;
 }
 
+/**
+ * Where measurement protocols are written and what each must say:
+ * `{ "files": ["ROADMAP.md"], "heading": "Measurement protocols",
+ * "result": "Last result", "fields": { "*": ["Method"] }, "claims": ["Target"] }`
+ * (ADR-0028).
+ */
+export interface ProtocolsConfig {
+  readonly files: readonly string[];
+  /** The heading whose sections, one level down, are the protocols. */
+  readonly heading: string;
+  /** The field that holds a protocol's latest result: a date, or "none yet". */
+  readonly result: string;
+  /** The fields every protocol must have, under `*`, and those one must, under its anchor. */
+  readonly fields?: Readonly<Record<string, readonly string[]>> | undefined;
+  /** Labels of the claims that must cite a protocol. */
+  readonly claims?: readonly string[] | undefined;
+}
+
+/** A measurement protocol: a section under the configured heading, and the fields it writes (ADR-0028). */
+export interface Protocol {
+  /** The item the protocol is, `ROADMAP#view-projection`. */
+  readonly id: string;
+  /** The anchor its heading has, which a citation names. */
+  readonly anchor: string;
+  readonly title: string;
+  readonly at: SourceRef;
+  /** Each field written as `**Name**: value`, in order. */
+  readonly fields: readonly { readonly name: string; readonly value: string; readonly at: SourceRef }[];
+  /**
+   * The field the configuration names as the result, and what it says:
+   * `dated` where it names an ISO date, `none` where it opens with "none
+   * yet"; `null` where the protocol writes no such field.
+   */
+  readonly result: { readonly value: string; readonly at: SourceRef; readonly dated: boolean; readonly none: boolean } | null;
+}
+
+/** A figure a document marks with `@spec-figure`, and the record it names (ADR-0028). */
+export interface Figure {
+  readonly owner: string;
+  /** The record as written. */
+  readonly record: string;
+  readonly at: SourceRef;
+  /** Where the record is written, which the edge to it is declared at. */
+  readonly recordAt: SourceRef;
+}
+
 /** A register's row, by its cells, for a region a table's row declares (ADR-0027). */
 export interface RegisterRow {
   readonly cells: readonly { readonly header: string; readonly text: string; readonly at: SourceRef }[];
@@ -460,7 +506,11 @@ export type RuleId =
   | 'unknown-commit'
   | 'duplicate-key'
   | 'unknown-register-status'
-  | 'incomplete-register-row';
+  | 'incomplete-register-row'
+  | 'incomplete-protocol'
+  | 'undated-result'
+  | 'target-without-protocol'
+  | 'unrecorded-figure';
 
 /**
  * A rule a repository wrote for itself, as a selector plus a sentence.

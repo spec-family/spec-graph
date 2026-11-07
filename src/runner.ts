@@ -18,10 +18,10 @@ import { toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
 import { createRegisterCheck, summariseRegisters, type RegisterCheck, type RegisterSummary } from './registers.js';
-import { holdsToCommits, runRules, type RuleOptions } from './rules.js';
+import { holdsToCommits, runRules, type ProtocolCheck, type RuleOptions } from './rules.js';
 import { readHistory } from './git.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, ParseProblem, RegistersConfig, Severity } from './types.js';
+import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, ParseProblem, ProtocolsConfig, RegistersConfig, Severity } from './types.js';
 
 /** Patterns used when the caller names none. */
 export const DEFAULT_PATTERNS: readonly string[] = Object.freeze([
@@ -72,6 +72,8 @@ export interface AnalyseOptions {
   readonly gitRef?: string | undefined;
   /** Registers held to a status vocabulary. See ADR-0027. */
   readonly registers?: RegistersConfig | undefined;
+  /** Where measurement protocols are written, and what each must say. See ADR-0028. */
+  readonly protocols?: ProtocolsConfig | undefined;
   readonly concurrency?: number | undefined;
   readonly maxRelated?: number | undefined;
   readonly followSymlinks?: boolean | undefined;
@@ -114,6 +116,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     isChecklist: createPathMatcher(options.checklists),
     isLedger: createPathMatcher(options.ledgers),
     registers: createRegisterCheck(options.registers),
+    protocols: createProtocolCheck(options.protocols),
   };
   const extracted = extractSources(sources, { ...checks, isRecord: createHistoryMatcher(options.historyPatterns) });
   // git is run only where a checked document names a commit (ADR-0025).
@@ -159,6 +162,23 @@ export interface AnalyseSourcesOptions extends RuleOptions {
   readonly isRecord?: ((path: string) => boolean) | undefined;
   /** The labels of the claims a path holds, with what each means, or nothing where it holds none. */
   readonly claimsIn?: ((path: string) => ReadonlyMap<string, Disposition> | undefined) | undefined;
+}
+
+/**
+ * Builds the protocol check from the configuration, or nothing where none is
+ * configured: which files hold protocols, under which heading, what each
+ * must write, and which labels must cite one (ADR-0028).
+ */
+export function createProtocolCheck(config: ProtocolsConfig | undefined): ProtocolCheck | undefined {
+  if (config === undefined) return undefined;
+  return {
+    holds: createGlobMatcher(config.files),
+    heading: config.heading.trim().toLowerCase(),
+    result: config.result.trim().toLowerCase(),
+    resultName: config.result.trim(),
+    fields: new Map(Object.entries(config.fields ?? {}).map(([anchor, names]) => [anchor.toLowerCase(), names])),
+    claims: new Set(config.claims ?? []),
+  };
 }
 
 /**
@@ -261,6 +281,7 @@ function extractSources(sources: readonly Source[], options: AnalyseSourcesOptio
         record: options.isRecord?.(source.path) === true,
         claims: options.claimsIn?.(source.path),
         ledger: options.isLedger?.(source.path) === true,
+        protocols: options.protocols?.holds(source.path) === true ? { heading: options.protocols.heading, result: options.protocols.result } : undefined,
       }),
     );
   }

@@ -51,6 +51,16 @@ records.
   errors. The rows still open are counted per register in the report and
   listed in JSON as `registers` ([ADR-0027](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)).
 
+- **`protocols` holds measurement protocols, and `@spec-figure` a figure, to
+  a record.** Each section one level under the configured heading is a
+  protocol, an item named by its heading's anchor, held to the fields the
+  configuration asks of it (`incomplete-protocol`) and to a result that
+  names an ISO date or says none yet (`undated-result`). A claim whose label
+  `claims` lists cites one (`target-without-protocol`), and a figure marked
+  `<!-- @spec-figure record="ROADMAP.md#refund-latency" -->` rests on a
+  protocol with a dated result (`unrecorded-figure`). A number nobody
+  marked is not read ([ADR-0028](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md)).
+
 ### Changed
 
 - **A link with a specification's id as its anchor reaches the

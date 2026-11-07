@@ -25,7 +25,7 @@ import { compileProjectRules, type ProjectRule } from './project-rules.js';
 import { RULE_IDS } from './rules.js';
 import { REGISTER_NEEDS } from './registers.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import { isProjectRule, type AnyRuleId, type ClaimsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
+import { isProjectRule, type AnyRuleId, type ClaimsConfig, type ProtocolsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
 
 /** File names looked for, in order. The first that exists is the one used. */
 export const CONFIG_FILES: readonly string[] = Object.freeze([
@@ -82,6 +82,8 @@ export interface SpecGraphConfig {
   readonly gitRef?: string | undefined;
   /** Registers held to a status vocabulary, and what each status asks for. See ADR-0027. */
   readonly registers?: RegistersConfig | undefined;
+  /** Where measurement protocols are written, and what each must say. See ADR-0028. */
+  readonly protocols?: ProtocolsConfig | undefined;
 }
 
 export interface LoadedConfig {
@@ -324,6 +326,11 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
     }
   }
 
+  if (raw['protocols'] !== undefined) {
+    const protocols = readProtocols(raw['protocols'], source, problems);
+    if (protocols !== null) config.protocols = protocols;
+  }
+
   if (raw['registers'] !== undefined) {
     const registers = readRegisters(raw['registers'], source, problems);
     if (registers !== null) config.registers = registers;
@@ -375,6 +382,7 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'ledgers',
   'gitRef',
   'registers',
+  'protocols',
   // Tolerated so an editor can be pointed at a schema without being told off.
   '$schema',
 ]);
@@ -472,6 +480,47 @@ function readRegisters(value: unknown, source: string, problems: string[]): Regi
     files: files as string[],
     ...(typeof resolution === 'string' ? { resolution } : {}),
     statuses: statuses as RegistersConfig['statuses'],
+  };
+}
+
+/**
+ * Reads `protocols`: patterns for the documents, the heading whose sections
+ * are protocols, the field that holds a result, the fields each must write,
+ * and the labels of the claims that must cite one. A part that cannot be read
+ * leaves the whole of it out (ADR-0028).
+ */
+function readProtocols(value: unknown, source: string, problems: string[]): ProtocolsConfig | null {
+  const example = '{ "files": ["ROADMAP.md"], "heading": "Measurement protocols", "result": "Last result" }';
+  if (!isRecord(value)) {
+    problems.push(`${source}: "protocols" must be an object such as ${example}`);
+    return null;
+  }
+  const before = problems.length;
+  const words = (entry: unknown): boolean => Array.isArray(entry) && entry.every((word) => typeof word === 'string' && word.trim().length > 0);
+  const files = value['files'];
+  const heading = value['heading'];
+  const result = value['result'];
+  if (!words(files) || (files as unknown[]).length === 0) problems.push(`${source}: "protocols.files" must be a non-empty array of patterns`);
+  for (const key of ['heading', 'result']) {
+    const text = value[key];
+    if (typeof text !== 'string' || text.trim().length === 0) problems.push(`${source}: "protocols.${key}" must name ${key === 'heading' ? 'the heading the protocols are written under' : 'the field a result is written in'}`);
+  }
+  const fields = value['fields'];
+  if (fields !== undefined && (!isRecord(fields) || !Object.values(fields).every(words))) {
+    problems.push(`${source}: "protocols.fields" must be an object of protocol anchor, or "*" for every protocol, to the fields it must write`);
+  }
+  const claims = value['claims'];
+  if (claims !== undefined && !words(claims)) problems.push(`${source}: "protocols.claims" must be an array of labels`);
+  for (const key of Object.keys(value)) {
+    if (!['files', 'heading', 'result', 'fields', 'claims'].includes(key)) problems.push(`${source}: unknown key "protocols.${key}"`);
+  }
+  if (problems.length !== before) return null;
+  return {
+    files: files as string[],
+    heading: heading as string,
+    result: result as string,
+    ...(fields === undefined ? {} : { fields: fields as Record<string, string[]> }),
+    ...(claims === undefined ? {} : { claims: claims as string[] }),
   };
 }
 

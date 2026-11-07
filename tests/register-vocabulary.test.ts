@@ -65,6 +65,15 @@ describe('a row cited by its key as an anchor', () => {
     expect(corpus.dangling).toEqual([]);
   });
 
+  it('reaches the first of two rows whose keys differ only in case', () => {
+    const files = {
+      'review.md': register('| `Refund-Limit` | First. | Refuse them. | proposed |', '| `refund-limit` | Second. | Keep them. | proposed |'),
+      'brief.md': doc('# Brief', '', '[limit](review.md#refund-limit)', ''),
+    };
+    const { corpus } = analysed(files, undefined);
+    expect(corpus.edges.find((edge) => edge.from === 'brief')!.to).toBe('Refund-Limit');
+  });
+
   it('reaches the first of two rows that give one key', () => {
     const files = {
       'review.md': register('| `refund-limit` | First. | Refuse them. | proposed |', '| `refund-limit` | Second. | | open |'),

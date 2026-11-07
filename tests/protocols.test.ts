@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EXIT_FAILED, main } from '../src/cli.js';
 import { parseConfig } from '../src/config.js';
 import { extractDocument } from '../src/extract.js';
-import { analyseSources, createClaimReader, createProtocolCheck } from '../src/runner.js';
+import { analyseSources, createClaimReader, createPathMatcher, createProtocolCheck } from '../src/runner.js';
 import type { ProtocolsConfig } from '../src/types.js';
 
 /**
@@ -133,6 +133,15 @@ describe('a measurement protocol', () => {
     ]);
     const found = analysed({ 'ROADMAP.md': text }).diagnostics.find((d) => d.rule === 'undated-result');
     expect(found).toMatchObject({ nodes: ['ROADMAP#fees'], related: [], hint: 'date the Last result, as 2026-11-05, or say "none yet" until there is one' });
+  });
+
+  it('is no completion where its document is a checklist or a ledger too', () => {
+    const { diagnostics } = analyseSources([{ path: 'ROADMAP.md', text: ROADMAP }], {
+      protocols: createProtocolCheck(CONFIG),
+      isChecklist: createPathMatcher(['ROADMAP.md']),
+      isLedger: createPathMatcher(['ROADMAP.md']),
+    });
+    expect(diagnostics.map((d) => d.rule)).toEqual([]);
   });
 
   it('is held to nothing where no protocols are configured', () => {

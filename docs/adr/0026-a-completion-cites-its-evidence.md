@@ -54,6 +54,11 @@ leaves work open.**
   that cites no claim is not held: a ledger may say what no claim covers.
 - **A claim is not held here.** It answers for its own evidence to
   spec-guard.
+- *Amended 2026-11-08.* **Nor is a measurement protocol**
+  ([ADR-0028](0028-a-figure-rests-on-a-record.md)). A roadmap is often both a
+  checklist and where its protocols are written, and 0.22.0 read a protocol
+  with a dated result as a done item citing nothing. A protocol is closed by
+  its result, which `undated-result` holds.
 
 ## Not this round
 

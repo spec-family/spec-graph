@@ -14,7 +14,7 @@
 
 import type { FrontMatterBlock, Heading, Link, MarkdownScan, ScannedLine } from './vendor/spec-core/markdown/index.js';
 
-export { findClaims, scanMarkdown, slugify } from './vendor/spec-core/markdown/index.js';
+export { findClaims, findCommitReferences, scanMarkdown, slugify } from './vendor/spec-core/markdown/index.js';
 export type {
   Heading,
   HtmlComment,

@@ -31,6 +31,7 @@ import { isStatusHeading, phaseFromPath, phaseOf, STATUS_KEYS, supersessionTarge
 import {
   anchorsOf,
   findClaims,
+  findCommitReferences,
   isMarkdownLine,
   isOnlyComment,
   referenceLinks,
@@ -40,18 +41,23 @@ import {
   type ListItem,
   type ScannedDocument,
   type TableCell,
+  type TableRow,
 } from './markdown.js';
 import {
+  cellText,
   findSpecificationRegions,
   isRegisterTable,
   opensHeading,
   regionAt,
+  statusColumnOf,
   type SpecificationRegion,
 } from './sections.js';
-import { resolveItemState } from './state.js';
+import { dispositionOfWord, resolveItemState } from './state.js';
 import { refOf, type LineIndex } from './source.js';
 import {
   EDGE_KINDS,
+  OPENNESS_OF,
+  type CommitCitation,
   type Disposition,
   type DocumentNode,
   type EdgeKind,
@@ -61,6 +67,7 @@ import {
   type ParseProblem,
   type Phase,
   type SourceRef,
+  type StateSignal,
 } from './types.js';
 import { readEntries, toRecord, valuesOf, type YamlEntry } from './yaml.js';
 
@@ -111,6 +118,12 @@ export interface ExtractedDocument {
   readonly misreadKeys: readonly MisreadKey[];
   /** Heading slugs and GitHub's anchors, for resolving `#anchor` references into this document. */
   readonly anchors: ReadonlySet<string>;
+  /**
+   * The commits the file names, each with the node it is written in. Held by
+   * the file's own extraction alone, since its regions are in the same text
+   * (ADR-0025).
+   */
+  readonly commits: readonly CommitCitation[];
   readonly identity: DocumentIdentity;
   readonly scanned: ScannedDocument;
   /**
@@ -694,6 +707,11 @@ export interface ExtractInput {
    * where no item is read as a claim (ADR-0024).
    */
   readonly claims?: ReadonlyMap<string, Disposition> | undefined;
+  /**
+   * The file is a status ledger: a row of a table with a status column says
+   * how far it holds, and is an item as a list item is (ADR-0026).
+   */
+  readonly ledger?: boolean | undefined;
 }
 
 /**
@@ -883,7 +901,16 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
   };
   const ownerAt = (offset: number): string => documentAt(offset).id;
 
-  const allItems = extractItems({ scanned, directives, ownerAt, file, index, claims: input.claims });
+  const allItems = [
+    ...extractItems({ scanned, directives, ownerAt, file, index, claims: input.claims }),
+    ...(input.ledger === true ? extractLedgerRows({ scanned, ownerAt, file, index }) : []),
+  ];
+  const commits: CommitCitation[] = findCommitReferences(scanned).map((reference) => ({
+    owner: ownerOf(allItems, reference.start) ?? ownerAt(reference.start),
+    kind: reference.kind,
+    value: reference.value,
+    at: at(reference.start, reference.end),
+  }));
 
   const allReferences = extractReferences({
     scanned,
@@ -922,6 +949,7 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     problems,
     misreadKeys,
     anchors,
+    commits,
     identity,
     scanned,
     subSpecifications: filled,
@@ -1036,6 +1064,7 @@ function buildRegion(context: RegionInput): BuiltRegion {
       // there is one file however many regions it holds.
       misreadKeys: [],
       anchors,
+      commits: [],
       identity,
       scanned,
       subSpecifications: [],
@@ -1247,6 +1276,78 @@ function extractItems(context: ItemContext): ItemNode[] {
   }
 
   return out;
+}
+
+interface LedgerContext {
+  readonly scanned: ScannedDocument;
+  readonly ownerAt: (offset: number) => string;
+  readonly file: string;
+  readonly index: LineIndex;
+}
+
+/**
+ * A status ledger's rows: in a table with a status column that is no
+ * register, each row whose status cell reads as a state, by its first word -
+ * `done`, `Implemented`, `in progress`, and `done: what changed` alike. A
+ * row whose status says no state, `planned` or `n/a`, says nothing of how
+ * far it holds and is no item. The links in a row are its own, as an item's
+ * are, since a row's span holds them (ADR-0026).
+ */
+function extractLedgerRows(context: LedgerContext): ItemNode[] {
+  const { scanned, ownerAt, file, index } = context;
+  const out: ItemNode[] = [];
+  const ordinals = new Map<string, number>();
+  for (const table of scanned.tables) {
+    const column = statusColumnOf(table);
+    if (column === -1 || isRegisterTable(table)) continue;
+    for (const row of table.rows) {
+      const cell = row.cells[column];
+      if (cell === undefined) continue;
+      const word = cellText(cell).split(/[:;,(]/)[0]!.trim();
+      const disposition = dispositionOfWord(word);
+      if (disposition === undefined) continue;
+      out.push(ledgerItem({ row, cell, word, disposition, ownerAt, scanned, file, index, ordinals }));
+    }
+  }
+  return out;
+}
+
+function ledgerItem(input: {
+  readonly row: TableRow;
+  readonly cell: TableCell;
+  readonly word: string;
+  readonly disposition: Disposition;
+  readonly ownerAt: (offset: number) => string;
+  readonly scanned: ScannedDocument;
+  readonly file: string;
+  readonly index: LineIndex;
+  readonly ordinals: Map<string, number>;
+}): ItemNode {
+  const { row, cell, word, disposition, ownerAt, scanned, file, index, ordinals } = input;
+  const section = sectionPathAt(scanned, row.start);
+  const documentId = ownerAt(row.start);
+  const slug = `${section.length > 0 ? slugify(section[section.length - 1]!) : 'item'}-row`;
+  const key = `${documentId}#${slug}`;
+  const ordinal = (ordinals.get(key) ?? 0) + 1;
+  ordinals.set(key, ordinal);
+  const name = cellText(row.cells[0]!);
+  const signal: StateSignal = { source: 'marker', disposition, raw: word, at: refOf(file, index, cell.start, cell.end) };
+  return {
+    id: `${key}.${ordinal}`,
+    kind: 'item',
+    title: name,
+    at: refOf(file, index, row.start, row.end),
+    declared: false,
+    document: documentId,
+    section,
+    text: name,
+    body: scanned.text.slice(row.start, row.end),
+    disposition,
+    openness: OPENNESS_OF[disposition],
+    evidence: signal,
+    conflicts: [],
+    label: null,
+  };
 }
 
 interface ClaimLabel {

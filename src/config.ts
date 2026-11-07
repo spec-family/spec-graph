@@ -73,6 +73,12 @@ export interface SpecGraphConfig {
   readonly rules?: readonly ProjectRule[] | undefined;
   /** Which documents hold claims, and what each label means for work. See ADR-0024. */
   readonly claims?: ClaimsConfig | undefined;
+  /** Documents whose done items must cite a claim or a commit. See ADR-0026. */
+  readonly checklists?: readonly string[] | undefined;
+  /** Documents whose done rows and items may not cite a claim left open. See ADR-0026. */
+  readonly ledgers?: readonly string[] | undefined;
+  /** The ref whose history the commits a checked document names are looked for in. See ADR-0025. */
+  readonly gitRef?: string | undefined;
 }
 
 export interface LoadedConfig {
@@ -303,6 +309,18 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
     }
   }
 
+  config.checklists = strings('checklists');
+  config.ledgers = strings('ledgers');
+  if (raw['gitRef'] !== undefined) {
+    const ref = raw['gitRef'];
+    // A ref that opens with a dash is an option to git, whatever it was meant as.
+    if (typeof ref !== 'string' || ref.trim().length === 0 || ref.trim() !== ref || ref.startsWith('-')) {
+      problems.push(`${source}: "gitRef" must be a branch, a tag or a commit, such as "origin/main"`);
+    } else {
+      config.gitRef = ref;
+    }
+  }
+
   if (raw['claims'] !== undefined) {
     const claims = readClaims(raw['claims'], source, problems);
     if (claims !== null) config.claims = claims;
@@ -345,6 +363,9 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'strict',
   'maxRelated',
   'claims',
+  'checklists',
+  'ledgers',
+  'gitRef',
   // Tolerated so an editor can be pointed at a schema without being told off.
   '$schema',
 ]);

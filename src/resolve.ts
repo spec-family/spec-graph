@@ -30,16 +30,7 @@ import {
   withinOneEdit,
 } from './identity.js';
 import { basenamePosix, dirnamePosix, extnamePosix, resolveFrom } from './paths.js';
-import type {
-  DanglingRef,
-  DocumentNode,
-  Edge,
-  ItemNode,
-  MisreadKey,
-  ParseProblem,
-  SpecNode,
-  SuppressedRef,
-} from './types.js';
+import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation } from './types.js';
 
 export interface ResolveOptions {
   /**
@@ -102,6 +93,8 @@ export interface ResolvedCorpus {
    * allows nothing the corpus has (ADR-0010).
    */
   readonly families: readonly string[];
+  /** Every commit the documents name, with the node that names it (ADR-0025). */
+  readonly commits: readonly CommitCitation[];
 }
 
 /**
@@ -247,7 +240,18 @@ export function resolveCorpus(
     }
   }
 
-  return { nodes, documents, items, edges, dangling, problems, misreadKeys, suppressed, families: [...index.families].sort() };
+  return {
+    nodes,
+    documents,
+    items,
+    edges,
+    dangling,
+    problems,
+    misreadKeys,
+    suppressed,
+    families: [...index.families].sort(),
+    commits: extracted.flatMap((entry) => entry.commits),
+  };
 }
 
 /* -------------------------------------------------------------------------- */

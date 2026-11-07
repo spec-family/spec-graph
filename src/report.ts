@@ -813,7 +813,8 @@ export function formatJson(
       ...(options.baseline === undefined ? {} : { baseline: options.baseline }),
       summary: result.summary,
       files: result.files,
-      ...(result.registers === undefined ? {} : { registers: result.registers }),
+      // Absent where no register is configured: JSON.stringify drops an undefined field.
+      registers: result.registers,
       // The audit trail for what configuration silenced. Always present, unlike
       // the human report's --verbose gate: a machine reader that has to ask for
       // it twice will not ask. See ADR-0008.

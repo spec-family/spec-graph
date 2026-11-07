@@ -78,8 +78,8 @@ export interface SpecificationRegion {
    * typed edge rather than a typed edge and a neutral citation beside it.
    */
   readonly claimed: readonly Range[];
-  /** Every cell of the row by its column's header, for a region that is a table's row; empty for a heading's. */
-  readonly cells: readonly RegionCell[];
+  /** Every cell of the row under a header, by the header, for a region that is a table's row; none for a heading's. */
+  readonly cells?: readonly RegionCell[] | undefined;
 }
 
 /** A cell of a register's row, read flat, with where it stands. */
@@ -177,7 +177,6 @@ export function findSpecificationRegions(
     directive: null,
     relations: [],
     claimed: [],
-    cells: [],
   };
 
   const regions: SpecificationRegion[] = [];
@@ -229,7 +228,6 @@ export function findSpecificationRegions(
       relations: [],
       // Prose inside a section is prose: a heading region claims no cell.
       claimed: [],
-      cells: [],
     });
   }
 
@@ -310,7 +308,8 @@ export function findTableRegions(scanned: ScannedDocument): SpecificationRegion[
         directive: null,
         relations,
         claimed,
-        cells: row.cells.map((cell, column) => ({ header: flatten(table.headers[column]?.text ?? ''), text: flatten(cell.text), start: cell.start, end: cell.end })),
+        // A cell past the last header is under none, so no status can ask for it.
+        cells: row.cells.slice(0, table.headers.length).map((cell, column) => ({ header: flatten(table.headers[column]!.text), text: flatten(cell.text), start: cell.start, end: cell.end })),
       });
     }
   }

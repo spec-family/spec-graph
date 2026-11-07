@@ -699,7 +699,8 @@ function bindAnchor(
   // A specification declared inside the file, a register's row among them, is
   // named by its id: `register.md#refund-limit` reaches the row that
   // `refund-limit` names, which renders as no heading anywhere (ADR-0027).
-  const region = index.regionsOf.get(documentId)?.get(anchor.toLowerCase());
+  // Every document registered its regions, none for most.
+  const region = index.regionsOf.get(documentId)!.get(anchor.toLowerCase());
   if (region !== undefined) return makeEdge(candidate, region);
 
   const silenced = filteredBy(candidate.target, splitAnchor(candidate.target).target, options);

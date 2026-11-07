@@ -93,6 +93,7 @@ describe('a configured register', () => {
         '| `refund-reason` | No reason. | Keep one. | proposed |',
         '| `refund-fee` | Fees. | | open |',
         '| `refund-bank` | Banks. | Ask each. | decided, with the banks |',
+        '| `refund-part` | Parts. | Allow them. | done: [refunds](spec/refunds.md) (commit abcdef0) |',
       ),
     };
     expect(findings(files)).toEqual([]);
@@ -126,6 +127,7 @@ describe('a configured register', () => {
       'incomplete-register-row 9: "refund-part" is done and lacks a link to what it changed',
     ]);
     const found = analysed(files).diagnostics.find((d) => d.message.startsWith('"refund-limit"'));
+    expect(found).toMatchObject({ nodes: ['refund-limit'], related: [] });
     expect(found?.hint).toBe('a row that is done has a link to what it changed and the commit that changed it: write what it lacks, or give it the status it has');
   });
 
@@ -134,6 +136,38 @@ describe('a configured register', () => {
     expect(findings(files)).toEqual([
       'broken-reference 5: "spec/gone.md" does not resolve to any document',
       'unknown-commit 5: commit "Charge a fee" is not in the history of HEAD',
+    ]);
+  });
+
+  it('names each of three things a row lacks, and a status that asks for all three', () => {
+    const files = { 'review.md': register('| `refund-limit` | Over. | | done |') };
+    const all: RegistersConfig = { ...CONFIG, statuses: { done: { closes: true, needs: ['resolution', 'citation', 'commit'] } } };
+    expect(findings(files, all)).toEqual([
+      'incomplete-register-row 5: "refund-limit" is done and lacks a resolution, a link to what it changed and the commit that changed it',
+    ]);
+  });
+
+  it('reads a citation in the status cell and not in a column after it', () => {
+    const text = doc('# Review', '', '| Key | Status | Notes |', '| --- | --- | --- |', '| `refund-limit` | done (commit abcdef0) | [refunds](spec/refunds.md) |', '');
+    expect(findings({ 'review.md': text }, { ...CONFIG, resolution: undefined, statuses: { done: { needs: ['citation'] } } })).toEqual([
+      'incomplete-register-row 5: "refund-limit" is done and lacks a link to what it changed',
+    ]);
+  });
+
+  it('counts a broken citation only where the row writes it in its status cell', () => {
+    const review = register('| `refund-limit` | [the problem](spec/gone.md) | Refuse. | done (commit abcdef0) |');
+    const other = `${'a'.repeat(review.indexOf('done (commit'))} [r](spec/missing.md)\n`;
+    expect(findings({ 'review.md': review, 'other.md': other })).toEqual([
+      'broken-reference 1: "spec/missing.md" does not resolve to any document',
+      'broken-reference 5: "spec/gone.md" does not resolve to any document',
+      'incomplete-register-row 5: "refund-limit" is done and lacks a link to what it changed',
+    ]);
+  });
+
+  it('reads no cell past the last header', () => {
+    const text = doc('# Review', '', '| Key | Status |', '| --- | --- |', '| `refund-limit` | proposed | Refuse them. |', '');
+    expect(findings({ 'review.md': text }, { ...CONFIG, statuses: { proposed: { needs: ['resolution'] } } })).toEqual([
+      'incomplete-register-row 5: "refund-limit" is proposed and lacks a resolution',
     ]);
   });
 
@@ -151,7 +185,7 @@ describe('a configured register', () => {
     const files = { 'review.md': register('| `refund-limit` | First. | Refuse. | proposed |', '| `refund-limit` | Second. | Keep. | proposed |') };
     expect(findings(files)).toEqual(['duplicate-key 6: "refund-limit" is a key already, given at review.md:5:1']);
     const found = analysed(files).diagnostics.find((d) => d.rule === 'duplicate-key');
-    expect(found).toMatchObject({ target: 'review.md:6', related: [{ note: 'the row that keeps the key' }], hint: 'give the row a key of its own: a citation of this one reaches the first' });
+    expect(found).toMatchObject({ nodes: ['refund-limit'], target: 'review.md:6', related: [{ note: 'the row that keeps the key' }], hint: 'give the row a key of its own: a citation of this one reaches the first' });
   });
 
   it('counts no citation another document writes, wherever in its text it stands', () => {
@@ -227,6 +261,22 @@ describe('the rows still open', () => {
     }
   });
 
+  it('are not in the JSON of a run with no register configured', async () => {
+    const { mkdir, rm, writeFile } = await import('node:fs/promises');
+    const root = `tests/fixtures/.tmp/registers-none-${process.pid}`;
+    await rm(root, { recursive: true, force: true });
+    try {
+      await mkdir(root, { recursive: true });
+      await writeFile(`${root}/.spec-graph.json`, JSON.stringify({ patterns: ['*.md'] }));
+      await writeFile(`${root}/review.md`, register('| `refund-fee` | Fees. | | open |'));
+      let out = '';
+      await main({ argv: ['check', '--format', 'json'], cwd: `${process.cwd()}/${root}`, stdout: (text) => (out += text), stderr: () => {}, env: { NO_COLOR: '1' }, isTTY: false });
+      expect(Object.keys(JSON.parse(out))).not.toContain('registers');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('are in no report and no JSON where no register is configured', () => {
     const result = { ...analysed(files, undefined), files: [], summary: { documents: 0, items: 0, edges: 0, openObligations: 0, errors: 0, warnings: 0, infos: 0, durationMs: 0 }, problems: [], ok: true };
     expect(formatReport(result)).not.toContain(' open - ');
@@ -257,7 +307,7 @@ describe('registers in the configuration', () => {
   it('reads the files, the resolution column and each status with what it asks for', () => {
     expect(parseConfig(JSON.stringify({ registers: CONFIG }), '.spec-graph.json')).toMatchObject({ problems: [], config: { registers: CONFIG } });
     const bare = { files: ['review.md'], statuses: { open: {}, done: { closes: true } } };
-    expect(parseConfig(JSON.stringify({ registers: bare }), 'x').config.registers).toEqual(bare);
+    expect(parseConfig(JSON.stringify({ registers: bare }), 'x').config.registers).toStrictEqual(bare);
     expect(createRegisterCheck(undefined)).toBeUndefined();
     expect(createRegisterCheck(bare)).toMatchObject({ resolution: null, statuses: new Map([['open', { closes: false, needs: [] }], ['done', { closes: true, needs: [] }]]) });
   });
@@ -272,6 +322,10 @@ describe('registers in the configuration', () => {
     expect(problems({ files: ['  '], statuses: { open: {} }, resolution: ' ' })).toEqual([
       at('"registers.files" must be a non-empty array of patterns'),
       at('"registers.resolution" must be the header of the column a resolution is written in'),
+    ]);
+    expect(problems({ files: ['review.md'], statuses: {}, resolution: 3 })).toEqual([
+      at('"registers.resolution" must be the header of the column a resolution is written in'),
+      at(`"registers.statuses" must be an object of status word to what it asks for, such as ${example}`),
     ]);
     expect(problems({ files: ['review.md', 3], statuses: [] })).toEqual([
       at('"registers.files" must be a non-empty array of patterns'),
@@ -294,6 +348,9 @@ describe('registers in the configuration', () => {
       at('"registers.statuses.done".closes must be true or false'),
       at('"registers.statuses.done".needs must list some of resolution, citation, commit'),
       at('"registers.statuses.decided".needs must list some of resolution, citation, commit'),
+    ]);
+    expect(problems({ files: ['review.md'], resolution: 'R', statuses: { done: { needs: ['resolution', 'tests'] } } })).toEqual([
+      at('"registers.statuses.done".needs must list some of resolution, citation, commit'),
     ]);
   });
 

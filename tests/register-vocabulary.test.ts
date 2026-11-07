@@ -145,6 +145,13 @@ describe('a configured register', () => {
     expect(found).toMatchObject({ target: 'review.md:6', related: [{ note: 'the row that keeps the key' }], hint: 'give the row a key of its own: a citation of this one reaches the first' });
   });
 
+  it('counts no citation another document writes, wherever in its text it stands', () => {
+    const review = register('| `refund-limit` | Over. | Refuse. | done (commit "Refuse a refund over its capture") |');
+    // A link in another file, written at an offset inside the row's status cell.
+    const other = `${'a'.repeat(review.indexOf('done (commit'))} [r](spec/refunds.md)\n`;
+    expect(findings({ 'review.md': review, 'other.md': other })).toEqual(['incomplete-register-row 5: "refund-limit" is done and lacks a link to what it changed']);
+  });
+
   it('holds no register the configuration does not name, and no specification a heading declares', () => {
     const files = {
       'other.md': register('| `refund-limit` | Over. | | shipped |', '| `refund-limit` | Again. | | open |'),
@@ -243,6 +250,7 @@ describe('registers in the configuration', () => {
     const bare = { files: ['review.md'], statuses: { open: {}, done: { closes: true } } };
     expect(parseConfig(JSON.stringify({ registers: bare }), 'x').config.registers).toEqual(bare);
     expect(createRegisterCheck(undefined)).toBeUndefined();
+    expect(createRegisterCheck(bare)).toMatchObject({ resolution: null, statuses: new Map([['open', { closes: false, needs: [] }], ['done', { closes: true, needs: [] }]]) });
   });
 
   it('refuses each part that is missing or of the wrong kind, and leaves registers out then', () => {

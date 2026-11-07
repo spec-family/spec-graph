@@ -472,6 +472,8 @@ function readRegisters(value: unknown, source: string, problems: string[]): Regi
   return {
     files: files as string[],
     ...(typeof resolution === 'string' ? { resolution } : {}),
+    // Each status was read above: an object, its `closes` a boolean, its
+    // `needs` some of the three.
     statuses: statuses as RegistersConfig['statuses'],
   };
 }

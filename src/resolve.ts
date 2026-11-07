@@ -333,12 +333,13 @@ function buildIndex(extracted: readonly ExtractedDocument[]): Index {
     }
 
     for (const item of entry.items) index.itemIds.add(item.id);
-    if (entry.containerId !== null) {
-      const regions = index.regionsOf.get(entry.containerId) ?? new Map<string, string>();
+    const regions = new Map<string, string>();
+    for (const region of entry.subSpecifications) {
       // The first to declare an id keeps it, as the graph keeps the first.
-      if (!regions.has(id.toLowerCase())) regions.set(id.toLowerCase(), id);
-      index.regionsOf.set(entry.containerId, regions);
+      const key = region.document.id.toLowerCase();
+      if (!regions.has(key)) regions.set(key, region.document.id);
     }
+    index.regionsOf.set(id, regions);
   }
 
   // A bucket seeded with anything but the empty list would hold a spelling no

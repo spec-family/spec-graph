@@ -807,7 +807,9 @@ function stateConflicts(graph: SpecGraph, emit: Emit): void {
  *
  * Done is `satisfied`: an item rejected, obviated or accepted as debt is
  * closed without claiming anything was built. A claim is its own evidence's
- * to answer for, by spec-guard, so one in a checklist is passed over here. An
+ * to answer for, by spec-guard, so one in a checklist is passed over here,
+ * and so is a measurement protocol, closed by its dated result and held to
+ * it by `undated-result` (ADR-0028), where a roadmap writes both. An
  * item that cites a claim still open is premature, and that is its one
  * finding; a checklist's item that cites no claim and names no commit is
  * unevidenced. A commit it names that the history does not hold is
@@ -816,7 +818,7 @@ function stateConflicts(graph: SpecGraph, emit: Emit): void {
 function completions(graph: SpecGraph, corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
   const named = new Set(corpus.commits.map((citation) => citation.owner));
   for (const item of graph.items) {
-    if (item.disposition !== 'satisfied' || item.label !== null) continue;
+    if (item.disposition !== 'satisfied' || item.label !== null || corpus.protocols.has(item.id)) continue;
     const checklist = options.isChecklist?.(item.at.file) === true;
     if (!checklist && options.isLedger?.(item.at.file) !== true) continue;
     const claims = citedClaims(graph, item.id);

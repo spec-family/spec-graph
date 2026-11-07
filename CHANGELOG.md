@@ -11,6 +11,18 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Fixed
+
+- **A measurement protocol in a checklist or a ledger is no completion.** A
+  roadmap that is a checklist and holds its protocols read each protocol
+  with a dated result as a done item, and reported it as
+  `unevidenced-completion`, citing no claim or commit. A protocol answers
+  for its result to `undated-result` alone
+  ([ADR-0026](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md),
+  amended 2026-11-08).
+
 ## 0.22.0
 
 What a document claims is held to what it cites. A claim's label is its

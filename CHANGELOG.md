@@ -11,7 +11,15 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.23.0
+
+What a document that orients a reader names is held to the repository,
+and a diff names each claim whose label changed. A code span in a
+document `orientation` names that reads as a path names a file or
+directory the repository holds, or is `missing-path`, and a commit it
+names is in git. `diff` lists each claim raised, lowered or relabelled
+between two states. A repository that configures no `orientation` sees
+no new finding; `diff` exits 0 as before.
 
 ### Added
 

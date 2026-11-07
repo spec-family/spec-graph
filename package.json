@@ -1,6 +1,6 @@
 {
   "name": "@spec-family/spec-graph",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "description": "Turn Markdown specs into a verifiable relational graph. Catches ghost handovers, stale premises and broken references in CI.",
   "keywords": [
     "adr",

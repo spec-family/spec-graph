@@ -18,8 +18,9 @@ import { toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
 import { runRules, type RuleOptions } from './rules.js';
+import { readHistory } from './git.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import type { AnalysisSummary, AnyRuleId, ClaimsConfig, Diagnostic, Disposition, ParseProblem, Severity } from './types.js';
+import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, ParseProblem, Severity } from './types.js';
 
 /** Patterns used when the caller names none. */
 export const DEFAULT_PATTERNS: readonly string[] = Object.freeze([
@@ -62,6 +63,12 @@ export interface AnalyseOptions {
   readonly projectRules?: readonly ProjectRule[] | undefined;
   /** Which documents hold claims, and what each label means for work. See ADR-0024. */
   readonly claims?: ClaimsConfig | undefined;
+  /** Documents whose done items must cite a claim or a commit. See ADR-0026. */
+  readonly checklists?: readonly string[] | undefined;
+  /** Documents whose done rows and items may not cite a claim left open. See ADR-0026. */
+  readonly ledgers?: readonly string[] | undefined;
+  /** The ref whose history a checked document's commits are looked for in; `HEAD` unless set. See ADR-0025. */
+  readonly gitRef?: string | undefined;
   readonly concurrency?: number | undefined;
   readonly maxRelated?: number | undefined;
   readonly followSymlinks?: boolean | undefined;
@@ -97,8 +104,19 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
   const sources = await readAll(walked, options.concurrency ?? DEFAULT_CONCURRENCY);
   const present = new Set(walked.map((file) => file.path.toLowerCase()));
 
+  const checks = {
+    claimsIn: createClaimReader(options.claims),
+    isChecklist: createPathMatcher(options.checklists),
+    isLedger: createPathMatcher(options.ledgers),
+  };
+  const extracted = extractSources(sources, { ...checks, isRecord: createHistoryMatcher(options.historyPatterns) });
+  // git is run only where a checked document names a commit (ADR-0025).
+  const history = commitsToCheck(extracted, checks).length > 0 ? await readHistory(root, options.gitRef ?? 'HEAD') : undefined;
+
   return finish(
-    analyseSources(sources, {
+    analyseExtracted(extracted, {
+      ...checks,
+      history,
       // Consulted only for references that failed to resolve, so the cost is
       // bounded by the number of findings - and it buys the difference between
       // "that document does not exist" and "that document exists but your
@@ -110,8 +128,6 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
       // corpus but one written for it.
       isIgnoredReference: createReferenceFilter(options.ignoreReferences ?? []),
       isIgnoredFamily: createFamilyFilter(options.families, options.ignoreFamilies),
-      isRecord: createHistoryMatcher(options.historyPatterns),
-      claimsIn: createClaimReader(options.claims),
       severities: options.severities,
       projectRules: options.projectRules,
       maxRelated: options.maxRelated,
@@ -136,6 +152,15 @@ export interface AnalyseSourcesOptions extends RuleOptions {
   readonly isRecord?: ((path: string) => boolean) | undefined;
   /** The labels of the claims a path holds, with what each means, or nothing where it holds none. */
   readonly claimsIn?: ((path: string) => ReadonlyMap<string, Disposition> | undefined) | undefined;
+}
+
+/**
+ * A predicate for a list of patterns, or nothing for none, as the history
+ * matcher is: a check nobody configured costs no call per file.
+ */
+export function createPathMatcher(patterns: readonly string[] | undefined): ((path: string) => boolean) | undefined {
+  if (patterns === undefined || patterns.length === 0) return undefined;
+  return createGlobMatcher(patterns);
 }
 
 /**
@@ -215,6 +240,11 @@ interface Analysed {
  * a temporary directory to use spec-graph.
  */
 export function analyseSources(sources: readonly Source[], options: AnalyseSourcesOptions = {}): Analysed {
+  return analyseExtracted(extractSources(sources, options), options);
+}
+
+/** Reads each source into the specifications it holds, as the options say to read it. */
+function extractSources(sources: readonly Source[], options: AnalyseSourcesOptions): ExtractedDocument[] {
   const extracted: ExtractedDocument[] = [];
   for (const source of sources) {
     extracted.push(
@@ -223,10 +253,28 @@ export function analyseSources(sources: readonly Source[], options: AnalyseSourc
         text: source.text,
         record: options.isRecord?.(source.path) === true,
         claims: options.claimsIn?.(source.path),
+        ledger: options.isLedger?.(source.path) === true,
       }),
     );
   }
+  return extracted;
+}
 
+/** The commits a checklist or a ledger names, which a history is needed to look for. */
+function commitsToCheck(extracted: readonly ExtractedDocument[], options: AnalyseSourcesOptions): CommitCitation[] {
+  const checked = (path: string): boolean => options.isChecklist?.(path) === true || options.isLedger?.(path) === true;
+  return extracted.flatMap((entry) => entry.commits).filter((citation) => checked(citation.at.file));
+}
+
+/**
+ * The rest of a run, from what extraction read. Refuses to run without a
+ * history where a checked document names a commit: what was not looked for
+ * was not found, and passing it over would read as found (ADR-0025).
+ */
+function analyseExtracted(extracted: readonly ExtractedDocument[], options: AnalyseSourcesOptions): Analysed {
+  if (options.history === undefined && commitsToCheck(extracted, options).length > 0) {
+    throw new Error('a checklist or a ledger names a commit, and no history was given to look for it in: pass "history"');
+  }
   const corpus = resolveCorpus(extracted, {
     fileExists: options.fileExists,
     isDirectory: options.isDirectory,

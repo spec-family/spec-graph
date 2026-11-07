@@ -55,7 +55,10 @@ can match. It names nothing it cannot tell apart.**
 
 The comparison is a pure function in its own module, over two parsed exports;
 `cli.ts` reads the files, as it reads everything else. There is no git and no
-checkout in the tool. CI already has both states:
+checkout in the tool. CI already has both states (*amended 2026-11-07*: a
+check now asks git for the history of one ref, for the commits a checklist
+or a ledger names, [ADR-0025](0025-commits-are-read-from-git.md); a diff still
+compares two exports):
 
 ```yaml
 - run: git fetch --depth 1 origin "$GITHUB_BASE_REF" && git worktree add ../base FETCH_HEAD

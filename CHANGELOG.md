@@ -27,6 +27,21 @@ records.
   `claims` that cannot be read, or whose files the run does not read, is
   exit 2 ([ADR-0024](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md)).
 
+- **`checklists` and `ledgers` hold a done item to what it cites.** In a
+  checklist, an item marked done cites a claim or names a commit, or is
+  `unevidenced-completion`; in a checklist or a ledger, one that cites a claim
+  its label leaves open is `premature-completion`. A ledger's table with a
+  status column is read row by row, each row whose status reads as a state an
+  item. Both are errors, and fire only where configured
+  ([ADR-0026](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md)).
+
+- **A commit a checklist or a ledger names is looked for in git.**
+  `commit "Subject"` or `commit 1a2b3c4` not in the history of `gitRef`,
+  `HEAD` unless set, is `unknown-commit`, an error. git runs only when a
+  checked document names a commit; no git, no repository, an unknown ref or
+  a shallow clone is exit 2. Upgrading: a CI job that checks commits needs
+  `fetch-depth: 0` on `actions/checkout` ([ADR-0025](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0025-commits-are-read-from-git.md)).
+
 ## 0.21.0
 
 The first release as `@spec-family/spec-graph`, from

@@ -472,3 +472,13 @@ export const KNOWN_STATE_WORDS: readonly string[] = [...STATE_ALIASES.keys()];
 export function dispositionOfStateWord(word: string): Disposition | undefined {
   return STATE_ALIASES.get(word.toLowerCase());
 }
+
+/**
+ * The disposition a status cell's word says: a `state=` word, or else a
+ * marker of the table above, in any case and spelled with any separator -
+ * `done`, `Implemented`, `in progress`. `undefined` for a word that says
+ * neither, which leaves its row no item (ADR-0026).
+ */
+export function dispositionOfWord(word: string): Disposition | undefined {
+  return dispositionOfStateWord(word) ?? MARKER_LOOKUP.get(normalisePhrase(word));
+}

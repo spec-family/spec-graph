@@ -40,6 +40,7 @@ import type {
   SpecNode,
 } from './types.js';
 import { EDGE_TRAITS } from './types.js';
+import { holdsCommit, type CommitHistory } from './history.js';
 
 /* -------------------------------------------------------------------------- */
 /* Configuration                                                              */
@@ -58,6 +59,9 @@ export const DEFAULT_SEVERITIES: Readonly<Record<RuleId, Severity>> = Object.fre
   'state-conflict': 'warn',
   'self-reference': 'info',
   'unknown-relation-key': 'warn',
+  'unevidenced-completion': 'error',
+  'premature-completion': 'error',
+  'unknown-commit': 'error',
 });
 
 export const RULE_IDS = Object.keys(DEFAULT_SEVERITIES) as readonly RuleId[];
@@ -76,6 +80,9 @@ export const RULE_DESCRIPTIONS: Readonly<Record<RuleId, string>> = Object.freeze
   'state-conflict': 'an item declares two states that disagree about whether work remains',
   'self-reference': 'a document delegates to or depends on itself',
   'unknown-relation-key': 'a front-matter key reads as a relation but declares none',
+  'unevidenced-completion': 'an item a checklist marks done cites no claim and names no commit',
+  'premature-completion': 'an item marked done cites a claim whose label leaves work open',
+  'unknown-commit': 'a checked document names a commit the history of its ref does not hold',
 });
 
 /**
@@ -103,6 +110,9 @@ export const RULE_DECISIONS: Readonly<Record<RuleId, string>> = Object.freeze({
   'state-conflict': 'docs/adr/0003-item-state-signals.md',
   'self-reference': 'docs/adr/0006-false-positives-cost-more.md',
   'unknown-relation-key': 'docs/adr/0014-a-relation-is-spelled-both-ways.md',
+  'unevidenced-completion': 'docs/adr/0026-a-completion-cites-its-evidence.md',
+  'premature-completion': 'docs/adr/0026-a-completion-cites-its-evidence.md',
+  'unknown-commit': 'docs/adr/0025-commits-are-read-from-git.md',
 });
 
 /**
@@ -160,6 +170,12 @@ export function resolveStrict(
 
 export interface RuleOptions {
   readonly severities?: Partial<Record<AnyRuleId, Severity>> | undefined;
+  /** Whether a path is a checklist, whose done items must cite their evidence (ADR-0026). */
+  readonly isChecklist?: ((path: string) => boolean) | undefined;
+  /** Whether a path is a status ledger, whose done rows may not cite open claims (ADR-0026). */
+  readonly isLedger?: ((path: string) => boolean) | undefined;
+  /** The history the commits a checked document names are looked for in (ADR-0025). */
+  readonly history?: CommitHistory | undefined;
   /** Cap on related locations attached to one finding. */
   readonly maxRelated?: number | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
@@ -209,6 +225,8 @@ export function runRules(graph: SpecGraph, corpus: ResolvedCorpus, options: Rule
   orphanedObligations(graph, emit);
   supersessions(graph, emit);
   stateConflicts(graph, emit);
+  completions(graph, corpus, options, emit);
+  unknownCommits(corpus, options, emit);
   misreadKeys(corpus, emit);
   selfReferences(graph, emit);
   projectFindings(graph, projectRules, emit);
@@ -746,6 +764,93 @@ function stateConflicts(graph: SpecGraph, emit: Emit): void {
       // can be empty, and neither is ever in conflict.
       related: item.conflicts.map((signal) => related(signal.at, `${signal.source} says ${signal.disposition}: ${signal.raw}`)),
       hint: `make the two agree - spec-graph is treating it as ${item.openness}`,
+    }));
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Completions                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A ticked checklist item, or a ledger's row or item that says it is done,
+ * held to what it cites (ADR-0026).
+ *
+ * Done is `satisfied`: an item rejected, obviated or accepted as debt is
+ * closed without claiming anything was built. A claim is its own evidence's
+ * to answer for, by spec-guard, so one in a checklist is passed over here. An
+ * item that cites a claim still open is premature, and that is its one
+ * finding; a checklist's item that cites no claim and names no commit is
+ * unevidenced. A commit it names that the history does not hold is
+ * `unknown-commit`'s, and still counts as named here: one defect, one finding.
+ */
+function completions(graph: SpecGraph, corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
+  const named = new Set(corpus.commits.map((citation) => citation.owner));
+  for (const item of graph.items) {
+    if (item.disposition !== 'satisfied' || item.label !== null) continue;
+    const checklist = options.isChecklist?.(item.at.file) === true;
+    if (!checklist && options.isLedger?.(item.at.file) !== true) continue;
+    const claims = citedClaims(graph, item.id);
+    const open = claims.filter((claim) => claim.disposition !== 'satisfied');
+    if (open.length > 0) {
+      emit('premature-completion', () => ({
+        message:
+          open.length === 1
+            ? `"${truncate(item.text, 60)}" is done, and the claim it cites is \`${open[0]!.label!}\`, which leaves work open`
+            : `"${truncate(item.text, 60)}" is done, and ${open.length} claims it cites leave work open`,
+        at: item.at,
+        nodes: [item.id, ...open.map((claim) => claim.id)],
+        related: open.map((claim) => related(claim.evidence.at, `${claim.id} is ${claim.label!}`)),
+        hint: 'raise the claim\'s label once its evidence holds, or reopen the item until it does',
+      }));
+      continue;
+    }
+    if (!checklist || claims.length > 0 || named.has(item.id)) continue;
+    emit('unevidenced-completion', () => ({
+      message: `"${truncate(item.text, 60)}" is done and cites no claim or commit`,
+      at: item.at,
+      nodes: [item.id],
+      related: [],
+      hint: 'cite the claim that shows it, as [name](spec/file.md#claim-id), or name the commit that did it, as commit "Subject"',
+    }));
+  }
+}
+
+/**
+ * The claims an item cites, each once, in the order its citations come. An
+ * item contains nothing, so every edge from one is a citation, and every edge
+ * reaches a node of the graph.
+ */
+function citedClaims(graph: SpecGraph, id: string): ItemNode[] {
+  const out: ItemNode[] = [];
+  for (const edge of graph.out(id)) {
+    const target = graph.node(edge.to)!;
+    if (target.kind === 'item' && target.label !== null && !out.includes(target)) out.push(target);
+  }
+  return out;
+}
+
+/**
+ * A commit a checklist or a ledger names that the history of its ref does
+ * not hold: renamed, rewritten, never pushed, or misspelled (ADR-0025).
+ */
+function unknownCommits(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
+  const { history } = options;
+  // `analyse` reads a history whenever a checked document names a commit,
+  // and `analyseSources` refuses to run without one then; a caller of
+  // `runRules` that gives none has had nothing looked for.
+  if (history === undefined) return;
+  for (const citation of corpus.commits) {
+    if (options.isChecklist?.(citation.at.file) !== true && options.isLedger?.(citation.at.file) !== true) continue;
+    if (holdsCommit(history, citation)) continue;
+    const named = citation.kind === 'subject' ? `commit "${citation.value}"` : `commit ${citation.value}`;
+    emit('unknown-commit', () => ({
+      message: `${named} is not in the history of ${history.ref}`,
+      at: citation.at,
+      nodes: [citation.owner],
+      target: `${citation.kind}:${citation.value}`,
+      related: [],
+      hint: `name a commit ${history.ref} reaches, by its subject as written or by the start of its hash`,
     }));
   }
 }

@@ -309,6 +309,19 @@ export interface ItemNode extends NodeBase {
 export type SpecNode = DocumentNode | ItemNode;
 
 /**
+ * A commit a document names, `commit "Subject"` or `commit 1a2b3c4`, and
+ * the node that names it: the item or the row it is written in, or else the
+ * specification (ADR-0025).
+ */
+export interface CommitCitation {
+  readonly owner: string;
+  readonly kind: 'subject' | 'hash';
+  /** The subject as written between the quotes, or the hash in lower case. */
+  readonly value: string;
+  readonly at: SourceRef;
+}
+
+/**
  * Which documents hold claims, and what each label means for work, in the
  * words `@spec-item state=` takes: `{ "files": ["spec/*.md"], "labels": {
  * "Implemented": "done", "Specified": "open" } }` (ADR-0024).
@@ -415,7 +428,10 @@ export type RuleId =
   | 'live-supersession'
   | 'state-conflict'
   | 'self-reference'
-  | 'unknown-relation-key';
+  | 'unknown-relation-key'
+  | 'unevidenced-completion'
+  | 'premature-completion'
+  | 'unknown-commit';
 
 /**
  * A rule a repository wrote for itself, as a selector plus a sentence.

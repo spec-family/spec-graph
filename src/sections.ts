@@ -313,6 +313,19 @@ export function isRegisterTable(table: Table): boolean {
   return readSchema(table) !== null;
 }
 
+/**
+ * The column of a table whose header names a status, as a register's would,
+ * or -1 where none does: what a status ledger's row says of itself (ADR-0026).
+ */
+export function statusColumnOf(table: Table): number {
+  return table.headers.findIndex((header) => STATUS_COLUMNS.test(normaliseHeader(header.text)));
+}
+
+/** A cell's text: link labels rather than link syntax, no emphasis or code marks, one line. */
+export function cellText(cell: TableCell): string {
+  return flatten(cell.text);
+}
+
 interface TableSchema {
   readonly id: number;
   readonly status: number | null;

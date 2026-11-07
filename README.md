@@ -108,6 +108,9 @@ follows `npx --no-install @spec-family/` at a prompt.
 | `state-conflict` | warn | An item whose two state signals disagree about whether work remains |
 | `unknown-relation-key` | warn | A front-matter key one edit from a relation, carrying what looks like a citation |
 | `self-reference` | info | A document delegating to, or depending on, itself |
+| `unevidenced-completion` | error | An item a checklist marks done that cites no claim and names no commit, where `checklists` is configured |
+| `premature-completion` | error | An item marked done that cites a claim whose label leaves work open, where `checklists` or `ledgers` is configured |
+| `unknown-commit` | error | A checklist or a ledger naming a commit the history of its ref does not hold |
 
 Override any of them:
 
@@ -337,6 +340,53 @@ its label:
 - `claims.files` that match no file the run reads stop the run with exit `2`.
 
 See [ADR-0024](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md).
+
+### Checklists and ledgers, held to what they cite
+
+A ticked box is read as done whatever stands behind it, and a ledger can say a
+feature is implemented while its claims are still `Specified`. Name them, and
+what a done item cites is held to what it says:
+
+```json
+{ "checklists": ["ROADMAP.md"], "ledgers": ["docs/STATUS.md"] }
+```
+
+```md
+- [x] Refunds are held to the capture ([refund limits](spec/refunds.md#refund-limit)).
+- [x] Partial refunds (commit "Refund part of a capture").
+- [x] Retries.
+```
+
+- In a checklist, an item marked done cites a claim, by a link that reaches
+  it, or names a commit; the third item above is `unevidenced-completion`.
+- In a checklist or a ledger, an item marked done may not cite a claim its
+  label leaves open: `premature-completion`, which also finds a claim lowered
+  after its box was ticked.
+- A ledger's table with a status column, as a register's, is read row by row:
+  a row whose status cell reads as a state, `done`, `Implemented`,
+  `in progress`, is an item, and its links are its own. A row that cites no
+  claim is not held.
+- Done is `satisfied`; an item rejected, obviated or accepted as debt is held
+  to nothing.
+
+See [ADR-0026](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md).
+
+### Commits, looked for in git
+
+A commit a checklist or a ledger names, `commit "Subject"` or
+`commit 1a2b3c4`, must be in the history of `gitRef`, `HEAD` unless set:
+`unknown-commit` otherwise. A subject is matched as written, a hash as the
+start of an id.
+
+- git runs only when a checked document names a commit, once, and nowhere
+  else: `git.ts` is the one place a run starts a process.
+- No git, no repository, a ref the repository lacks, or a shallow clone stops
+  the run with exit `2`. A shallow clone holds only its newest commits, and
+  `actions/checkout` makes one unless given `fetch-depth: 0`.
+- `"gitRef": "origin/main"` asks that a commit was merged, not only made. A
+  ref that opens with `-` is refused.
+
+See [ADR-0025](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0025-commits-are-read-from-git.md).
 
 ### References, resolved forgivingly and validated strictly
 
@@ -921,6 +971,9 @@ command. spec-graph reads the first of `.spec-graph.json`,
   "strict": true,
   "maxRelated": 3,
   "claims": { "files": ["spec/*.md"], "labels": { "Implemented": "done", "Specified": "open" } },
+  "checklists": ["ROADMAP.md"],
+  "ledgers": ["docs/STATUS.md"],
+  "gitRef": "origin/main",
   "rules": {
     "no-draft-dependency": {
       "query": "document[phase=active] -depends-on-> document[phase=draft]",
@@ -961,8 +1014,11 @@ which file was read, on stderr with everything else a run says about itself, so
 it can be combined with any `--format` and leave the document on stdout intact.
 `--no-config` skips the mechanism entirely.
 
-`claims` has no flag either: which documents hold claims, and what each label
-means, are the repository's ([claims](#claims-with-their-labels)).
+`claims`, `checklists`, `ledgers` and `gitRef` have no flag either: which
+documents hold claims and are held to them, and which history their commits
+are looked for in, are the repository's ([claims](#claims-with-their-labels),
+[checklists and ledgers](#checklists-and-ledgers-held-to-what-they-cite),
+[commits](#commits-looked-for-in-git)).
 
 `maxRelated` has no flag. It caps how many related locations one finding lists
 — the lines under it in the terminal, `related` in JSON, `relatedLocations` in
@@ -1615,6 +1671,8 @@ Twenty-three ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0022 — Globs are the family's path dialect](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0022-globs-are-the-family-path-dialect.md)
 - [ADR-0023 — The scanner is the family's](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0023-the-scanner-is-the-familys.md)
 - [ADR-0024 — A claim's label is its state](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md)
+- [ADR-0025 — Commits are read from git](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0025-commits-are-read-from-git.md)
+- [ADR-0026 — A completion cites its evidence](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

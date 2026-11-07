@@ -438,7 +438,7 @@ export function diffVerdict(diff: GraphDiff): string {
     count.documents > 0 ? plural(count.documents, 'document') : null,
     count.relations > 0 ? plural(count.relations, 'relation') : null,
     count.obligations > 0 ? plural(count.obligations, 'obligation') : null,
-    count.claims > 0 ? `${plural(count.claims, 'claim')} relabelled` : null,
+    count.claims > 0 ? plural(count.claims, 'claim label') : null,
   ].filter((part): part is string => part !== null);
   if (parts.length === 0) return 'No relational change.';
   const listed = parts.length === 1 ? (parts[0] as string) : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]!}`;

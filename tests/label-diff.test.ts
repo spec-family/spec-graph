@@ -41,7 +41,7 @@ describe('a claim whose label changed', () => {
       },
     ]);
     expect(diff.obligations.transitions).toEqual([]);
-    expect(diffVerdict(diff)).toBe('1 claim relabelled changed.');
+    expect(diffVerdict(diff)).toBe('1 claim label changed.');
   });
 
   it('is lowered where its label opens the work again, and relabelled where its openness held', () => {
@@ -54,7 +54,7 @@ describe('a claim whose label changed', () => {
       [['Implemented', 'Specified'], 'lowered'],
       [['Specified', 'Target'], 'relabelled'],
     ]);
-    expect(diffVerdict(diff)).toBe('3 claims relabelled changed.');
+    expect(diffVerdict(diff)).toBe('3 claim labels changed.');
   });
 
   it('is no claim relabelled where either side is no claim, and its openness is still an obligation\'s', () => {
@@ -93,7 +93,7 @@ describe('the report of labels changed', () => {
   it('lists each claim under Claims for a terminal', () => {
     expect(formatDiffText(diff())).toBe(
       [
-        '2 claims relabelled changed.',
+        '2 claim labels changed.',
         '',
         'Claims',
         '  raised      refunds > Limits: "`Implemented`: one | two." (Specified -> Implemented)',
@@ -108,7 +108,7 @@ describe('the report of labels changed', () => {
       [
         '### spec-graph diff',
         '',
-        '2 claims relabelled changed.',
+        '2 claim labels changed.',
         '',
         '| | Where | Claim | Label |',
         '| --- | --- | --- | --- |',

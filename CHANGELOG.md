@@ -11,7 +11,16 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.22.0
+
+What a document claims is held to what it cites. A claim's label is its
+state, a checklist's done item cites a claim or a commit and no claim left
+open, a ledger's done row cites no claim left open, a register's row has
+what its status asks for, and a marked figure rests on a protocol with a
+dated result. The commits a checked document names are looked for in git.
+Each holds only where the configuration names it; a repository that names
+none sees one change, a link to a specification by its id as the anchor
+resolving where it was broken.
 
 ### Added
 

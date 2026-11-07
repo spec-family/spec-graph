@@ -11,10 +11,9 @@
 import { createGlobMatcher } from './glob.js';
 import type { ResolvedCorpus } from './resolve.js';
 import { isEmptyCell } from './sections.js';
-import type { DocumentNode, RegistersConfig } from './types.js';
+import type { DocumentNode, RegisterNeed, RegistersConfig } from './types.js';
 
-/** What a row with a status must have: a resolution, a citation of what it changed, the commit that changed it. */
-export type RegisterNeed = 'resolution' | 'citation' | 'commit';
+export type { RegisterNeed } from './types.js';
 
 export const REGISTER_NEEDS: readonly RegisterNeed[] = ['resolution', 'citation', 'commit'];
 
@@ -38,13 +37,9 @@ export function createRegisterCheck(config: RegistersConfig | undefined): Regist
   if (config === undefined) return undefined;
   const statuses = new Map<string, RegisterStatus>();
   for (const [word, status] of Object.entries(config.statuses)) {
-    statuses.set(word.toLowerCase(), { closes: status.closes === true, needs: (status.needs ?? []).filter(isNeed) });
+    statuses.set(word.toLowerCase(), { closes: status.closes === true, needs: status.needs ?? [] });
   }
   return { isRegister: createGlobMatcher(config.files), resolution: config.resolution?.toLowerCase() ?? null, statuses };
-}
-
-function isNeed(value: string): value is RegisterNeed {
-  return (REGISTER_NEEDS as readonly string[]).includes(value);
 }
 
 /**
@@ -113,10 +108,13 @@ export function missingOf(row: DocumentNode, corpus: ResolvedCorpus, check: Regi
 function citesInStatus(row: DocumentNode, corpus: ResolvedCorpus): boolean {
   // A row with no status asks for nothing, so every row asked about has one.
   const status = row.statusAt!.span;
+  // A citation is declared at its target, inside the cell and at neither of
+  // its edges, so `>` for the `>=` and `<=` for the `<` answer alike. A row
+  // contains nothing, so every edge from one is a citation.
   const inside = (at: { readonly span: { readonly start: { readonly offset: number } } }): boolean =>
     at.span.start.offset >= status.start.offset && at.span.start.offset < status.end.offset;
   return (
-    corpus.edges.some((edge) => edge.from === row.id && edge.kind !== 'contains' && inside(edge.declaredAt)) ||
+    corpus.edges.some((edge) => edge.from === row.id && inside(edge.declaredAt)) ||
     corpus.dangling.some((ref) => ref.from === row.id && inside(ref.declaredAt))
   );
 }

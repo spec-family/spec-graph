@@ -318,7 +318,7 @@ export interface RegistersConfig {
   readonly files: readonly string[];
   /** The header of the column a resolution is written in. */
   readonly resolution?: string | undefined;
-  readonly statuses: Readonly<Record<string, { readonly closes?: boolean | undefined; readonly needs?: readonly string[] | undefined }>>;
+  readonly statuses: Readonly<Record<string, { readonly closes?: boolean | undefined; readonly needs?: readonly RegisterNeed[] | undefined }>>;
 }
 
 /**
@@ -366,6 +366,9 @@ export interface Figure {
   /** Where the record is written, which the edge to it is declared at. */
   readonly recordAt: SourceRef;
 }
+
+/** What a register row's status can ask for: a resolution, a citation of what it changed, the commit that changed it. */
+export type RegisterNeed = 'resolution' | 'citation' | 'commit';
 
 /** A register's row, by its cells, for a region a table's row declares (ADR-0027). */
 export interface RegisterRow {

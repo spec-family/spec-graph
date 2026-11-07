@@ -14,6 +14,13 @@ import { execFile } from 'node:child_process';
 
 import { historyOf, type CommitHistory } from './history.js';
 
+/**
+ * How much of a log is read: a million commits or so. Node's default, a
+ * megabyte, holds some ten thousand, fewer than a repository of a few years
+ * has, and a log cut there is a failed run.
+ */
+const LOG_BUFFER = 256 * 1024 * 1024;
+
 /** A history that cannot be read, with what to do about it. */
 export class HistoryError extends Error {
   override readonly name = 'HistoryError';
@@ -26,9 +33,7 @@ export class HistoryError extends Error {
  */
 function git(root: string, args: readonly string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    // A history of many commits is a long log: the buffer holds a million of
-    // them, past which a repository is beyond anything this was measured on.
-    execFile('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, windowsHide: true }, (error, stdout) => {
+    execFile('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: LOG_BUFFER }, (error, stdout) => {
       if (error) reject(error);
       else resolve(stdout);
     });

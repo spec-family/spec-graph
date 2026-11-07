@@ -1079,14 +1079,12 @@ function missingPaths(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit):
   if (orientation === undefined || pathExists === undefined) return;
   for (const mention of corpus.paths) {
     const bare = mention.path.replace(/\/+$/, '');
-    if (corpus.pathsAllowed.get(mention.at.file)?.has(mention.path) === true || corpus.pathsAllowed.get(mention.at.file)?.has(bare) === true) continue;
-    const candidates = bare.startsWith('/')
-      ? [bare.slice(1)]
-      : [
-          normalisePosix(joinPosix(dirnamePosix(mention.at.file), bare)),
-          normalisePosix(bare),
-          ...(bare.includes('/') ? [] : orientation.roots.map((root) => normalisePosix(joinPosix(root, bare)))),
-        ];
+    // Every document read has its set, empty where it marks nothing.
+    const allowed = corpus.pathsAllowed.get(mention.at.file)!;
+    if (allowed.has(mention.path) || allowed.has(bare)) continue;
+    const candidates = bare.startsWith('/') ? [bare.slice(1)] : [normalisePosix(joinPosix(dirnamePosix(mention.at.file), bare)), normalisePosix(bare)];
+    // A bare file name is looked for under each root as well; a path with a slash is where it says.
+    if (!bare.includes('/')) candidates.push(...orientation.roots.map((root) => normalisePosix(joinPosix(root, bare))));
     if (candidates.some((candidate) => candidate !== '..' && !candidate.startsWith('../') && pathExists(candidate))) continue;
     emit('missing-path', () => ({
       message: `\`${mention.path}\` names no file or directory the repository holds`,

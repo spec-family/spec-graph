@@ -320,7 +320,8 @@ function analyseExtracted(extracted: readonly ExtractedDocument[], options: Anal
   if (options.fileExists === undefined && extracted.some((entry) => entry.paths.length > 0)) {
     throw new Error('an orientation document names a path, and no fileExists was given to look for it: pass "fileExists"');
   }
-  const pathExists = (path: string): boolean => options.fileExists?.(path) === true || options.isDirectory?.(path) === true;
+  // Asked only of a path an orientation document names, which the refusal above holds a fileExists for.
+  const pathExists = (path: string): boolean => options.fileExists!(path) || options.isDirectory?.(path) === true;
   const corpus = resolveCorpus(extracted, {
     fileExists: options.fileExists,
     isDirectory: options.isDirectory,

@@ -23,7 +23,7 @@ records.
   directive; `item[label=Specified]` selects claims, and the graph export
   and a query's JSON give a claim its `label`. Which item is a claim is
   spec-core's reading, the one spec-guard holds a claim to its evidence by,
-  at dd7b68e. A repository with no `claims` sees nothing change; a
+  at 404152c. A repository with no `claims` sees nothing change; a
   `claims` that cannot be read, or whose files the run does not read, is
   exit 2 ([ADR-0024](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md)).
 

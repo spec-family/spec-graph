@@ -60,6 +60,10 @@ export function findCommitReferences(scan: MarkdownScan): CommitReference[] {
   const next = new Map<string, number>();
   const closingAt = (quote: string, from: number): number => {
     const known = next.get(quote);
+    // Searched again, a quote found at or past `from` is found where it was,
+    // so `>` for the `>=` answers alike and costs one search. `undefined` is
+    // neither -1 nor at or past anything, so the first test is for the type,
+    // and the mutant that drops it is equivalent.
     if (known !== undefined && (known === -1 || known >= from)) return known;
     const found = text.indexOf(quote, from);
     next.set(quote, found);

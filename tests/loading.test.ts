@@ -33,6 +33,7 @@ const LOADERS: Readonly<Record<string, () => Promise<unknown>>> = {
   markdown: () => import('../src/markdown.js'),
   paths: () => import('../src/paths.js'),
   'project-rules': () => import('../src/project-rules.js'),
+  registers: () => import('../src/registers.js'),
   report: () => import('../src/report.js'),
   resolve: () => import('../src/resolve.js'),
   rules: () => import('../src/rules.js'),

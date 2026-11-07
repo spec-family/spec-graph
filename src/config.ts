@@ -23,8 +23,9 @@ import { isFamilyName } from './identity.js';
 import { dirnamePosix, toPosix } from './paths.js';
 import { compileProjectRules, type ProjectRule } from './project-rules.js';
 import { RULE_IDS } from './rules.js';
+import { REGISTER_NEEDS } from './registers.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import { isProjectRule, type AnyRuleId, type ClaimsConfig, type RuleId, type Severity } from './types.js';
+import { isProjectRule, type AnyRuleId, type ClaimsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
 
 /** File names looked for, in order. The first that exists is the one used. */
 export const CONFIG_FILES: readonly string[] = Object.freeze([
@@ -79,6 +80,8 @@ export interface SpecGraphConfig {
   readonly ledgers?: readonly string[] | undefined;
   /** The ref whose history the commits a checked document names are looked for in. See ADR-0025. */
   readonly gitRef?: string | undefined;
+  /** Registers held to a status vocabulary, and what each status asks for. See ADR-0027. */
+  readonly registers?: RegistersConfig | undefined;
 }
 
 export interface LoadedConfig {
@@ -321,6 +324,11 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
     }
   }
 
+  if (raw['registers'] !== undefined) {
+    const registers = readRegisters(raw['registers'], source, problems);
+    if (registers !== null) config.registers = registers;
+  }
+
   if (raw['claims'] !== undefined) {
     const claims = readClaims(raw['claims'], source, problems);
     if (claims !== null) config.claims = claims;
@@ -366,6 +374,7 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'checklists',
   'ledgers',
   'gitRef',
+  'registers',
   // Tolerated so an editor can be pointed at a schema without being told off.
   '$schema',
 ]);
@@ -403,6 +412,67 @@ function readClaims(value: unknown, source: string, problems: string[]): ClaimsC
     if (key !== 'files' && key !== 'labels') problems.push(`${source}: unknown key "claims.${key}"`);
   }
   return problems.length === before ? { files: files as string[], labels: labels as Record<string, string> } : null;
+}
+
+/**
+ * Reads `registers`: patterns for the registers, the column a resolution is
+ * written in, and each status word with what it asks for. A part that cannot
+ * be read leaves the whole of `registers` out, since half of it would hold a
+ * row to a guess (ADR-0027).
+ */
+function readRegisters(value: unknown, source: string, problems: string[]): RegistersConfig | null {
+  const example = '{ "files": ["docs/review.md"], "resolution": "Proposed resolution", "statuses": { "open": {}, "done": { "closes": true, "needs": ["citation", "commit"] } } }';
+  if (!isRecord(value)) {
+    problems.push(`${source}: "registers" must be an object such as ${example}`);
+    return null;
+  }
+  const before = problems.length;
+  const files = value['files'];
+  if (!Array.isArray(files) || files.length === 0 || files.some((entry) => typeof entry !== 'string' || entry.trim().length === 0)) {
+    problems.push(`${source}: "registers.files" must be a non-empty array of patterns`);
+  }
+  const resolution = value['resolution'];
+  if (resolution !== undefined && (typeof resolution !== 'string' || resolution.trim().length === 0)) {
+    problems.push(`${source}: "registers.resolution" must be the header of the column a resolution is written in`);
+  }
+  const statuses = value['statuses'];
+  let asksResolution = false;
+  if (!isRecord(statuses) || Object.keys(statuses).length === 0) {
+    problems.push(`${source}: "registers.statuses" must be an object of status word to what it asks for, such as ${example}`);
+  } else {
+    for (const [word, status] of Object.entries(statuses)) {
+      const at = `${source}: "registers.statuses.${word}"`;
+      // A status is read as the word a cell opens with, so a key that holds a
+      // space or a colon is one no cell could ever say.
+      if (!/^[^\s:;,(]+$/.test(word)) problems.push(`${at} is no status word: a status is the word a status cell opens with`);
+      if (!isRecord(status)) {
+        problems.push(`${at} must be an object, {} for a status that asks for nothing`);
+        continue;
+      }
+      for (const key of Object.keys(status)) {
+        if (key !== 'closes' && key !== 'needs') problems.push(`${at} has an unknown key "${key}"`);
+      }
+      if (status['closes'] !== undefined && typeof status['closes'] !== 'boolean') problems.push(`${at}.closes must be true or false`);
+      const needs = status['needs'];
+      if (needs !== undefined && (!Array.isArray(needs) || needs.some((need) => !(REGISTER_NEEDS as readonly unknown[]).includes(need)))) {
+        problems.push(`${at}.needs must list some of ${REGISTER_NEEDS.join(', ')}`);
+      } else if (Array.isArray(needs) && needs.includes('resolution')) {
+        asksResolution = true;
+      }
+    }
+  }
+  if (asksResolution && resolution === undefined) {
+    problems.push(`${source}: a status in "registers.statuses" needs a resolution, and "registers.resolution" names no column to read it in`);
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== 'files' && key !== 'resolution' && key !== 'statuses') problems.push(`${source}: unknown key "registers.${key}"`);
+  }
+  if (problems.length !== before) return null;
+  return {
+    files: files as string[],
+    ...(typeof resolution === 'string' ? { resolution } : {}),
+    statuses: statuses as RegistersConfig['statuses'],
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -242,6 +242,17 @@ export function formatReport(result: AnalysisResult, options: ReporterOptions = 
     lines.push('');
   }
 
+  // A configured register's rows still open, counted by status, and listed
+  // under --verbose: the obligations it holds (ADR-0027).
+  for (const register of result.registers ?? []) {
+    const counts = Object.entries(register.statuses).map(([word, count]) => `${word} ${count}`);
+    lines.push(`${paint.dim(marks.info)} ${paint.location(register.file)}  ${register.open.length} open ${marks.separator} ${counts.join(', ')}`);
+    if (options.verbose) {
+      for (const row of register.open) lines.push(`    ${paint.location(`${register.file}:${row.line}`)}  ${row.key}  ${paint.dim(row.status)}`);
+    }
+    lines.push('');
+  }
+
   const tally: string[] = [];
   if (summary.errors > 0) tally.push(paint.error(`${summary.errors} ${plural(summary.errors, 'error')}`));
   if (summary.warnings > 0) tally.push(paint.warn(`${summary.warnings} ${plural(summary.warnings, 'warning')}`));
@@ -802,6 +813,7 @@ export function formatJson(
       ...(options.baseline === undefined ? {} : { baseline: options.baseline }),
       summary: result.summary,
       files: result.files,
+      ...(result.registers === undefined ? {} : { registers: result.registers }),
       // The audit trail for what configuration silenced. Always present, unlike
       // the human report's --verbose gate: a machine reader that has to ask for
       // it twice will not ask. See ADR-0008.

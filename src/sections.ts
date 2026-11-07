@@ -78,6 +78,17 @@ export interface SpecificationRegion {
    * typed edge rather than a typed edge and a neutral citation beside it.
    */
   readonly claimed: readonly Range[];
+  /** Every cell of the row by its column's header, for a region that is a table's row; empty for a heading's. */
+  readonly cells: readonly RegionCell[];
+}
+
+/** A cell of a register's row, read flat, with where it stands. */
+export interface RegionCell {
+  /** The column's header, as written. */
+  readonly header: string;
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
 }
 
 /** Column headers that name the row's identifier. */
@@ -166,6 +177,7 @@ export function findSpecificationRegions(
     directive: null,
     relations: [],
     claimed: [],
+    cells: [],
   };
 
   const regions: SpecificationRegion[] = [];
@@ -217,6 +229,7 @@ export function findSpecificationRegions(
       relations: [],
       // Prose inside a section is prose: a heading region claims no cell.
       claimed: [],
+      cells: [],
     });
   }
 
@@ -297,6 +310,7 @@ export function findTableRegions(scanned: ScannedDocument): SpecificationRegion[
         directive: null,
         relations,
         claimed,
+        cells: row.cells.map((cell, column) => ({ header: flatten(table.headers[column]?.text ?? ''), text: flatten(cell.text), start: cell.start, end: cell.end })),
       });
     }
   }
@@ -319,6 +333,11 @@ export function isRegisterTable(table: Table): boolean {
  */
 export function statusColumnOf(table: Table): number {
   return table.headers.findIndex((header) => STATUS_COLUMNS.test(normaliseHeader(header.text)));
+}
+
+/** Whether a cell's text says nothing: empty, or a placeholder such as `-`, `n/a` or `TBD`. */
+export function isEmptyCell(text: string): boolean {
+  return text.length === 0 || EMPTY_CELL.test(text);
 }
 
 /** A cell's text: link labels rather than link syntax, no emphasis or code marks, one line. */

@@ -17,10 +17,11 @@ import { isFamilyName } from './identity.js';
 import { toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
-import { runRules, type RuleOptions } from './rules.js';
+import { createRegisterCheck, summariseRegisters, type RegisterCheck, type RegisterSummary } from './registers.js';
+import { holdsToCommits, runRules, type RuleOptions } from './rules.js';
 import { readHistory } from './git.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, ParseProblem, Severity } from './types.js';
+import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, ParseProblem, RegistersConfig, Severity } from './types.js';
 
 /** Patterns used when the caller names none. */
 export const DEFAULT_PATTERNS: readonly string[] = Object.freeze([
@@ -69,6 +70,8 @@ export interface AnalyseOptions {
   readonly ledgers?: readonly string[] | undefined;
   /** The ref whose history a checked document's commits are looked for in; `HEAD` unless set. See ADR-0025. */
   readonly gitRef?: string | undefined;
+  /** Registers held to a status vocabulary. See ADR-0027. */
+  readonly registers?: RegistersConfig | undefined;
   readonly concurrency?: number | undefined;
   readonly maxRelated?: number | undefined;
   readonly followSymlinks?: boolean | undefined;
@@ -83,6 +86,8 @@ export interface AnalysisResult {
   readonly summary: AnalysisSummary;
   /** True when nothing at error severity was found. */
   readonly ok: boolean;
+  /** Each configured register's rows by status, and the open ones; absent where none is configured (ADR-0027). */
+  readonly registers?: readonly RegisterSummary[] | undefined;
 }
 
 /** Reads, extracts, resolves, and checks a corpus of specifications. */
@@ -108,6 +113,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     claimsIn: createClaimReader(options.claims),
     isChecklist: createPathMatcher(options.checklists),
     isLedger: createPathMatcher(options.ledgers),
+    registers: createRegisterCheck(options.registers),
   };
   const extracted = extractSources(sources, { ...checks, isRecord: createHistoryMatcher(options.historyPatterns) });
   // git is run only where a checked document names a commit (ADR-0025).
@@ -134,6 +140,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     }),
     walked.map((file) => file.path),
     started,
+    checks.registers,
   );
 }
 
@@ -262,8 +269,7 @@ function extractSources(sources: readonly Source[], options: AnalyseSourcesOptio
 
 /** The commits a checklist or a ledger names, which a history is needed to look for. */
 function commitsToCheck(extracted: readonly ExtractedDocument[], options: AnalyseSourcesOptions): CommitCitation[] {
-  const checked = (path: string): boolean => options.isChecklist?.(path) === true || options.isLedger?.(path) === true;
-  return extracted.flatMap((entry) => entry.commits).filter((citation) => checked(citation.at.file));
+  return extracted.flatMap((entry) => entry.commits).filter((citation) => holdsToCommits(options, citation.at.file));
 }
 
 /**
@@ -273,7 +279,7 @@ function commitsToCheck(extracted: readonly ExtractedDocument[], options: Analys
  */
 function analyseExtracted(extracted: readonly ExtractedDocument[], options: AnalyseSourcesOptions): Analysed {
   if (options.history === undefined && commitsToCheck(extracted, options).length > 0) {
-    throw new Error('a checklist or a ledger names a commit, and no history was given to look for it in: pass "history"');
+    throw new Error('a checklist, a ledger or a register names a commit, and no history was given to look for it in: pass "history"');
   }
   const corpus = resolveCorpus(extracted, {
     fileExists: options.fileExists,
@@ -286,7 +292,7 @@ function analyseExtracted(extracted: readonly ExtractedDocument[], options: Anal
   return { graph, corpus, diagnostics };
 }
 
-function finish(analysed: Analysed, files: readonly string[], started: number): AnalysisResult {
+function finish(analysed: Analysed, files: readonly string[], started: number, registers?: RegisterCheck): AnalysisResult {
   const { graph, corpus, diagnostics } = analysed;
   const counts = { error: 0, warn: 0, info: 0 };
   for (const diagnostic of diagnostics) counts[diagnostic.severity] += 1;
@@ -313,6 +319,7 @@ function finish(analysed: Analysed, files: readonly string[], started: number): 
     files,
     summary,
     ok: counts.error === 0,
+    ...(registers === undefined ? {} : { registers: summariseRegisters(corpus, registers) }),
   };
 }
 

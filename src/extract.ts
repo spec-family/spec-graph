@@ -59,6 +59,7 @@ import {
   OPENNESS_OF,
   type CommitCitation,
   type Disposition,
+  type RegisterRow,
   type DocumentNode,
   type EdgeKind,
   type EdgeOrigin,
@@ -124,6 +125,8 @@ export interface ExtractedDocument {
    * (ADR-0025).
    */
   readonly commits: readonly CommitCitation[];
+  /** The row's cells, where this specification is a register's row kept as a table (ADR-0027). */
+  readonly row: RegisterRow | null;
   readonly identity: DocumentIdentity;
   readonly scanned: ScannedDocument;
   /**
@@ -950,6 +953,7 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     misreadKeys,
     anchors,
     commits,
+    row: null,
     identity,
     scanned,
     subSpecifications: filled,
@@ -1065,6 +1069,10 @@ function buildRegion(context: RegionInput): BuiltRegion {
       misreadKeys: [],
       anchors,
       commits: [],
+      row:
+        region.row === null
+          ? null
+          : { cells: region.cells.map((cell) => ({ header: cell.header, text: cell.text, at: at(cell.start, cell.end) })) },
       identity,
       scanned,
       subSpecifications: [],

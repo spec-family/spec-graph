@@ -11,7 +11,10 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.22.1
+
+A measurement protocol written in a checklist or a ledger is no longer read
+as a done item that cites nothing.
 
 ### Fixed
 

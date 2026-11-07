@@ -184,6 +184,8 @@ describe('a ledger', () => {
       declared: false,
       disposition: 'satisfied',
       body: '| Refunds | done (in 0.3) |',
+      conflicts: [],
+      label: null,
       evidence: { source: 'marker', raw: 'done', at: { span: { start: { line: 3, column: 13 } } } },
     });
   });

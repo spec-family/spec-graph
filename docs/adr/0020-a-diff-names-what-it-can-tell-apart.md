@@ -136,6 +136,19 @@ there is no relational change.
 be read or is not an export. A diff describes; `check` gates. A diff that failed
 on a removed relation would fail every legitimate supersession.
 
+*Amended 2026-11-08.* **A claim whose label changed** (ADR-0024). An export
+gives each claim its label, so a diff of two states names each claim paired
+on both sides whose label is not the one it had: **raised** where the label
+closes work the old one left open, **lowered** where it opens it again, and
+**relabelled** where its openness held, `Specified` to `Target`. A claim is
+paired as any item is, so one named by `@spec-item` is paired however its
+text changed, and one with no name is paired only where its text held, which
+a label rewritten in it does not: it appears and disappears. Reported once,
+by its label, and not again as an obligation resolved or reopened. A side
+that is no claim, as before claims were configured, is no label change. The
+diff describes and exits 0: what fails a raise with no evidence is
+spec-guard's `claims` on the state that raised it.
+
 ## Consequences
 
 **A fifth command, and one new pure module.** The module sits between the edges,

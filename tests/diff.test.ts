@@ -401,8 +401,8 @@ describe('reading an export', () => {
     );
     expect(later.documents).toEqual([{ id: 'A', title: '', path: '', phase: 'unknown', status: null }]);
     expect(later.items).toEqual([
-      { id: 'A#1', title: '', document: '', section: [], openness: 'unknown', declared: null },
-      { id: 'A#2', title: '', document: '', section: ['Open Questions'], openness: 'unknown', declared: null },
+      { id: 'A#1', title: '', document: '', section: [], openness: 'unknown', declared: null, label: null },
+      { id: 'A#2', title: '', document: '', section: ['Open Questions'], openness: 'unknown', declared: null, label: null },
     ]);
   });
 });

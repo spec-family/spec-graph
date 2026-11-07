@@ -26,6 +26,13 @@ records.
   creates or another repository holds, and a commit the document names is
   looked for in git ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md)).
 
+- **`diff` names each claim whose label changed**, raised, lowered or
+  relabelled by what its label means for work, under Claims in the report,
+  the summary and JSON (`claims.relabelled`), and not again as an obligation
+  resolved or reopened. It describes and exits 0, as it always has; a raise
+  with no evidence is failed by spec-guard's `claims`
+  ([ADR-0020](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0020-a-diff-names-what-it-can-tell-apart.md), amended 2026-11-08).
+
 ### Changed
 
 - **Which item a `@spec-item` annotates is spec-core's reading**, the rule

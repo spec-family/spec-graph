@@ -46,6 +46,8 @@ export interface ExportedItem {
   readonly openness: string;
   /** `null` when the export predates the flag, so its ids cannot be trusted. */
   readonly declared: boolean | null;
+  /** The claim's label, or `null` for an item that is no claim, or an export from before claims (ADR-0024). */
+  readonly label: string | null;
 }
 
 export interface ExportedRelation {
@@ -92,6 +94,16 @@ export interface Transition extends ObligationRef {
   readonly openness: readonly [string, string];
 }
 
+/**
+ * A claim whose label changed: raised where work it left open is closed,
+ * lowered where it opens again, relabelled where its openness held.
+ */
+export interface LabelChange extends ObligationRef {
+  readonly label: readonly [string, string];
+  readonly openness: readonly [string, string];
+  readonly change: 'raised' | 'lowered' | 'relabelled';
+}
+
 export interface GraphDiff {
   readonly generators: { readonly before: Generator | null; readonly after: Generator | null };
   readonly documents: {
@@ -105,6 +117,8 @@ export interface GraphDiff {
     readonly appeared: readonly UnpairedObligation[];
     readonly disappeared: readonly UnpairedObligation[];
   };
+  /** The claims paired on both sides whose label changed (ADR-0020, amended 2026-11-08). */
+  readonly claims: { readonly relabelled: readonly LabelChange[] };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -170,6 +184,7 @@ export function parseGraphExport(raw: string, source: string): GraphExport {
         section,
         openness: text(node['openness']) ?? 'unknown',
         declared: typeof node['declared'] === 'boolean' ? node['declared'] : null,
+        label: text(node['label']),
       });
     } else {
       throw new DiffInputError(`${source}: node ${id} is neither a document nor an item`);
@@ -203,7 +218,7 @@ export function diffExports(before: GraphExport, after: GraphExport): GraphDiff 
     generators: { before: before.generator, after: after.generator },
     documents: compareDocuments(before, after),
     relations: compareRelations(before, after),
-    obligations: compareObligations(before, after),
+    ...compareObligations(before, after),
   };
 }
 
@@ -293,7 +308,7 @@ function headingsIn(graph: GraphExport): (item: ExportedItem) => readonly string
   return (item) => (item.section[0] === titles.get(item.document) ? item.section.slice(1) : item.section);
 }
 
-function compareObligations(before: GraphExport, after: GraphExport): GraphDiff['obligations'] {
+function compareObligations(before: GraphExport, after: GraphExport): Pick<GraphDiff, 'obligations' | 'claims'> {
   const headingsBefore = headingsIn(before);
   const headingsAfter = headingsIn(after);
   // Seeded with a string, as a mutant seeds it, this holds a "pair" of two
@@ -355,14 +370,34 @@ function compareObligations(before: GraphExport, after: GraphExport): GraphDiff[
   });
   const wasRef = refIn(headingsBefore);
   const nowRef = refIn(headingsAfter);
+  // A claim whose label changed is reported by its label, and its openness
+  // with it, once: not again as an obligation resolved or reopened.
+  const relabelled = pairs.filter(([a, b]) => a.label !== null && b.label !== null && a.label !== b.label);
   return {
-    transitions: pairs
-      .filter(([a, b]) => a.openness !== b.openness)
-      .map(([a, b]) => ({ ...nowRef(b), openness: [a.openness, b.openness] satisfies Transition['openness'] }))
-      .sort(byPlace),
-    appeared: after.items.filter((item) => !paired.has(item)).map((item) => ({ ...nowRef(item), openness: item.openness })).sort(byPlace),
-    disappeared: before.items.filter((item) => !paired.has(item)).map((item) => ({ ...wasRef(item), openness: item.openness })).sort(byPlace),
+    obligations: {
+      transitions: pairs
+        .filter((pair) => pair[0].openness !== pair[1].openness && !relabelled.includes(pair))
+        .map(([a, b]) => ({ ...nowRef(b), openness: [a.openness, b.openness] satisfies Transition['openness'] }))
+        .sort(byPlace),
+      appeared: after.items.filter((item) => !paired.has(item)).map((item) => ({ ...nowRef(item), openness: item.openness })).sort(byPlace),
+      disappeared: before.items.filter((item) => !paired.has(item)).map((item) => ({ ...wasRef(item), openness: item.openness })).sort(byPlace),
+    },
+    claims: {
+      relabelled: relabelled
+        .map(([a, b]) => ({
+          ...nowRef(b),
+          label: [a.label!, b.label!] satisfies LabelChange['label'],
+          openness: [a.openness, b.openness] satisfies LabelChange['openness'],
+          change: labelChange(a.openness, b.openness),
+        }))
+        .sort(byPlace),
+    },
   };
+}
+
+/** Raised where work the label left open is closed, lowered where it opens again. */
+function labelChange(from: string, to: string): LabelChange['change'] {
+  return to === 'closed' && from !== 'closed' ? 'raised' : from === 'closed' && to !== 'closed' ? 'lowered' : 'relabelled';
 }
 
 /* -------------------------------------------------------------------------- */
@@ -383,11 +418,12 @@ export function generatorWarning(diff: GraphDiff): string | null {
   return `the exports were made by ${generatorName(before)} and ${generatorName(after)}; a change in extraction between versions reads as a change in the repository`;
 }
 
-function changeCount(diff: GraphDiff): { documents: number; relations: number; obligations: number } {
+function changeCount(diff: GraphDiff): { documents: number; relations: number; obligations: number; claims: number } {
   return {
     documents: diff.documents.added.length + diff.documents.removed.length + diff.documents.changed.length,
     relations: diff.relations.added.length + diff.relations.removed.length,
     obligations: diff.obligations.transitions.length + diff.obligations.appeared.length + diff.obligations.disappeared.length,
+    claims: diff.claims.relabelled.length,
   };
 }
 
@@ -402,6 +438,7 @@ export function diffVerdict(diff: GraphDiff): string {
     count.documents > 0 ? plural(count.documents, 'document') : null,
     count.relations > 0 ? plural(count.relations, 'relation') : null,
     count.obligations > 0 ? plural(count.obligations, 'obligation') : null,
+    count.claims > 0 ? `${plural(count.claims, 'claim')} relabelled` : null,
   ].filter((part): part is string => part !== null);
   if (parts.length === 0) return 'No relational change.';
   const listed = parts.length === 1 ? (parts[0] as string) : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]!}`;
@@ -454,6 +491,12 @@ export function formatDiffText(diff: GraphDiff): string {
     for (const item of obligations.appeared) lines.push(`  ${word('appeared')}  ${where(item)}: "${item.title}" (${item.openness})`);
     for (const item of obligations.disappeared) lines.push(`  disappeared  ${where(item)}: "${item.title}" (was ${item.openness})`);
   }
+  if (diff.claims.relabelled.length > 0) {
+    lines.push('', 'Claims');
+    for (const claim of diff.claims.relabelled) {
+      lines.push(`  ${claim.change.padEnd('relabelled'.length)}  ${where(claim)}: "${claim.title}" (${claim.label[0]} -> ${claim.label[1]})`);
+    }
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -494,6 +537,13 @@ export function formatDiffMarkdown(diff: GraphDiff): string {
     }
     for (const item of obligations.appeared) lines.push(`| appeared | ${cell(where(item))} | ${cell(item.title)} (${item.openness}) |`);
     for (const item of obligations.disappeared) lines.push(`| disappeared | ${cell(where(item))} | ${cell(item.title)} (was ${item.openness}) |`);
+    lines.push('');
+  }
+  if (diff.claims.relabelled.length > 0) {
+    lines.push('| | Where | Claim | Label |', '| --- | --- | --- | --- |');
+    for (const claim of diff.claims.relabelled) {
+      lines.push(`| ${claim.change} | ${cell(where(claim))} | ${cell(claim.title)} | ${cell(claim.label[0])} -> ${cell(claim.label[1])} |`);
+    }
     lines.push('');
   }
   return `${lines.join('\n').trimEnd()}\n`;

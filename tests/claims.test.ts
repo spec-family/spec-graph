@@ -273,13 +273,13 @@ describe('claims that match no document the run reads', () => {
     try {
       await mkdir(`${root}/spec`, { recursive: true });
       await mkdir(`${root}/docs`, { recursive: true });
-      await writeFile(`${root}/.spec-graph.json`, JSON.stringify({ patterns: ['docs/*.md'], claims: CLAIMS }));
+      await writeFile(`${root}/.spec-graph.json`, JSON.stringify({ patterns: ['docs/*.md'], claims: { ...CLAIMS, files: ['spec/*.md', 'specs/*.md'] } }));
       await writeFile(`${root}/docs/a.md`, '# A\n');
       await writeFile(`${root}/spec/refunds.md`, REFUNDS);
       let err = '';
       const code = await main({ argv: ['check'], cwd: `${process.cwd()}/${root}`, stdout: () => {}, stderr: (text) => (err += text), env: { NO_COLOR: '1' }, isTTY: false });
       expect(code).toBe(EXIT_ERROR);
-      expect(err).toMatch(/^spec-graph: "claims\.files" in .*\.spec-graph\.json matched no file the run read: "spec\/\*\.md"\n {2}add the documents to "patterns", or correct "claims\.files"\n$/);
+      expect(err).toMatch(/^spec-graph: "claims\.files" in .*\.spec-graph\.json matched no file the run read: "spec\/\*\.md", "specs\/\*\.md"\n {2}add the documents to "patterns", or correct "claims\.files"\n$/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -297,5 +297,6 @@ describe('the graph export', () => {
       ['refunds#limits.2', 'Specified'],
       ['refunds#limits.3', 'Hypothesis'],
     ]);
+    expect(Object.keys(items.find((node: { id: string }) => node.id === 'q#open-questions.1'))).not.toContain('label');
   });
 });

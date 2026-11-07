@@ -11,6 +11,27 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Added
+
+- **`orientation` holds a document that orients a reader to the paths and
+  commits it names.** In a document `orientation.files` names, a code span
+  that reads as a path, holding a `/` or ending in one of
+  `orientation.extensions`, names a file or directory the repository holds,
+  looked for from the document, the root, and for a bare file name under
+  `orientation.roots`: `missing-path`, an error, where it does not. A
+  command, an error code and code are not read as paths.
+  `<!-- @spec-path created="..." external="..." -->` marks what the work
+  creates or another repository holds, and a commit the document names is
+  looked for in git ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md)).
+
+### Changed
+
+- **Which item a `@spec-item` annotates is spec-core's reading**, the rule
+  this package had, moved there so spec-brief reads it alike; spec-core at
+  c5e4eff. What a run decides is unchanged.
+
 ## 0.22.1
 
 A measurement protocol written in a checklist or a ledger is no longer read

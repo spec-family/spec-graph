@@ -18,10 +18,10 @@ import { toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
 import { createRegisterCheck, summariseRegisters, type RegisterCheck, type RegisterSummary } from './registers.js';
-import { holdsToCommits, runRules, type ProtocolCheck, type RuleOptions } from './rules.js';
+import { holdsToCommits, runRules, type OrientationCheck, type ProtocolCheck, type RuleOptions } from './rules.js';
 import { readHistory } from './git.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, ParseProblem, ProtocolsConfig, RegistersConfig, Severity } from './types.js';
+import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, OrientationConfig, ParseProblem, ProtocolsConfig, RegistersConfig, Severity } from './types.js';
 
 /** Patterns used when the caller names none. */
 export const DEFAULT_PATTERNS: readonly string[] = Object.freeze([
@@ -74,6 +74,8 @@ export interface AnalyseOptions {
   readonly registers?: RegistersConfig | undefined;
   /** Where measurement protocols are written, and what each must say. See ADR-0028. */
   readonly protocols?: ProtocolsConfig | undefined;
+  /** The documents that orient a reader, held to the paths they name. See ADR-0029. */
+  readonly orientation?: OrientationConfig | undefined;
   readonly concurrency?: number | undefined;
   readonly maxRelated?: number | undefined;
   readonly followSymlinks?: boolean | undefined;
@@ -117,6 +119,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     isLedger: createPathMatcher(options.ledgers),
     registers: createRegisterCheck(options.registers),
     protocols: createProtocolCheck(options.protocols),
+    orientation: createOrientationCheck(options.orientation),
   };
   const extracted = extractSources(sources, { ...checks, isRecord: createHistoryMatcher(options.historyPatterns) });
   // git is run only where a checked document names a commit (ADR-0025).
@@ -162,6 +165,16 @@ export interface AnalyseSourcesOptions extends RuleOptions {
   readonly isRecord?: ((path: string) => boolean) | undefined;
   /** The labels of the claims a path holds, with what each means, or nothing where it holds none. */
   readonly claimsIn?: ((path: string) => ReadonlyMap<string, Disposition> | undefined) | undefined;
+}
+
+/**
+ * Builds the protocol check from the configuration, or nothing where none is
+ * configured: which files hold protocols, under which heading, what each
+ * must write, and which labels must cite one (ADR-0028).
+ */
+export function createOrientationCheck(config: OrientationConfig | undefined): OrientationCheck | undefined {
+  if (config === undefined) return undefined;
+  return { isOrientation: createGlobMatcher(config.files), extensions: config.extensions ?? [], roots: config.roots ?? [] };
 }
 
 /**
@@ -282,6 +295,7 @@ function extractSources(sources: readonly Source[], options: AnalyseSourcesOptio
         claims: options.claimsIn?.(source.path),
         ledger: options.isLedger?.(source.path) === true,
         protocols: options.protocols?.holds(source.path) === true ? { heading: options.protocols.heading, result: options.protocols.result } : undefined,
+        orientation: options.orientation?.isOrientation(source.path) === true ? { extensions: options.orientation.extensions } : undefined,
       }),
     );
   }
@@ -302,6 +316,12 @@ function analyseExtracted(extracted: readonly ExtractedDocument[], options: Anal
   if (options.history === undefined && commitsToCheck(extracted, options).length > 0) {
     throw new Error('a checklist, a ledger or a register names a commit, and no history was given to look for it in: pass "history"');
   }
+  // What was not looked for was not found, and passing it over would read as found (ADR-0029).
+  if (options.fileExists === undefined && extracted.some((entry) => entry.paths.length > 0)) {
+    throw new Error('an orientation document names a path, and no fileExists was given to look for it: pass "fileExists"');
+  }
+  // Asked only of a path an orientation document names, which the refusal above holds a fileExists for.
+  const pathExists = (path: string): boolean => options.fileExists!(path) || options.isDirectory?.(path) === true;
   const corpus = resolveCorpus(extracted, {
     fileExists: options.fileExists,
     isDirectory: options.isDirectory,
@@ -309,7 +329,7 @@ function analyseExtracted(extracted: readonly ExtractedDocument[], options: Anal
     isIgnoredFamily: options.isIgnoredFamily,
   });
   const graph = buildGraph({ nodes: corpus.nodes, edges: corpus.edges });
-  const diagnostics = runRules(graph, corpus, options);
+  const diagnostics = runRules(graph, corpus, { ...options, pathExists });
   return { graph, corpus, diagnostics };
 }
 

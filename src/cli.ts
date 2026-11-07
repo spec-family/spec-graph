@@ -1219,6 +1219,7 @@ async function run(io: CliIO, err: (text: string) => void): Promise<number> {
     gitRef: file.gitRef,
     registers: file.registers,
     protocols: file.protocols,
+    orientation: file.orientation,
     maxRelated: file.maxRelated,
   };
 

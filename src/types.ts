@@ -370,6 +370,28 @@ export interface Figure {
 /** What a register row's status can ask for: a resolution, a citation of what it changed, the commit that changed it. */
 export type RegisterNeed = 'resolution' | 'citation' | 'commit';
 
+/**
+ * Which documents orient a reader, held to the paths they name:
+ * `{ "files": ["CLAUDE.md"], "extensions": [".md", ".rs"], "roots": ["spec"] }`
+ * (ADR-0029).
+ */
+export interface OrientationConfig {
+  readonly files: readonly string[];
+  /** A token ending in one of these is a path, as one holding a `/` is. */
+  readonly extensions?: readonly string[] | undefined;
+  /** Where a bare file name is looked for, beside the root and the document's directory. */
+  readonly roots?: readonly string[] | undefined;
+}
+
+/** A path an orientation document names in a code span (ADR-0029). */
+export interface PathMention {
+  /** The node it is written in. */
+  readonly owner: string;
+  /** The path, less an `#anchor` or a `:line` after it. */
+  readonly path: string;
+  readonly at: SourceRef;
+}
+
 /** A register's row, by its cells, for a region a table's row declares (ADR-0027). */
 export interface RegisterRow {
   readonly cells: readonly { readonly header: string; readonly text: string; readonly at: SourceRef }[];
@@ -513,7 +535,8 @@ export type RuleId =
   | 'incomplete-protocol'
   | 'undated-result'
   | 'target-without-protocol'
-  | 'unrecorded-figure';
+  | 'unrecorded-figure'
+  | 'missing-path';
 
 /**
  * A rule a repository wrote for itself, as a selector plus a sentence.

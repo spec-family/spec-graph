@@ -25,7 +25,7 @@ import { compileProjectRules, type ProjectRule } from './project-rules.js';
 import { RULE_IDS } from './rules.js';
 import { REGISTER_NEEDS } from './registers.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import { isProjectRule, type AnyRuleId, type ClaimsConfig, type ProtocolsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
+import { isProjectRule, type AnyRuleId, type ClaimsConfig, type OrientationConfig, type ProtocolsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
 
 /** File names looked for, in order. The first that exists is the one used. */
 export const CONFIG_FILES: readonly string[] = Object.freeze([
@@ -84,6 +84,8 @@ export interface SpecGraphConfig {
   readonly registers?: RegistersConfig | undefined;
   /** Where measurement protocols are written, and what each must say. See ADR-0028. */
   readonly protocols?: ProtocolsConfig | undefined;
+  /** The documents that orient a reader, held to the paths they name. See ADR-0029. */
+  readonly orientation?: OrientationConfig | undefined;
 }
 
 export interface LoadedConfig {
@@ -327,6 +329,11 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
     }
   }
 
+  if (raw['orientation'] !== undefined) {
+    const orientation = readOrientation(raw['orientation'], source, problems);
+    if (orientation !== null) config.orientation = orientation;
+  }
+
   if (raw['protocols'] !== undefined) {
     const protocols = readProtocols(raw['protocols'], source, problems);
     if (protocols !== null) config.protocols = protocols;
@@ -384,6 +391,7 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'gitRef',
   'registers',
   'protocols',
+  'orientation',
   // Tolerated so an editor can be pointed at a schema without being told off.
   '$schema',
 ]);
@@ -524,6 +532,37 @@ function readProtocols(value: unknown, source: string, problems: string[]): Prot
     result: result as string,
     ...(fields === undefined ? {} : { fields: fields as Record<string, string[]> }),
     ...(claims === undefined ? {} : { claims: claims as string[] }),
+  };
+}
+
+/**
+ * Reads `orientation`: patterns for the documents, the extensions that make
+ * a token a path, and the roots a bare file name is looked for in. A part
+ * that cannot be read leaves the whole of it out (ADR-0029).
+ */
+function readOrientation(value: unknown, source: string, problems: string[]): OrientationConfig | null {
+  if (!isRecord(value)) {
+    problems.push(`${source}: "orientation" must be an object such as { "files": ["CLAUDE.md"], "extensions": [".md"], "roots": ["spec"] }`);
+    return null;
+  }
+  const before = problems.length;
+  const words = (entry: unknown): entry is string[] => Array.isArray(entry) && entry.every((word) => typeof word === 'string' && word.trim().length > 0);
+  const files = value['files'];
+  if (!words(files) || files.length === 0) problems.push(`${source}: "orientation.files" must be a non-empty array of patterns`);
+  const extensions = value['extensions'];
+  if (extensions !== undefined && (!words(extensions) || extensions.some((extension) => !/^\.[^./\s]+$/.test(extension)))) {
+    problems.push(`${source}: "orientation.extensions" must be extensions, each a dot and a name, such as ".md"`);
+  }
+  const roots = value['roots'];
+  if (roots !== undefined && !words(roots)) problems.push(`${source}: "orientation.roots" must be an array of directories`);
+  for (const key of Object.keys(value)) {
+    if (!['files', 'extensions', 'roots'].includes(key)) problems.push(`${source}: unknown key "orientation.${key}"`);
+  }
+  if (problems.length !== before) return null;
+  return {
+    files: files as string[],
+    ...(extensions === undefined ? {} : { extensions: extensions as string[] }),
+    ...(roots === undefined ? {} : { roots: roots as string[] }),
   };
 }
 

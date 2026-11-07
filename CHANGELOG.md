@@ -37,7 +37,7 @@ records.
 
 - **Which item a `@spec-item` annotates is spec-core's reading**, the rule
   this package had, moved there so spec-brief reads it alike; spec-core at
-  2bef941. What a run decides is unchanged.
+  c5e4eff. What a run decides is unchanged.
 
 ## 0.22.1
 

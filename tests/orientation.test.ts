@@ -36,7 +36,7 @@ const findings = (files: Record<string, string>, options?: Parameters<typeof ana
 describe('a code span that reads as a path', () => {
   it('holds a slash or ends in a configured extension, in any case, less a place after it', () => {
     const ext = ['.md', '.TS'];
-    expect(['src/refunds/limits.ts', 'refunds.md', 'LIMITS.ts', 'src/', '../ROADMAP.md', 'docs/a.md#scope', 'src/a.ts:42', 'src/a.ts:42:7', 'a+b/c@d~e_f-g.h'].map((t) => pathIn(t, ext))).toEqual([
+    expect(['src/refunds/limits.ts', 'refunds.md', 'LIMITS.ts', 'src/', '../ROADMAP.md', 'docs/a.md#scope', 'src/a.ts:42', 'src/a.ts:42:7', 'a+b/c@d~e_f-g.h', 'src/a.ts:42:17'].map((t) => pathIn(t, ext))).toEqual([
       'src/refunds/limits.ts',
       'refunds.md',
       'LIMITS.ts',
@@ -46,18 +46,27 @@ describe('a code span that reads as a path', () => {
       'src/a.ts',
       'src/a.ts',
       'a+b/c@d~e_f-g.h',
+      'src/a.ts',
     ]);
   });
 
   it('is no command, error code, code, scheme, glob, option, scope, home or number', () => {
-    const none = ['npm run lint', 'E0310', '.to<U>()', 'https://example.com/a', 'spec/*.md', 'src/{a,b}', '--spec', '-x/y', '@spec-family/spec-guard', '~/notes.md', '2026/11', 'refunds.rs', 'a(b)/c', 'a/b"', ''];
+    const none = ['npm run lint', 'E0310', '.to<U>()', 'https://example.com/a', 'spec/*.md', 'src/{a,b}', '--spec', '-x/y', '@spec-family/spec-guard', '~/notes.md', '2026/11', 'refunds.rs', 'a(b)/c', 'a/b"', '', 'src/a.ts:3/b.ts'];
     expect(none.map((t) => pathIn(t, ['.md']))).toEqual(none.map(() => null));
   });
 });
 
 describe('an orientation document', () => {
   it('passes naming paths the repository holds, from the root, its directory, or a root for a bare name', () => {
-    const brief = doc('# Brief', '', 'Start at `src/refunds/limits.ts`, then `src/refunds/` and `../README.md`.', 'The rules are `refunds.md`; see `brief-notes.md` beside this.', '');
+    const brief = doc(
+      '# Brief',
+      '',
+      'Start at `src/refunds/limits.ts`, then `src/refunds/` and `../README.md`.',
+      'The rules are `refunds.md`; see `brief-notes.md` beside this.',
+      // Code that is no path, and a span whose backtick inside it makes it none.
+      'Run `npm run lint`; `` src/refunds/limits`old.ts `` is code.',
+      '',
+    );
     expect(findings({ 'docs/ops-brief.md': brief })).toEqual([]);
   });
 
@@ -106,13 +115,22 @@ describe('an orientation document', () => {
       '',
       '<!-- @spec-path created="docs/tooling-plan.md, src/payments/, src/fees" -->',
       '<!-- @spec-path external="dist/comments.js" reason="the tool\'s own" -->',
-      'Write `docs/tooling-plan.md`, `src/payments/` and `src/fees/`; read `dist/comments.js`.',
+      'Write `docs/tooling-plan.md`, `src/payments/` and `src/fees//`; read `dist/comments.js`.',
       '',
     );
-    const other = doc('# Claude', '', 'See `docs/tooling-plan.md`.', '');
+    // Only @spec-path marks a path: the same list on another directive marks none.
+    const other = doc('# Claude', '', '<!-- @spec-item created="docs/tooling-plan.md" -->', 'See `docs/tooling-plan.md`.', '');
     expect(findings({ 'docs/ops-brief.md': brief, 'CLAUDE.md': other }, { config: { ...CONFIG, extensions: ['.md', '.js'] } })).toEqual([
-      'missing-path CLAUDE.md:3 `docs/tooling-plan.md` names no file or directory the repository holds',
+      'missing-path CLAUDE.md:4 `docs/tooling-plan.md` names no file or directory the repository holds',
     ]);
+  });
+
+  it('looks with fileExists alone where no isDirectory is given', () => {
+    const result = analyseSources([{ path: 'CLAUDE.md', text: doc('# Claude', '', '`src/missing.ts` and `README.md`', '') }], {
+      orientation: createOrientationCheck(CONFIG),
+      fileExists: (path: string) => path === 'README.md',
+    });
+    expect(result.diagnostics.filter((d) => d.rule === 'missing-path').map((d) => d.target)).toEqual(['src/missing.ts']);
   });
 
   it('fails a commit it names that the history does not hold', () => {
@@ -199,7 +217,7 @@ describe('orientation in the configuration', () => {
     expect(problems({})).toEqual([at('"orientation.files" must be a non-empty array of patterns')]);
     expect(problems({ files: ['CLAUDE.md', ' '] })).toEqual([at('"orientation.files" must be a non-empty array of patterns')]);
     const extensions = at('"orientation.extensions" must be extensions, each a dot and a name, such as ".md"');
-    for (const bad of [['md'], ['.'], ['.a.b'], ['.a/b'], ['. md'], '.md', [3]]) expect(problems({ files: ['CLAUDE.md'], extensions: bad }), JSON.stringify(bad)).toEqual([extensions]);
+    for (const bad of [['md'], ['.md', 'ts'], ['.'], ['.a.b'], ['.a/b'], ['. md'], '.md', [3]]) expect(problems({ files: ['CLAUDE.md'], extensions: bad }), JSON.stringify(bad)).toEqual([extensions]);
     expect(problems({ files: ['CLAUDE.md'], roots: 'spec' })).toEqual([at('"orientation.roots" must be an array of directories')]);
     expect(problems({ files: ['CLAUDE.md'], roots: [''] })).toEqual([at('"orientation.roots" must be an array of directories')]);
     expect(problems({ files: ['CLAUDE.md'], external: ['dist/'] })).toEqual([at('unknown key "orientation.external"')]);

@@ -112,7 +112,9 @@ export function findItemIds(scan: MarkdownScan): Map<ListItem, string> {
     const head = HEAD.exec(comment.inner);
     if (head === null || head[1] !== 'spec-item') continue;
     let id: string | null = null;
-    for (const match of comment.inner.slice(head[0].length).matchAll(ATTRIBUTE)) {
+    // The head reads as an attribute named `spec-item` too, which no name
+    // asks for, so the whole comment is read.
+    for (const match of comment.inner.matchAll(ATTRIBUTE)) {
       if (match[1]!.toLowerCase() === 'id') id = match[3] ?? match[4] ?? match[5] ?? 'true';
     }
     directives.push({ annotation: { start: comment.start, line: comment.line }, id });

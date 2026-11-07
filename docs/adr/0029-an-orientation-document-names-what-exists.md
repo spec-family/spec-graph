@@ -24,8 +24,8 @@ remembered wrongly. Nothing checked them. A link to a missing document is a
 code and never as citations ([ADR-0004](0004-reference-resolution.md)), and a
 link to a source file is spec-guard's to check, not spec-graph's.
 
-The same documents backtick commands, `npm run lint`, error codes, `E0310`,
-and code, `.to<U>()`, none of which name a path, and reading them as paths
+The same documents backtick commands, `npm run lint`, error codes, `E0420`,
+and code, `.into<T>()`, none of which name a path, and reading them as paths
 would be the false positive [ADR-0006](0006-false-positives-cost-more.md)
 exists to prevent.
 
@@ -66,10 +66,25 @@ names is in the history.**
   see; `analyseSources`, given no way to look, refuses to run where an
   orientation document names a path.
 
+*Amended 2026-11-08.* **Less is read as a path.** Run on a real repository's
+switchboard, 0.23.0 read an extension named in prose, `.md`, as a file, and
+two names joined by a slash, `TCP/IP`, as a directory; a ref, `origin/main`,
+read the same way. An extension alone is no path now: a token
+ends in a configured extension only after a name. A token with a `/` whose
+last name has no extension, a dot after its first character, and that does
+not end in `/`, is looked for only where the directory it opens with is
+there, beside the document or at the root, or at the root for one written
+from it: `src/payments` is held when `src` exists, and `TCP/IP` is
+passed over when no `TCP` does. One that opens with `.` or `..` is a path
+wherever it leads. A new directory named without a closing slash, under a
+directory that is not there either, is missed: ADR-0006 prefers that to a
+finding on two words, and `new/dir/` or `@spec-path created` says what is
+meant.
+
 ## Not this round
 
 - **A mapping table held to fields in other documents**, such as a table of
-  modules against each specification's `Governs:` line. That is a
+  modules against each specification's `Owner:` line. That is a
   repository's own rule ([ADR-0016](0016-a-query-needs-a-sentence.md)).
 
 ## Consequences

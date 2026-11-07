@@ -33,6 +33,7 @@ import type {
   DocumentNode,
   Edge,
   ItemNode,
+  PathMention,
   RelatedLocation,
   RuleId,
   Severity,
@@ -1065,6 +1066,22 @@ export interface OrientationCheck {
 }
 
 /**
+ * Whether a path that holds no extension and does not end in `/` opens with a
+ * name the repository does not hold, from the document or the root. Then it
+ * may be two words, `TCP/IP`, or a ref, `origin/main`, as well as a
+ * directory, and is not looked for: a false finding costs more than a missed
+ * one (ADR-0029, amended 2026-11-08).
+ */
+function readsAsWords(mention: PathMention, bare: string, pathExists: (path: string) => boolean): boolean {
+  // An extension is a dot after a name's first character: `.config` is a name.
+  if (mention.path.endsWith('/') || bare.slice(bare.lastIndexOf('/') + 1).lastIndexOf('.') > 0) return false;
+  const first = bare.split('/').filter((part) => part !== '')[0]!;
+  if (first === '.' || first === '..') return false;
+  const places = bare.startsWith('/') ? [first] : [normalisePosix(joinPosix(dirnamePosix(mention.at.file), first)), first];
+  return !places.some((place) => pathExists(place));
+}
+
+/**
  * A path an orientation document names that the repository does not hold:
  * as written from the root, from the document's directory, or, for a bare
  * file name, from each configured root (ADR-0029). A path the document's
@@ -1086,6 +1103,7 @@ function missingPaths(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit):
     // A bare file name is looked for under each root as well; a path with a slash is where it says.
     if (!bare.includes('/')) candidates.push(...orientation.roots.map((root) => normalisePosix(joinPosix(root, bare))));
     if (candidates.some((candidate) => candidate !== '..' && !candidate.startsWith('../') && pathExists(candidate))) continue;
+    if (readsAsWords(mention, bare, pathExists)) continue;
     emit('missing-path', () => ({
       message: `\`${mention.path}\` names no file or directory the repository holds`,
       at: mention.at,

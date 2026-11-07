@@ -431,9 +431,13 @@ exist. Name those documents, and what they name is held to the repository:
 ```
 
 - A code span is a path where it reads as one: letters, digits and
-  `. _ - / + @ ~`, holding a `/` or ending in one of `extensions`, and not
-  opening with `-`, `@` or `~`. `npm run lint`, `E0310` and `.to<U>()` are
-  none. An `#anchor` or `:42` after it is left off.
+  `. _ - / + @ ~`, holding a `/` or ending in one of `extensions` after a
+  name, and not opening with `-`, `@` or `~`. `npm run lint`, `E0420`,
+  `.into<T>()` and `.md` alone are none. An `#anchor` or `:42` after it is left
+  off.
+- A path with a `/` and no extension, not ending in `/`, is looked for only
+  where the directory it opens with is there: `TCP/IP` and `origin/main`
+  are words or a ref, `src/payments` is a path when `src` is.
 - It is looked for from the document's directory, from the root, and, for a
   bare file name, under each of `roots`. `missing-path` where none holds it.
 - `<!-- @spec-path created="docs/plan.md" external="dist/cli.js" -->` marks a

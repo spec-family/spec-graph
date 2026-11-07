@@ -23,7 +23,8 @@ import { isFamilyName } from './identity.js';
 import { dirnamePosix, toPosix } from './paths.js';
 import { compileProjectRules, type ProjectRule } from './project-rules.js';
 import { RULE_IDS } from './rules.js';
-import { isProjectRule, type AnyRuleId, type RuleId, type Severity } from './types.js';
+import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
+import { isProjectRule, type AnyRuleId, type ClaimsConfig, type RuleId, type Severity } from './types.js';
 
 /** File names looked for, in order. The first that exists is the one used. */
 export const CONFIG_FILES: readonly string[] = Object.freeze([
@@ -70,6 +71,8 @@ export interface SpecGraphConfig {
    * See ADR-0016.
    */
   readonly rules?: readonly ProjectRule[] | undefined;
+  /** Which documents hold claims, and what each label means for work. See ADR-0024. */
+  readonly claims?: ClaimsConfig | undefined;
 }
 
 export interface LoadedConfig {
@@ -300,6 +303,11 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
     }
   }
 
+  if (raw['claims'] !== undefined) {
+    const claims = readClaims(raw['claims'], source, problems);
+    if (claims !== null) config.claims = claims;
+  }
+
   const compiled = raw['rules'] === undefined ? null : compileProjectRules(raw['rules'], source);
   if (compiled !== null) {
     problems.push(...compiled.problems);
@@ -336,9 +344,45 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'severities',
   'strict',
   'maxRelated',
+  'claims',
   // Tolerated so an editor can be pointed at a schema without being told off.
   '$schema',
 ]);
+
+/**
+ * Reads `claims`: patterns for the documents that hold claims, and each label
+ * with the state it means, in the words `@spec-item state=` takes. A part that
+ * is missing, empty or names no state is a problem, and the whole of `claims`
+ * is left out then, since half of it would read claims by a guess (ADR-0024).
+ */
+function readClaims(value: unknown, source: string, problems: string[]): ClaimsConfig | null {
+  if (!isRecord(value)) {
+    problems.push(`${source}: "claims" must be an object such as { "files": ["spec/*.md"], "labels": { "Implemented": "done", "Specified": "open" } }`);
+    return null;
+  }
+  const before = problems.length;
+  const files = value['files'];
+  if (!Array.isArray(files) || files.length === 0 || files.some((entry) => typeof entry !== 'string' || entry.trim().length === 0)) {
+    problems.push(`${source}: "claims.files" must be a non-empty array of patterns`);
+  }
+  const labels = value['labels'];
+  if (!isRecord(labels) || Object.keys(labels).length === 0) {
+    problems.push(`${source}: "claims.labels" must be an object of label to state, such as { "Implemented": "done", "Specified": "open" }`);
+  } else {
+    for (const [label, word] of Object.entries(labels)) {
+      if (label.length === 0 || label !== label.trim()) {
+        problems.push(`${source}: "claims.labels" has "${label}", and a label is the word a claim's code span holds, with no space around it`);
+      }
+      if (typeof word !== 'string' || dispositionOfStateWord(word) === undefined) {
+        problems.push(`${source}: "claims.labels.${label}" must be a state, one of ${KNOWN_STATE_WORDS.join(', ')}`);
+      }
+    }
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== 'files' && key !== 'labels') problems.push(`${source}: unknown key "claims.${key}"`);
+  }
+  return problems.length === before ? { files: files as string[], labels: labels as Record<string, string> } : null;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

@@ -291,7 +291,7 @@ SELECTORS
   Node types:  document, item, * (any)
   Attributes:  id, kind, title, path, file, line, phase, status, receptivity,
                alias, document, state (or disposition), openness, section,
-               text, body, evidence, conflicted, fm.<front-matter-key>
+               text, body, evidence, conflicted, label, fm.<front-matter-key>
   Operators:   = != ^= $= *= ~=   and [attr] for "is present"
                ~= is a regular expression, matched by an automaton that cannot
                backtrack: linear in the subject, whatever the pattern. It reads
@@ -1213,6 +1213,7 @@ async function run(io: CliIO, err: (text: string) => void): Promise<number> {
     historyPatterns: [...(file.historyPatterns ?? []), ...typed.history],
     severities,
     projectRules,
+    claims: file.claims,
     maxRelated: file.maxRelated,
   };
 
@@ -1233,6 +1234,21 @@ async function run(io: CliIO, err: (text: string) => void): Promise<number> {
       }\n  looked under ${options.rootExplicit ? options.root : root}\n`,
     );
     return EXIT_ERROR;
+  }
+
+  // Claims configured and none read is a check of claims that measured
+  // nothing: a document the patterns leave out holds no item, so a checklist
+  // citing its claims would read every one as missing (ADR-0024).
+  if (file.claims !== undefined) {
+    const holdsClaims = createGlobMatcher(file.claims.files);
+    if (!result.files.some((path) => holdsClaims(path))) {
+      err(
+        `spec-graph: "claims.files" in ${loaded.source} matched no file the run read: ${file.claims.files
+          .map((p) => `"${p}"`)
+          .join(', ')}\n  add the documents to "patterns", or correct "claims.files"\n`,
+      );
+      return EXIT_ERROR;
+    }
   }
 
   // A journal named on the line and never read. A `--history` pattern marks
@@ -1657,7 +1673,9 @@ function nodeSummary(node: SpecNode): Record<string, unknown> {
     title: node.title,
     file: node.at.file,
     line: node.at.span.start.line,
-    ...(node.kind === 'document' ? { phase: node.phase } : { state: node.disposition, openness: node.openness }),
+    ...(node.kind === 'document'
+      ? { phase: node.phase }
+      : { state: node.disposition, openness: node.openness, ...(node.label === null ? {} : { label: node.label }) }),
   };
 }
 

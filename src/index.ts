@@ -41,6 +41,7 @@ export type { CliIO, CliOptions, Command } from './cli.js';
 export {
   analyse,
   analyseSources,
+  createClaimReader,
   createFamilyFilter,
   createHistoryMatcher,
   withDiagnostics,
@@ -152,7 +153,7 @@ export {
   STATUS_KEYS,
 } from './lifecycle.js';
 
-export { resolveItemState, KNOWN_STATE_WORDS } from './state.js';
+export { dispositionOfStateWord, resolveItemState, KNOWN_STATE_WORDS } from './state.js';
 export type { ResolvedState, StateInput } from './state.js';
 
 export {
@@ -200,6 +201,7 @@ export { isProjectRule, DISPOSITIONS, EDGE_KINDS, EDGE_TRAITS, OPENNESS_OF, PROJ
 export type {
   AnalysisSummary,
   AnyRuleId,
+  ClaimsConfig,
   DanglingReason,
   DanglingRef,
   Diagnostic,

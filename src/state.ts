@@ -26,7 +26,11 @@ import { OPENNESS_OF, type Disposition, type Openness, type SourceRef, type Stat
 
 /** Which signal wins when two disagree. Higher is more specific. */
 const SIGNAL_PRIORITY: Readonly<Record<StateSignal['source'], number>> = {
-  directive: 5,
+  directive: 6,
+  // A claim's label is how far its author says it holds, and the
+  // configuration says what each label means for work (ADR-0024): more
+  // specific than any word in its prose, and overridden only by a directive.
+  label: 5,
   marker: 4,
   strikethrough: 3,
   checkbox: 2,
@@ -194,6 +198,8 @@ export interface StateInput {
   readonly directive: Directive | null;
   /** True when the item sits under a heading that declares obligations. */
   readonly inObligationSection: boolean;
+  /** The claim's label, with what it means and where it is written, where the item is a claim. */
+  readonly label?: { readonly text: string; readonly disposition: Disposition; readonly start: number; readonly end: number } | null | undefined;
 }
 
 export interface ResolvedState {
@@ -224,6 +230,15 @@ export function resolveItemState(input: StateInput): ResolvedState {
         });
       }
     }
+  }
+
+  if (input.label) {
+    signals.push({
+      source: 'label',
+      disposition: input.label.disposition,
+      raw: input.label.text,
+      at: at(input.label.start, input.label.end),
+    });
   }
 
   // Markers are searched in the masked body: a fenced example nested under an
@@ -448,3 +463,12 @@ function escapeRegExp(value: string): string {
 
 /** Exposed for the query language, which lets users filter on these names. */
 export const KNOWN_STATE_WORDS: readonly string[] = [...STATE_ALIASES.keys()];
+
+/**
+ * The disposition a `state=` word names, as `@spec-item` reads it, or
+ * `undefined` for a word that names none. A claim's label is given its
+ * meaning in these words (ADR-0024).
+ */
+export function dispositionOfStateWord(word: string): Disposition | undefined {
+  return STATE_ALIASES.get(word.toLowerCase());
+}

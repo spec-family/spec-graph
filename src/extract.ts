@@ -30,6 +30,7 @@ import {
 import { isStatusHeading, phaseFromPath, phaseOf, STATUS_KEYS, supersessionTargetsIn } from './lifecycle.js';
 import {
   anchorsOf,
+  findClaims,
   isMarkdownLine,
   isOnlyComment,
   referenceLinks,
@@ -51,6 +52,7 @@ import { resolveItemState } from './state.js';
 import { refOf, type LineIndex } from './source.js';
 import {
   EDGE_KINDS,
+  type Disposition,
   type DocumentNode,
   type EdgeKind,
   type EdgeOrigin,
@@ -686,6 +688,12 @@ export interface ExtractInput {
    * layer could justify making. See ADR-0011.
    */
   readonly record?: boolean | undefined;
+  /**
+   * The labels of the claims this file holds, each with what it means for
+   * work, where `claims.files` names the file; `undefined` everywhere else,
+   * where no item is read as a claim (ADR-0024).
+   */
+  readonly claims?: ReadonlyMap<string, Disposition> | undefined;
 }
 
 /**
@@ -875,7 +883,7 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
   };
   const ownerAt = (offset: number): string => documentAt(offset).id;
 
-  const allItems = extractItems({ scanned, directives, ownerAt, file, index });
+  const allItems = extractItems({ scanned, directives, ownerAt, file, index, claims: input.claims });
 
   const allReferences = extractReferences({
     scanned,
@@ -1181,6 +1189,7 @@ interface ItemContext {
   readonly ownerAt: (offset: number) => string;
   readonly file: string;
   readonly index: LineIndex;
+  readonly claims: ReadonlyMap<string, Disposition> | undefined;
 }
 
 function extractItems(context: ItemContext): ItemNode[] {
@@ -1188,13 +1197,15 @@ function extractItems(context: ItemContext): ItemNode[] {
   const out: ItemNode[] = [];
   const ordinals = new Map<string, number>();
   const bound = bindItemDirectives(scanned, directives);
+  const claimed = claimsOf(scanned, context.claims);
 
   for (const item of scanned.listItems) {
     const section = sectionPathAt(scanned, item.start);
     const inObligationSection = section.some((heading) => OBLIGATION_SECTIONS.has(normaliseHeading(heading)));
     const directive = bound.get(item) ?? null;
+    const claim = claimed.get(item) ?? null;
 
-    if (!isObligation(item, inObligationSection, directive)) continue;
+    if (claim === null && !isObligation(item, inObligationSection, directive)) continue;
 
     const documentId = ownerAt(item.start);
     const slug = section.length > 0 ? slugify(section[section.length - 1]!) : 'item';
@@ -1214,6 +1225,7 @@ function extractItems(context: ItemContext): ItemNode[] {
       section,
       directive,
       inObligationSection,
+      label: claim,
     });
 
     out.push({
@@ -1230,9 +1242,35 @@ function extractItems(context: ItemContext): ItemNode[] {
       openness: state.openness,
       evidence: state.evidence,
       conflicts: state.conflicts,
+      label: claim?.text ?? null,
     });
   }
 
+  return out;
+}
+
+interface ClaimLabel {
+  readonly text: string;
+  readonly disposition: Disposition;
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * The claims among a document's items, each with what its label means and
+ * where the label is written (ADR-0024). Which item is a claim is spec-core's
+ * reading, the one spec-guard holds a claim to its evidence by: a list item
+ * whose text opens with a label as a code span.
+ */
+function claimsOf(scanned: ScannedDocument, labels: ReadonlyMap<string, Disposition> | undefined): Map<ListItem, ClaimLabel> {
+  const out = new Map<ListItem, ClaimLabel>();
+  if (labels === undefined) return out;
+  // A claim's label is the code span its text opens with.
+  const ends = new Map(scanned.codeSpans.map((span) => [span.start, span.end]));
+  for (const claim of findClaims(scanned, [...labels.keys()])) {
+    const start = claim.item.textStart;
+    out.set(claim.item, { text: claim.label, disposition: labels.get(claim.label)!, start, end: ends.get(start)! });
+  }
   return out;
 }
 

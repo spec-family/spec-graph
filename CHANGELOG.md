@@ -11,6 +11,22 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Added
+
+- **`claims` in the configuration makes each claim an item whose state is
+  its label.** A list item in a document `claims.files` names that opens
+  with a label as a code span, `` - `Implemented`: ... ``, is an item, open or
+  closed by what `claims.labels` says the label means, in the words
+  `@spec-item state=` takes. The label outranks every signal but a
+  directive; `item[label=Specified]` selects claims, and the graph export
+  and a query's JSON give a claim its `label`. Which item is a claim is
+  spec-core's reading, the one spec-guard holds a claim to its evidence by,
+  at 404152c. A repository with no `claims` sees nothing change; a
+  `claims` that cannot be read, or whose files the run does not read, is
+  exit 2 ([ADR-0024](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md)).
+
 ## 0.21.0
 
 The first release as `@spec-family/spec-graph`, from

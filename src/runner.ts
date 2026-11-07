@@ -18,7 +18,8 @@ import { toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
 import { runRules, type RuleOptions } from './rules.js';
-import type { AnalysisSummary, AnyRuleId, Diagnostic, ParseProblem, Severity } from './types.js';
+import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
+import type { AnalysisSummary, AnyRuleId, ClaimsConfig, Diagnostic, Disposition, ParseProblem, Severity } from './types.js';
 
 /** Patterns used when the caller names none. */
 export const DEFAULT_PATTERNS: readonly string[] = Object.freeze([
@@ -59,6 +60,8 @@ export interface AnalyseOptions {
   readonly severities?: Partial<Record<AnyRuleId, Severity>> | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
   readonly projectRules?: readonly ProjectRule[] | undefined;
+  /** Which documents hold claims, and what each label means for work. See ADR-0024. */
+  readonly claims?: ClaimsConfig | undefined;
   readonly concurrency?: number | undefined;
   readonly maxRelated?: number | undefined;
   readonly followSymlinks?: boolean | undefined;
@@ -108,6 +111,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
       isIgnoredReference: createReferenceFilter(options.ignoreReferences ?? []),
       isIgnoredFamily: createFamilyFilter(options.families, options.ignoreFamilies),
       isRecord: createHistoryMatcher(options.historyPatterns),
+      claimsIn: createClaimReader(options.claims),
       severities: options.severities,
       projectRules: options.projectRules,
       maxRelated: options.maxRelated,
@@ -130,6 +134,29 @@ export interface AnalyseSourcesOptions extends RuleOptions {
   readonly isIgnoredFamily?: ((family: string) => boolean) | undefined;
   /** Whether a path holds a historical record rather than a specification. */
   readonly isRecord?: ((path: string) => boolean) | undefined;
+  /** The labels of the claims a path holds, with what each means, or nothing where it holds none. */
+  readonly claimsIn?: ((path: string) => ReadonlyMap<string, Disposition> | undefined) | undefined;
+}
+
+/**
+ * Builds the reader of which documents hold claims, or nothing when none do.
+ *
+ * Throws for a label given a word that names no state, as a family filter
+ * throws for a name no family has: the label would mean nothing, and its
+ * claims would read as open or closed by a guess (ADR-0024).
+ */
+export function createClaimReader(
+  claims: ClaimsConfig | undefined,
+): ((path: string) => ReadonlyMap<string, Disposition> | undefined) | undefined {
+  if (claims === undefined) return undefined;
+  const labels = new Map<string, Disposition>();
+  for (const [label, word] of Object.entries(claims.labels)) {
+    const disposition = dispositionOfStateWord(word);
+    if (disposition === undefined) throw new Error(`claims: "${label}" is given "${word}", which names no state: give one of ${KNOWN_STATE_WORDS.join(', ')}`);
+    labels.set(label, disposition);
+  }
+  const holds = createGlobMatcher(claims.files);
+  return (path) => (holds(path) ? labels : undefined);
 }
 
 /**
@@ -195,6 +222,7 @@ export function analyseSources(sources: readonly Source[], options: AnalyseSourc
         path: source.path,
         text: source.text,
         record: options.isRecord?.(source.path) === true,
+        claims: options.claimsIn?.(source.path),
       }),
     );
   }

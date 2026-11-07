@@ -180,6 +180,7 @@ describe('a ledger', () => {
     const [row] = extractDocument({ path: 'docs/STATUS.md', text, ledger: true })!.items;
     expect(row).toMatchObject({
       id: 'STATUS#item-row.1',
+      kind: 'item',
       declared: false,
       disposition: 'satisfied',
       body: '| Refunds | done (in 0.3) |',
@@ -236,6 +237,17 @@ describe('a commit a checked document names', () => {
     const notes = { 'docs/notes.md': doc('# Notes', '', 'Fixed in commit 9999999.', '') };
     expect(findings(notes, {})).toEqual([]);
     expect(findings(notes)).toEqual([]);
+  });
+
+  it('is looked for in a checklist alone, where no ledger is configured', () => {
+    const sources = [
+      { path: 'ROADMAP.md', text: doc('# R', '', '- [x] Retries (commit 9999999).', '') },
+      { path: 'docs/notes.md', text: doc('# Notes', '', 'Fixed in commit 8888888.', '') },
+    ];
+    const { diagnostics } = analyseSources(sources, { isChecklist: createPathMatcher(['ROADMAP.md']), history: HISTORY });
+    expect(diagnostics.map((d) => `${d.rule} ${d.at.file}`)).toEqual(['unknown-commit ROADMAP.md']);
+    // And no history is needed where only an unchecked document names one.
+    expect(analyseSources([sources[1]!], { isChecklist: createPathMatcher(['ROADMAP.md']) }).diagnostics).toEqual([]);
   });
 
   it('is looked for in a ledger, with or without a checklist configured', () => {

@@ -1709,6 +1709,10 @@ It names only what it can tell apart:
   else shares them.
 - Anything unpaired is reported as having appeared or disappeared, never as
   resolved or reopened.
+- A claim whose label changed is listed under Claims: raised, lowered, or
+  relabelled where what its label means for work held. Name a claim with
+  `@spec-item` and it is paired however its text changes; one with no name
+  changes its text with its label, and reads as appeared and disappeared.
 - Findings are left to `--baseline`, which already reports what is new.
 
 Each export is read from where its path was typed, with a `\` a separator,

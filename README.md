@@ -749,6 +749,7 @@ Directives are ordinary HTML comments — invisible in every Markdown renderer:
 <!-- @spec-edge kind="delegates-to" to="ADR-0011#scope" -->
 <!-- @spec-ignore -->
 <!-- @spec-history -->
+<!-- @spec-figure record="ROADMAP.md#refund-latency" -->
 ```
 
 Each takes these attributes. Any other is a parse problem, listed by

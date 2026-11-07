@@ -42,9 +42,9 @@ function documented(): Map<string, string[]> {
 }
 
 describe('the attributes of each directive', () => {
-  it('are read from the README, one row for each of the five directives', () => {
+  it('are read from the README, one row for each of the six directives', () => {
     const table = documented();
-    expect([...table.keys()]).toEqual(['spec-node', 'spec-item', 'spec-edge', 'spec-ignore', 'spec-history']);
+    expect([...table.keys()]).toEqual(['spec-node', 'spec-item', 'spec-edge', 'spec-ignore', 'spec-history', 'spec-figure']);
     // A table that failed to parse would pass the test below vacuously.
     expect(new Set([...table.values()].flat()).size).toBeGreaterThan(8);
   });

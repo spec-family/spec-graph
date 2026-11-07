@@ -114,6 +114,10 @@ follows `npx --no-install @spec-family/` at a prompt.
 | `duplicate-key` | error | A key a configured register gives to a second row, which the graph leaves out |
 | `unknown-register-status` | error | A row of a configured register with no status, or one the configuration does not know |
 | `incomplete-register-row` | error | A row of a configured register that lacks what its status asks for |
+| `incomplete-protocol` | error | A measurement protocol that lacks a field the configuration asks of it |
+| `undated-result` | error | A measurement protocol whose result names no date and does not say none yet |
+| `target-without-protocol` | error | A claim whose label asks for a measurement and cites no protocol |
+| `unrecorded-figure` | error | A figure marked `@spec-figure` that names no record, or one with no dated result |
 
 Override any of them:
 
@@ -373,6 +377,47 @@ what a done item cites is held to what it says:
   to nothing.
 
 See [ADR-0026](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md).
+
+### Figures, resting on a record
+
+A figure says how it was measured only if something links it to the
+measurement. Name where protocols are written, and what each must say:
+
+```json
+{
+  "protocols": {
+    "files": ["ROADMAP.md"],
+    "heading": "Measurement protocols",
+    "result": "Last result",
+    "fields": { "*": ["Method"], "agent-pass-rate": ["Agent", "Tasks"] },
+    "claims": ["Target"]
+  }
+}
+```
+
+```md
+## Measurement protocols
+
+### Refund latency
+
+- **Method**: 1,000 refunds after 100 warm-up runs; the median.
+- **Last result** (2026-11-05): a median of 4 ms.
+```
+
+- Each section one level under `heading` is a protocol, its fields the lines
+  written as `**Name**: value`. It is an item, named by its heading's anchor,
+  closed by a result that names an ISO date and open while it says none yet.
+- A protocol that lacks the result or a field `fields` asks of it, under `*`
+  for every protocol or under its anchor, is `incomplete-protocol`; a result
+  with no date that does not say none yet is `undated-result`.
+- A claim whose label `claims` lists cites a protocol, or is
+  `target-without-protocol`.
+- A figure is marked, never found: `<!-- @spec-figure record="ROADMAP.md#refund-latency" -->`
+  before it names its record, and `unrecorded-figure` fails one with no
+  record, a record that is no protocol, or a protocol with no dated result.
+  A number nobody marked is not read.
+
+See [ADR-0028](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md).
 
 ### Commits, looked for in git
 
@@ -704,6 +749,7 @@ Directives are ordinary HTML comments — invisible in every Markdown renderer:
 <!-- @spec-edge kind="delegates-to" to="ADR-0011#scope" -->
 <!-- @spec-ignore -->
 <!-- @spec-history -->
+<!-- @spec-figure record="ROADMAP.md#refund-latency" -->
 ```
 
 Each takes these attributes. Any other is a parse problem, listed by
@@ -716,6 +762,7 @@ Each takes these attributes. Any other is a parse problem, listed by
 | `@spec-edge` | `kind`, `to`, `from`, `reason` |
 | `@spec-ignore` | `reason` |
 | `@spec-history` | none |
+| `@spec-figure` | `record`, `reason` |
 
 - `reason`, `note`, `owner` and a node's `kind` are for whoever reads the
   source; spec-graph reads nothing from them.
@@ -1011,6 +1058,7 @@ command. spec-graph reads the first of `.spec-graph.json`,
   "ledgers": ["docs/STATUS.md"],
   "gitRef": "origin/main",
   "registers": { "files": ["docs/review.md"], "statuses": { "open": {}, "done": { "closes": true, "needs": ["commit"] } } },
+  "protocols": { "files": ["ROADMAP.md"], "heading": "Measurement protocols", "result": "Last result" },
   "rules": {
     "no-draft-dependency": {
       "query": "document[phase=active] -depends-on-> document[phase=draft]",
@@ -1051,12 +1099,13 @@ which file was read, on stderr with everything else a run says about itself, so
 it can be combined with any `--format` and leave the document on stdout intact.
 `--no-config` skips the mechanism entirely.
 
-`claims`, `checklists`, `ledgers`, `registers` and `gitRef` have no flag
-either: which documents hold claims and are held to them, and which history
+`claims`, `checklists`, `ledgers`, `registers`, `protocols` and `gitRef` have
+no flag either: which documents hold claims and are held to them, and which history
 their commits are looked for in, are the repository's
 ([claims](#claims-with-their-labels),
 [checklists and ledgers](#checklists-and-ledgers-held-to-what-they-cite),
 [registers](#registers-many-specifications-in-one-file),
+[figures](#figures-resting-on-a-record),
 [commits](#commits-looked-for-in-git)).
 
 `maxRelated` has no flag. It caps how many related locations one finding lists
@@ -1713,6 +1762,7 @@ Twenty-three ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0025 — Commits are read from git](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0025-commits-are-read-from-git.md)
 - [ADR-0026 — A completion cites its evidence](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md)
 - [ADR-0027 — A register row is held to its status](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)
+- [ADR-0028 — A figure rests on a record](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

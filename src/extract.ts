@@ -59,6 +59,8 @@ import {
   OPENNESS_OF,
   type CommitCitation,
   type Disposition,
+  type Figure,
+  type Protocol,
   type RegisterRow,
   type DocumentNode,
   type EdgeKind,
@@ -127,6 +129,10 @@ export interface ExtractedDocument {
   readonly commits: readonly CommitCitation[];
   /** The row's cells, where this specification is a register's row kept as a table (ADR-0027). */
   readonly row: RegisterRow | null;
+  /** The measurement protocols the file writes, held by the file's own extraction (ADR-0028). */
+  readonly protocols: readonly Protocol[];
+  /** The figures the file marks, held by the file's own extraction (ADR-0028). */
+  readonly figures: readonly Figure[];
   readonly identity: DocumentIdentity;
   readonly scanned: ScannedDocument;
   /**
@@ -715,6 +721,12 @@ export interface ExtractInput {
    * how far it holds, and is an item as a list item is (ADR-0026).
    */
   readonly ledger?: boolean | undefined;
+  /**
+   * The heading whose sections are measurement protocols, and the field that
+   * holds a protocol's result, both in lower case, where the file is one
+   * `protocols.files` names (ADR-0028).
+   */
+  readonly protocols?: { readonly heading: string; readonly result: string } | undefined;
 }
 
 /**
@@ -908,6 +920,8 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     ...extractItems({ scanned, directives, ownerAt, file, index, claims: input.claims }),
     ...(input.ledger === true ? extractLedgerRows({ scanned, ownerAt, file, index }) : []),
   ];
+  const protocols = extractProtocols({ scanned, config: input.protocols, ownerAt, file, index });
+  allItems.push(...protocols.map((protocol) => protocol.item));
   const commits: CommitCitation[] = findCommitReferences(scanned).map((reference) => ({
     owner: ownerOf(allItems, reference.start) ?? ownerAt(reference.start),
     kind: reference.kind,
@@ -954,6 +968,8 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     anchors,
     commits,
     row: null,
+    protocols: protocols.map((protocol) => protocol.protocol),
+    figures: figuresOf(directives, allItems, ownerAt, at),
     identity,
     scanned,
     subSpecifications: filled,
@@ -1069,6 +1085,8 @@ function buildRegion(context: RegionInput): BuiltRegion {
       misreadKeys: [],
       anchors,
       commits: [],
+      protocols: [],
+      figures: [],
       row:
         region.row === null
           ? null
@@ -1360,6 +1378,125 @@ function ledgerItem(input: {
   };
 }
 
+interface ProtocolContext {
+  readonly scanned: ScannedDocument;
+  /** The heading and the result field's name, in lower case, where the file holds protocols. */
+  readonly config: { readonly heading: string; readonly result: string } | undefined;
+  readonly ownerAt: (offset: number) => string;
+  readonly file: string;
+  readonly index: LineIndex;
+}
+
+/**
+ * A field a protocol writes: `**Corpus**: every module`, `- **Last result:** none
+ * yet`. Its value is what follows the match, read from the text.
+ */
+const PROTOCOL_FIELD = /^(?:[-*+]\s+)?\*\*([^*]+?):?\*\*:?/;
+
+/** A result that says when it was measured, by an ISO date. */
+const DATED = /\b\d{4}-\d{2}-\d{2}\b/;
+
+/** A result that says there is none yet, as it opens. */
+const NONE_YET = /^(?:\*\*|__|\*|_)?none yet\b/i;
+
+/**
+ * The measurement protocols a document writes: each section one level under
+ * the configured heading, with the fields it writes as `**Name**: value`.
+ * Each is an item, named by its heading's anchor, so a link to that anchor
+ * reaches it, closed by a result that names a date and open otherwise
+ * (ADR-0028).
+ */
+function extractProtocols(context: ProtocolContext): { item: ItemNode; protocol: Protocol }[] {
+  if (context.config === undefined) return [];
+  const { scanned, ownerAt, file, index } = context;
+  const { heading, result } = context.config;
+  const headings = scanned.headings;
+  const top = headings.findIndex((candidate) => candidate.text.toLowerCase() === heading);
+  if (top === -1) return [];
+  const level = headings[top]!.level;
+  const out: { item: ItemNode; protocol: Protocol }[] = [];
+  for (let i = top + 1; i < headings.length && headings[i]!.level > level; i += 1) {
+    const section = headings[i]!;
+    if (section.level !== level + 1) continue;
+    let end = scanned.text.length;
+    for (let j = i + 1; j < headings.length; j += 1) {
+      if (headings[j]!.level <= level + 1) {
+        end = headings[j]!.start;
+        break;
+      }
+    }
+    const fields: { name: string; value: string; at: SourceRef }[] = [];
+    for (const line of scanned.lines) {
+      // A line starts after the heading's line ends and never at it, and a
+      // line that starts where the next heading does is that heading, which
+      // writes no field: `<=` for the `<` and `>` for the `>=` answer alike.
+      if (line.start < section.end || line.start >= end || !isMarkdownLine(line)) continue;
+      const found = PROTOCOL_FIELD.exec(scanned.masks.structure.slice(line.contentStart, line.end));
+      if (found === null) continue;
+      // The mask keeps every offset, so the match is as long in the text.
+      const value = scanned.text.slice(line.contentStart + found[0].length, line.end).trim();
+      fields.push({ name: found[1]!.trim(), value, at: refOf(file, index, line.contentStart, line.end) });
+    }
+    const documentId = ownerAt(section.start);
+    const id = `${documentId}#${section.anchor}`;
+    const written = fields.find((field) => field.name.toLowerCase() === result);
+    const protocol: Protocol = {
+      id,
+      anchor: section.anchor,
+      title: section.text,
+      at: refOf(file, index, section.start, end),
+      fields,
+      result: written === undefined ? null : { value: written.value, at: written.at, dated: DATED.test(written.value), none: NONE_YET.test(written.value) },
+    };
+    out.push({ item: protocolItem(protocol, documentId, sectionPathAt(scanned, section.start)), protocol });
+  }
+  return out;
+}
+
+/** The item a protocol is: closed where its result names a date, open where it says none yet or nothing. */
+function protocolItem(protocol: Protocol, documentId: string, section: readonly string[]): ItemNode {
+  const { result } = protocol;
+  const disposition: Disposition = result?.dated === true ? 'satisfied' : 'unresolved';
+  const evidence: StateSignal = { source: 'marker', disposition, raw: result?.value ?? '', at: result?.at ?? protocol.at };
+  return {
+    id: protocol.id,
+    kind: 'item',
+    title: protocol.title,
+    at: protocol.at,
+    declared: true,
+    document: documentId,
+    section,
+    text: protocol.title,
+    body: protocol.fields.map((field) => `${field.name}: ${field.value}`).join('\n'),
+    disposition,
+    openness: OPENNESS_OF[disposition],
+    evidence,
+    conflicts: [],
+    label: null,
+  };
+}
+
+/** The figures a document marks, each with the record it names. */
+function figuresOf(
+  directives: readonly Directive[],
+  items: readonly ItemNode[],
+  ownerAt: (offset: number) => string,
+  at: (start: number, end: number) => SourceRef,
+): Figure[] {
+  const out: Figure[] = [];
+  for (const directive of directives) {
+    if (directive.name !== 'spec-figure') continue;
+    const record = attr(directive, 'record');
+    out.push({
+      owner: ownerOf(items, directive.start) ?? ownerAt(directive.start),
+      record: record?.value ?? '',
+      at: at(directive.start, directive.end),
+      recordAt: record === null ? at(directive.start, directive.end) : at(record.start, record.end),
+    });
+  }
+  return out;
+}
+
 interface ClaimLabel {
   readonly text: string;
   readonly disposition: Disposition;
@@ -1547,6 +1684,26 @@ function extractReferences(context: ReferenceContext): ReferenceCandidate[] {
         opportunistic: true,
       });
     }
+  }
+
+  // A figure's record is a citation the directive makes: one that does not
+  // resolve is a broken reference like any other (ADR-0028).
+  for (const directive of directives) {
+    // Another directive given a record names nothing: the attribute is a
+    // parse problem there, as any it does not take.
+    if (directive.name !== 'spec-figure') continue;
+    const record = attr(directive, 'record');
+    if (!record) continue;
+    out.push({
+      kind: 'references',
+      from: ownerOf(items, directive.start) ?? documentAt(directive.start).id,
+      target: record.value,
+      origin: 'directive',
+      declaredAt: at(record.start, record.end),
+      raw: `@spec-figure record="${record.value}"`,
+      inverted: false,
+      opportunistic: false,
+    });
   }
 
   // Explicit edge directives.

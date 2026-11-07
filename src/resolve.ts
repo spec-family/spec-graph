@@ -30,7 +30,7 @@ import {
   withinOneEdit,
 } from './identity.js';
 import { basenamePosix, dirnamePosix, extnamePosix, resolveFrom } from './paths.js';
-import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, RegisterRow } from './types.js';
+import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, Figure, Protocol, RegisterRow } from './types.js';
 
 export interface ResolveOptions {
   /**
@@ -99,6 +99,10 @@ export interface ResolvedCorpus {
   readonly rows: ReadonlyMap<string, RegisterRow>;
   /** Each specification whose id was already taken, and left out of the graph. */
   readonly duplicates: readonly DuplicateId[];
+  /** Each measurement protocol, by the id of the item it is (ADR-0028). */
+  readonly protocols: ReadonlyMap<string, Protocol>;
+  /** Every figure a document marks (ADR-0028). */
+  readonly figures: readonly Figure[];
 }
 
 /**
@@ -266,6 +270,8 @@ export function resolveCorpus(
     commits: extracted.flatMap((entry) => entry.commits),
     rows,
     duplicates,
+    protocols: new Map(extracted.flatMap((entry) => entry.protocols).map((protocol) => [protocol.id, protocol])),
+    figures: extracted.flatMap((entry) => entry.figures),
   };
 }
 

@@ -22,7 +22,7 @@
 
 import { buildGraph, OBLIGATION_EDGES, type SpecGraph } from './graph.js';
 import { receptivityOf } from './lifecycle.js';
-import { dirnamePosix, resolveFrom } from './paths.js';
+import { dirnamePosix, joinPosix, normalisePosix, resolveFrom } from './paths.js';
 import { renderTemplate, type ProjectRule } from './project-rules.js';
 import { execute, parseQuery, type QuerySpec } from './select.js';
 import type { ResolvedCorpus } from './resolve.js';
@@ -71,6 +71,7 @@ export const DEFAULT_SEVERITIES: Readonly<Record<RuleId, Severity>> = Object.fre
   'undated-result': 'error',
   'target-without-protocol': 'error',
   'unrecorded-figure': 'error',
+  'missing-path': 'error',
 });
 
 export const RULE_IDS = Object.keys(DEFAULT_SEVERITIES) as readonly RuleId[];
@@ -99,6 +100,7 @@ export const RULE_DESCRIPTIONS: Readonly<Record<RuleId, string>> = Object.freeze
   'undated-result': 'a measurement protocol gives a result that names no date and does not say none yet',
   'target-without-protocol': 'a claim whose label asks for a measurement cites no protocol',
   'unrecorded-figure': 'a marked figure names no record, or one with no dated result',
+  'missing-path': 'an orientation document names a path the repository does not hold',
 });
 
 /**
@@ -136,6 +138,7 @@ export const RULE_DECISIONS: Readonly<Record<RuleId, string>> = Object.freeze({
   'undated-result': 'docs/adr/0028-a-figure-rests-on-a-record.md',
   'target-without-protocol': 'docs/adr/0028-a-figure-rests-on-a-record.md',
   'unrecorded-figure': 'docs/adr/0028-a-figure-rests-on-a-record.md',
+  'missing-path': 'docs/adr/0029-an-orientation-document-names-what-exists.md',
 });
 
 /**
@@ -203,6 +206,10 @@ export interface RuleOptions {
   readonly registers?: RegisterCheck | undefined;
   /** The measurement protocols and the claims and figures held to them (ADR-0028). */
   readonly protocols?: ProtocolCheck | undefined;
+  /** The documents that orient a reader, and where a bare file name is looked for (ADR-0029). */
+  readonly orientation?: OrientationCheck | undefined;
+  /** Whether the repository holds a path, a file or a directory (ADR-0029). */
+  readonly pathExists?: ((path: string) => boolean) | undefined;
   /** Cap on related locations attached to one finding. */
   readonly maxRelated?: number | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
@@ -256,6 +263,7 @@ export function runRules(graph: SpecGraph, corpus: ResolvedCorpus, options: Rule
   unknownCommits(corpus, options, emit);
   registerFindings(corpus, options, emit);
   protocolFindings(graph, corpus, options, emit);
+  missingPaths(corpus, options, emit);
   misreadKeys(corpus, emit);
   selfReferences(graph, emit);
   projectFindings(graph, projectRules, emit);
@@ -888,7 +896,12 @@ function unknownCommits(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit
 
 /** Whether a document is one a check holds to the commits it names: a checklist, a ledger or a register. */
 export function holdsToCommits(options: RuleOptions, path: string): boolean {
-  return options.isChecklist?.(path) === true || options.isLedger?.(path) === true || options.registers?.isRegister(path) === true;
+  return (
+    options.isChecklist?.(path) === true ||
+    options.isLedger?.(path) === true ||
+    options.registers?.isRegister(path) === true ||
+    options.orientation?.isOrientation(path) === true
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1034,6 +1047,54 @@ function protocolFindings(graph: SpecGraph, corpus: ResolvedCorpus, options: Rul
       nodes: [item.id],
       related: [],
       hint: 'link the protocol that measures it, as [the protocol](ROADMAP.md#its-anchor)',
+    }));
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Orientation                                                                */
+/* -------------------------------------------------------------------------- */
+
+/** A configured orientation check, ready to ask (ADR-0029). */
+export interface OrientationCheck {
+  readonly isOrientation: (path: string) => boolean;
+  /** The extensions that make a token a path. */
+  readonly extensions: readonly string[];
+  /** Where a bare file name is looked for, repository-relative. */
+  readonly roots: readonly string[];
+}
+
+/**
+ * A path an orientation document names that the repository does not hold:
+ * as written from the root, from the document's directory, or, for a bare
+ * file name, from each configured root (ADR-0029). A path the document's
+ * `@spec-path` marks created or external is not looked for, and a path that
+ * leaves the repository is held by none.
+ */
+function missingPaths(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
+  const { orientation, pathExists } = options;
+  // `analyseSources` refuses to run without a way to look where an
+  // orientation document names a path; a caller of `runRules` that gives
+  // none has had nothing looked for.
+  if (orientation === undefined || pathExists === undefined) return;
+  for (const mention of corpus.paths) {
+    const bare = mention.path.replace(/\/+$/, '');
+    if (corpus.pathsAllowed.get(mention.at.file)?.has(mention.path) === true || corpus.pathsAllowed.get(mention.at.file)?.has(bare) === true) continue;
+    const candidates = bare.startsWith('/')
+      ? [bare.slice(1)]
+      : [
+          normalisePosix(joinPosix(dirnamePosix(mention.at.file), bare)),
+          normalisePosix(bare),
+          ...(bare.includes('/') ? [] : orientation.roots.map((root) => normalisePosix(joinPosix(root, bare)))),
+        ];
+    if (candidates.some((candidate) => candidate !== '..' && !candidate.startsWith('../') && pathExists(candidate))) continue;
+    emit('missing-path', () => ({
+      message: `\`${mention.path}\` names no file or directory the repository holds`,
+      at: mention.at,
+      nodes: [mention.owner],
+      target: mention.path,
+      related: [],
+      hint: `correct it, or mark it in the document: <!-- @spec-path created="${mention.path}" --> for one this work creates, external="${mention.path}" for one in another repository`,
     }));
   }
 }

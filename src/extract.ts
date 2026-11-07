@@ -68,6 +68,7 @@ import {
   type ItemNode,
   type MisreadKey,
   type ParseProblem,
+  type PathMention,
   type Phase,
   type SourceRef,
   type StateSignal,
@@ -133,6 +134,10 @@ export interface ExtractedDocument {
   readonly protocols: readonly Protocol[];
   /** The figures the file marks, held by the file's own extraction (ADR-0028). */
   readonly figures: readonly Figure[];
+  /** The paths the file names, where it orients a reader, held by the file's own extraction (ADR-0029). */
+  readonly paths: readonly PathMention[];
+  /** The paths `@spec-path` says the file may name that the repository does not hold, as written. */
+  readonly pathsAllowed: readonly string[];
   readonly identity: DocumentIdentity;
   readonly scanned: ScannedDocument;
   /**
@@ -727,6 +732,11 @@ export interface ExtractInput {
    * `protocols.files` names (ADR-0028).
    */
   readonly protocols?: { readonly heading: string; readonly result: string } | undefined;
+  /**
+   * The extensions that make a token a path, where the file orients a reader
+   * and is held to the paths it names (ADR-0029).
+   */
+  readonly orientation?: { readonly extensions: readonly string[] } | undefined;
 }
 
 /**
@@ -970,6 +980,8 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     row: null,
     protocols: protocols.map((protocol) => protocol.protocol),
     figures: figuresOf(directives, allItems, ownerAt, at),
+    paths: input.orientation === undefined ? [] : pathsOf(scanned, input.orientation.extensions, allItems, ownerAt, at),
+    pathsAllowed: directives.filter((directive) => directive.name === 'spec-path').flatMap((directive) => [...attrList(directive, 'created'), ...attrList(directive, 'external')]),
     identity,
     scanned,
     subSpecifications: filled,
@@ -1087,6 +1099,8 @@ function buildRegion(context: RegionInput): BuiltRegion {
       commits: [],
       protocols: [],
       figures: [],
+      paths: [],
+      pathsAllowed: [],
       row:
         region.row === null
           ? null
@@ -1474,6 +1488,46 @@ function protocolItem(protocol: Protocol, documentId: string, section: readonly 
     conflicts: [],
     label: null,
   };
+}
+
+/**
+ * A token that reads as a path: letters, digits and `. _ - / + @ ~` alone, no
+ * space, no scheme, no glob, no call. A command, `npm run lint`, an error
+ * code, `E0310`, and code, `.to<U>()`, are none of them.
+ */
+const PATH_TOKEN = /^[\p{L}\p{N}._\-/+@~]+$/u;
+
+/** What follows a path naming a place in it: `#anchor`, `:42`, `:42:7`. */
+const PLACE = /(?:#[^#]*|:\d+(?::\d+)?)$/;
+
+/**
+ * The path a code span names, or `null` for one that is no path: a token
+ * that holds a `/` or ends in a configured extension, with a letter in it,
+ * and does not open with `-`, `@` or `~`, the openings of an option, a
+ * package scope and a home directory.
+ */
+export function pathIn(text: string, extensions: readonly string[]): string | null {
+  const token = text.replace(PLACE, '');
+  if (!PATH_TOKEN.test(token) || !/\p{L}/u.test(token) || /^[-@~]/.test(token)) return null;
+  const lower = token.toLowerCase();
+  return token.includes('/') || extensions.some((extension) => lower.endsWith(extension.toLowerCase())) ? token : null;
+}
+
+/** The paths an orientation document names in its code spans, each with the node it is written in. */
+function pathsOf(
+  scanned: ScannedDocument,
+  extensions: readonly string[],
+  items: readonly ItemNode[],
+  ownerAt: (offset: number) => string,
+  at: (start: number, end: number) => SourceRef,
+): PathMention[] {
+  const out: PathMention[] = [];
+  for (const span of scanned.codeSpans) {
+    const path = pathIn(scanned.text.slice(span.start, span.end).replace(/^`+|`+$/g, '').trim(), extensions);
+    if (path === null) continue;
+    out.push({ owner: ownerOf(items, span.start) ?? ownerAt(span.start), path, at: at(span.start, span.end) });
+  }
+  return out;
 }
 
 /** The figures a document marks, each with the record it names. */

@@ -30,7 +30,7 @@ import {
   withinOneEdit,
 } from './identity.js';
 import { basenamePosix, dirnamePosix, extnamePosix, resolveFrom } from './paths.js';
-import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, Figure, Protocol, RegisterRow } from './types.js';
+import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, Figure, PathMention, Protocol, RegisterRow } from './types.js';
 
 export interface ResolveOptions {
   /**
@@ -103,6 +103,9 @@ export interface ResolvedCorpus {
   readonly protocols: ReadonlyMap<string, Protocol>;
   /** Every figure a document marks (ADR-0028). */
   readonly figures: readonly Figure[];
+  /** Every path an orientation document names, and the paths each may name unheld (ADR-0029). */
+  readonly paths: readonly PathMention[];
+  readonly pathsAllowed: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /**
@@ -272,6 +275,8 @@ export function resolveCorpus(
     duplicates,
     protocols: new Map(extracted.flatMap((entry) => entry.protocols).map((protocol) => [protocol.id, protocol])),
     figures: extracted.flatMap((entry) => entry.figures),
+    paths: extracted.flatMap((entry) => entry.paths),
+    pathsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.pathsAllowed)])),
   };
 }
 

@@ -118,6 +118,7 @@ follows `npx --no-install @spec-family/` at a prompt.
 | `undated-result` | error | A measurement protocol whose result names no date and does not say none yet |
 | `target-without-protocol` | error | A claim whose label asks for a measurement and cites no protocol |
 | `unrecorded-figure` | error | A figure marked `@spec-figure` that names no record, or one with no dated result |
+| `missing-path` | error | A path an orientation document names in a code span that the repository does not hold |
 
 Override any of them:
 
@@ -419,10 +420,32 @@ measurement. Name where protocols are written, and what each must say:
 
 See [ADR-0028](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md).
 
+### Orientation documents, naming what exists
+
+A switchboard such as `CLAUDE.md`, or a brief handed to the next session,
+names files and commits, and an agent that writes one names things that do not
+exist. Name those documents, and what they name is held to the repository:
+
+```json
+{ "orientation": { "files": ["CLAUDE.md", "docs/*-brief.md"], "extensions": [".md", ".ts"], "roots": ["spec"] } }
+```
+
+- A code span is a path where it reads as one: letters, digits and
+  `. _ - / + @ ~`, holding a `/` or ending in one of `extensions`, and not
+  opening with `-`, `@` or `~`. `npm run lint`, `E0310` and `.to<U>()` are
+  none. An `#anchor` or `:42` after it is left off.
+- It is looked for from the document's directory, from the root, and, for a
+  bare file name, under each of `roots`. `missing-path` where none holds it.
+- `<!-- @spec-path created="docs/plan.md" external="dist/cli.js" -->` marks a
+  path the document's work creates, or another repository's.
+- A commit it names is looked for in git, as a checklist's is.
+
+See [ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md).
+
 ### Commits, looked for in git
 
-A commit a checklist, a ledger or a register names, `commit "Subject"` or
-`commit 1a2b3c4`, must be in the history of `gitRef`, `HEAD` unless set:
+A commit a checklist, a ledger, a register or an orientation document names,
+`commit "Subject"` or `commit 1a2b3c4`, must be in the history of `gitRef`, `HEAD` unless set:
 `unknown-commit` otherwise. A subject is matched as written, a hash as the
 start of an id.
 
@@ -750,6 +773,7 @@ Directives are ordinary HTML comments — invisible in every Markdown renderer:
 <!-- @spec-ignore -->
 <!-- @spec-history -->
 <!-- @spec-figure record="ROADMAP.md#refund-latency" -->
+<!-- @spec-path created="docs/plan.md" -->
 ```
 
 Each takes these attributes. Any other is a parse problem, listed by
@@ -763,6 +787,7 @@ Each takes these attributes. Any other is a parse problem, listed by
 | `@spec-ignore` | `reason` |
 | `@spec-history` | none |
 | `@spec-figure` | `record`, `reason` |
+| `@spec-path` | `created`, `external`, `reason` |
 
 - `reason`, `note`, `owner` and a node's `kind` are for whoever reads the
   source; spec-graph reads nothing from them.
@@ -1059,6 +1084,7 @@ command. spec-graph reads the first of `.spec-graph.json`,
   "gitRef": "origin/main",
   "registers": { "files": ["docs/review.md"], "statuses": { "open": {}, "done": { "closes": true, "needs": ["commit"] } } },
   "protocols": { "files": ["ROADMAP.md"], "heading": "Measurement protocols", "result": "Last result" },
+  "orientation": { "files": ["CLAUDE.md"], "extensions": [".md"], "roots": ["spec"] },
   "rules": {
     "no-draft-dependency": {
       "query": "document[phase=active] -depends-on-> document[phase=draft]",
@@ -1099,13 +1125,14 @@ which file was read, on stderr with everything else a run says about itself, so
 it can be combined with any `--format` and leave the document on stdout intact.
 `--no-config` skips the mechanism entirely.
 
-`claims`, `checklists`, `ledgers`, `registers`, `protocols` and `gitRef` have
-no flag either: which documents hold claims and are held to them, and which history
+`claims`, `checklists`, `ledgers`, `registers`, `protocols`, `orientation` and
+`gitRef` have no flag either: which documents hold claims and are held to them, and which history
 their commits are looked for in, are the repository's
 ([claims](#claims-with-their-labels),
 [checklists and ledgers](#checklists-and-ledgers-held-to-what-they-cite),
 [registers](#registers-many-specifications-in-one-file),
 [figures](#figures-resting-on-a-record),
+[orientation documents](#orientation-documents-naming-what-exists),
 [commits](#commits-looked-for-in-git)).
 
 `maxRelated` has no flag. It caps how many related locations one finding lists
@@ -1763,6 +1790,7 @@ Twenty-three ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0026 — A completion cites its evidence](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md)
 - [ADR-0027 — A register row is held to its status](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)
 - [ADR-0028 — A figure rests on a record](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md)
+- [ADR-0029 — An orientation document names what exists](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

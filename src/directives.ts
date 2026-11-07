@@ -18,9 +18,9 @@
  * an override is visible rather than mysterious.
  */
 
-import { isMarkdownLine, type HtmlComment, type ListItem, type ScannedDocument } from './markdown.js';
+import { bindToItems, type HtmlComment, type ListItem, type ScannedDocument } from './markdown.js';
 
-export type DirectiveName = 'spec-node' | 'spec-item' | 'spec-edge' | 'spec-ignore' | 'spec-history' | 'spec-figure';
+export type DirectiveName = 'spec-node' | 'spec-item' | 'spec-edge' | 'spec-ignore' | 'spec-history' | 'spec-figure' | 'spec-path';
 
 const KNOWN: ReadonlySet<string> = new Set<DirectiveName>([
   'spec-node',
@@ -29,6 +29,7 @@ const KNOWN: ReadonlySet<string> = new Set<DirectiveName>([
   'spec-ignore',
   'spec-history',
   'spec-figure',
+  'spec-path',
 ]);
 
 export interface Attribute {
@@ -63,6 +64,8 @@ const SCHEMA: Readonly<Record<DirectiveName, readonly string[]>> = {
   'spec-ignore': ['reason'],
   // A figure the document states, and the record it rests on (ADR-0028).
   'spec-figure': ['record', 'reason'],
+  // Paths a document may name that the repository does not hold (ADR-0029).
+  'spec-path': ['created', 'external', 'reason'],
 };
 
 /**
@@ -185,66 +188,11 @@ export function bindItemDirectives(
   scanned: ScannedDocument,
   directives: readonly Directive[],
 ): Map<ListItem, Directive> {
-  const bound = new Map<ListItem, Directive>();
+  // The rule is spec-core's, `bindToItems`, which spec-brief reads by too.
   const wanted = directives.filter((directive) => directive.name === 'spec-item');
-  // Most documents carry none. Sparing them the pass over their lines changes
-  // how long this takes and nothing else.
-  if (wanted.length === 0) return bound;
-
-  const { lines, listItems } = scanned;
-  const masked = scanned.masks.structure;
-  // The indentation of each line holding nothing but whitespace and comments.
-  // Code and raw-text HTML are masked too, so they are told apart by their flags.
-  const quiet = new Map<number, number>();
-  // For every other line, where the run of quiet lines directly above it began,
-  // when there was one.
-  const quietFrom = new Map<number, number | undefined>();
-  let run: number | undefined;
-  for (const line of lines) {
-    if (isMarkdownLine(line) && masked.slice(line.contentStart, line.end).trim() === '') {
-      quiet.set(line.line, line.indent);
-      run ??= line.start;
-      continue;
-    }
-    quietFrom.set(line.line, run);
-    run = undefined;
-  }
-
-  // The items whose text the cursor is in, outermost first. Items nest, so one
-  // that has ended is always on top. An item ends at the end of a line, the next
-  // thing starts on a later one, and no two things start together, so `<` and
-  // `<=` read alike in every comparison of offsets below.
-  const open: ListItem[] = [];
-  const close = (offset: number): void => {
-    while (open.length > 0 && open[open.length - 1]!.end <= offset) open.pop();
-  };
-  let next = 0;
-  for (const directive of wanted) {
-    while (next < listItems.length && (listItems[next] as ListItem).start < directive.start) {
-      const item = listItems[next] as ListItem;
-      close(item.start);
-      open.push(item);
-      next += 1;
-    }
-    close(directive.start);
-
-    // Sharing its line with text, a directive is in whatever that text is in.
-    const indent = quiet.get(directive.line) ?? Infinity;
-    // No deeper than the scanner already went to find where these items end.
-    let depth = open.length - 1;
-    while (depth >= 0 && (open[depth] as ListItem).indent >= indent) depth -= 1;
-    const holder = open[depth];
-
-    const below = listItems[next];
-    const directlyAbove = below !== undefined && (quietFrom.get(below.line) ?? Infinity) <= directive.start;
-    if (directlyAbove && (holder === undefined || below.start < holder.end)) {
-      bound.set(below, directive);
-      continue;
-    }
-    // Flush under an item and above no other, it continues the item as any
-    // unindented line does.
-    const written = holder ?? open[open.length - 1];
-    if (written !== undefined) bound.set(written, directive);
-  }
+  const bound = new Map<ListItem, Directive>();
+  bindToItems(scanned, wanted).forEach((item, at) => {
+    if (item !== null) bound.set(item, wanted[at]!);
+  });
   return bound;
 }

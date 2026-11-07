@@ -11,6 +11,14 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Fixed
+
+- **`diff`'s verdict names a claim's label as what changed**: "1 claim
+  label changed.", where 0.23.0 wrote "1 claim relabelled changed.". The
+  Claims section of the report, the summary and JSON are as they were.
+
 ## 0.23.0
 
 What a document that orients a reader names is held to the repository,

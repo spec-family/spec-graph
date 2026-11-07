@@ -9,6 +9,8 @@ import { parseConfig } from '../src/config.js';
 import { extractDocument } from '../src/extract.js';
 import { HistoryError, readHistory } from '../src/git.js';
 import { historyOf, holdsCommit, type CommitHistory } from '../src/history.js';
+import { buildGraph } from '../src/graph.js';
+import { runRules } from '../src/rules.js';
 import { analyseSources, createClaimReader, createPathMatcher } from '../src/runner.js';
 import type { ClaimsConfig, Diagnostic } from '../src/types.js';
 
@@ -107,6 +109,18 @@ describe('a checklist', () => {
     ]);
   });
 
+  it('fails a done item whose only citation is an item that is no claim, and says how to cite one', () => {
+    const roadmap = doc('# Roadmap', '', '## Open Questions', '', '<!-- @spec-item id="retry-policy" -->', '- Which retry policy?', '', '## Done', '', '- [x] Retries ([policy](#retry-policy)).', '');
+    const { diagnostics } = analyseSources([{ path: 'ROADMAP.md', text: roadmap }], { isChecklist: createPathMatcher(['ROADMAP.md']), history: HISTORY });
+    expect(diagnostics.filter((d) => d.rule === 'unevidenced-completion')).toMatchObject([
+      {
+        nodes: ['ROADMAP#done.1'],
+        related: [],
+        hint: 'cite the claim that shows it, as [name](spec/file.md#claim-id), or name the commit that did it, as commit "Subject"',
+      },
+    ]);
+  });
+
   it('leaves a claim in a checklist to its own evidence', () => {
     const { diagnostics } = analyseSources([{ path: 'ROADMAP.md', text: doc('# Roadmap', '', '- [x] `Implemented`: a claim, ticked.', '') }], {
       claimsIn: createClaimReader({ files: ['ROADMAP.md'], labels: { Implemented: 'done' } }),
@@ -154,8 +168,29 @@ describe('a ledger', () => {
   });
 
   it('reads no register and no table without a status column as a ledger', () => {
-    const text = doc('# S', '', '| ID | Status |', '| --- | --- |', '| RFC-0001 | Accepted |', '', '| Feature | Owner |', '| --- | --- |', '| Refunds | done |', '');
-    expect(extractDocument({ path: 'docs/STATUS.md', text, ledger: true })?.items).toEqual([]);
+    const text = doc('# S', '', '| ID | Status |', '| --- | --- |', '| RFC-0001 | done |', '', '| Feature | Owner |', '| --- | --- |', '| Refunds | done |', '');
+    // Every specification the file holds, its register's rows among them.
+    const { corpus } = analyseSources([{ path: 'docs/STATUS.md', text }], { isLedger: createPathMatcher(['docs/STATUS.md']) });
+    expect(corpus.documents.map((document) => document.id)).toEqual(['STATUS', 'RFC-0001']);
+    expect(corpus.items).toEqual([]);
+  });
+
+  it('names a row by the section it is in, or the document above every heading, and says it was not declared', () => {
+    const text = doc('| Feature | Status |', '| --- | --- |', '| Refunds | done (in 0.3) |', '', '# Status', '');
+    const [row] = extractDocument({ path: 'docs/STATUS.md', text, ledger: true })!.items;
+    expect(row).toMatchObject({
+      id: 'STATUS#item-row.1',
+      declared: false,
+      disposition: 'satisfied',
+      body: '| Refunds | done (in 0.3) |',
+      evidence: { source: 'marker', raw: 'done', at: { span: { start: { line: 3, column: 13 } } } },
+    });
+  });
+
+  it('is read only where the configuration says a document is one', () => {
+    const table = doc('# Plan', '', '| Feature | Status |', '| --- | --- |', '| Refunds | done |', '');
+    const { corpus } = analyseSources([{ path: 'docs/plan.md', text: table }], { isLedger: createPathMatcher(['docs/STATUS.md']) });
+    expect(corpus.items).toEqual([]);
   });
 
   it('holds a done list item in a ledger as a checklist holds one, but not to evidence', () => {
@@ -198,7 +233,26 @@ describe('a commit a checked document names', () => {
   });
 
   it('is looked for only in a checklist or a ledger, and nowhere else is a history needed', () => {
-    expect(findings({ 'docs/notes.md': doc('# Notes', '', 'Fixed in commit 9999999.', '') }, {})).toEqual([]);
+    const notes = { 'docs/notes.md': doc('# Notes', '', 'Fixed in commit 9999999.', '') };
+    expect(findings(notes, {})).toEqual([]);
+    expect(findings(notes)).toEqual([]);
+  });
+
+  it('is looked for in a ledger, with or without a checklist configured', () => {
+    const status = doc('# Status', '', '- [x] Exports (commit 9999999).', '');
+    expect(findings({ 'docs/STATUS.md': status })).toEqual(['unknown-commit docs/STATUS.md:3 commit 9999999 is not in the history of HEAD']);
+    const alone = analyseSources([{ path: 'docs/STATUS.md', text: status }], { isLedger: createPathMatcher(['docs/STATUS.md']), history: HISTORY });
+    expect(alone.diagnostics.map((d) => d.rule)).toEqual(['unknown-commit']);
+    expect(() => analyseSources([{ path: 'docs/STATUS.md', text: status }], { isLedger: createPathMatcher(['docs/STATUS.md']) })).toThrow('no history was given');
+  });
+
+  it('is looked for by no rule given no history, as runRules is called on its own', () => {
+    const { corpus } = analyseSources([{ path: 'ROADMAP.md', text: doc('# R', '', '- [x] Retries (commit 9999999).', '') }], {
+      isChecklist: createPathMatcher(['ROADMAP.md']),
+      history: HISTORY,
+    });
+    const graph = buildGraph({ nodes: corpus.nodes, edges: corpus.edges });
+    expect(runRules(graph, corpus, { isChecklist: createPathMatcher(['ROADMAP.md']) }).map((d) => d.rule)).toEqual([]);
   });
 
   it('refuses to run unlooked-for, where a checked document names one and no history was given', () => {
@@ -221,6 +275,12 @@ describe('the history of a ref', () => {
     expect(holdsCommit(historyOf('main', ''), { kind: 'hash', value: '0000' })).toBe(false);
     expect(holdsCommit(history, { kind: 'subject', value: 's' })).toBe(true);
     expect(holdsCommit(history, { kind: 'subject', value: 'S' })).toBe(false);
+  });
+
+  it('is asked of no file where no pattern names one', () => {
+    expect(createPathMatcher([])).toBeUndefined();
+    expect(createPathMatcher(undefined)).toBeUndefined();
+    expect(createPathMatcher(['ROADMAP.md'])!('ROADMAP.md')).toBe(true);
   });
 });
 
@@ -290,6 +350,32 @@ describe('git, at the edge', () => {
       await rm(shallow, { recursive: true, force: true });
     }
   });
+
+  it('names its refusals as a history that cannot be read', async () => {
+    await expect(readHistory(root, 'no-such-branch')).rejects.toMatchObject({ name: 'HistoryError' });
+  });
+
+  it('reads a log past a megabyte, as a history of tens of thousands of commits writes', async () => {
+    const big = `${root}-big`;
+    await rm(big, { recursive: true, force: true });
+    await mkdir(big, { recursive: true });
+    try {
+      git(big, 'init', '-q');
+      // fast-import writes twenty thousand commits in one process, where a
+      // commit at a time would take minutes.
+      const subject = 'x'.repeat(80);
+      const stream = Array.from({ length: 20_000 }, (_, at) => {
+        const message = `${subject} ${at}\n`;
+        return `commit refs/heads/main\ncommitter Test <test@example.invalid> ${1_700_000_000 + at} +0000\ndata ${Buffer.byteLength(message)}\n${message}`;
+      }).join('');
+      execFileSync('git', ['fast-import', '--quiet'], { cwd: big, input: stream });
+      const history = await readHistory(big, 'refs/heads/main');
+      expect(history.hashes).toHaveLength(20_000);
+      expect(history.subjects.has(`${subject} 19999`)).toBe(true);
+    } finally {
+      await rm(big, { recursive: true, force: true });
+    }
+  }, 60_000);
 
   it('refuses to run where git is not on PATH', async () => {
     const path = process.env['PATH'];

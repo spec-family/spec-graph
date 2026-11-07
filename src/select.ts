@@ -317,6 +317,7 @@ export const SELECTOR_KEYS: readonly string[] = Object.freeze([
   'file',
   'id',
   'kind',
+  'label',
   'line',
   'openness',
   'path',
@@ -401,6 +402,8 @@ export function attributesOf(node: SpecNode, key: string, graph?: SpecGraph): st
       return [node.evidence.source];
     case 'conflicted':
       return [node.conflicts.length > 0 ? 'true' : 'false'];
+    case 'label':
+      return node.label === null ? [] : [node.label];
     default:
       return [];
   }

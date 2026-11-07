@@ -298,14 +298,30 @@ export interface ItemNode extends NodeBase {
   readonly evidence: StateSignal;
   /** Conflicting signals found while resolving the state. */
   readonly conflicts: readonly StateSignal[];
+  /**
+   * The label the item opens with, where it is a claim: a list item in a
+   * document `claims.files` names that opens with one of `claims.labels` as a
+   * code span. `null` for every other item (ADR-0024).
+   */
+  readonly label: string | null;
 }
 
 export type SpecNode = DocumentNode | ItemNode;
 
+/**
+ * Which documents hold claims, and what each label means for work, in the
+ * words `@spec-item state=` takes: `{ "files": ["spec/*.md"], "labels": {
+ * "Implemented": "done", "Specified": "open" } }` (ADR-0024).
+ */
+export interface ClaimsConfig {
+  readonly files: readonly string[];
+  readonly labels: Readonly<Record<string, string>>;
+}
+
 /** One observation about an item state. */
 export interface StateSignal {
   /** Higher wins. See `SIGNAL_PRIORITY` in `state.ts`. */
-  readonly source: 'directive' | 'marker' | 'strikethrough' | 'checkbox' | 'section' | 'default';
+  readonly source: 'directive' | 'label' | 'marker' | 'strikethrough' | 'checkbox' | 'section' | 'default';
   readonly disposition: Disposition;
   /** The literal text that produced the signal. */
   readonly raw: string;

@@ -277,6 +277,7 @@ describe('the documented selector vocabulary', () => {
       at: { file: 'a.md', span: { start: { offset: 0, line: 5, column: 1 }, end: { offset: 0, line: 5, column: 1 } } },
     },
     conflicts: [],
+    label: 'Specified',
   };
 
   it('is listed in the CLI help', () => {

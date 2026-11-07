@@ -301,6 +301,43 @@ heading of its level. Every other bullet is the document's own prose.
 `Work Items`, `Remaining Work`, `Decisions Needed`, `Blockers`, `Parking Lot`,
 `Future Work`, `Deferred`.
 
+### Claims, with their labels
+
+A specification can mark each thing it says with how far it holds, and
+`claims` in the configuration makes each such claim an item whose state is
+its label:
+
+```md
+- `Implemented`: a refund over the captured amount is refused.
+- `Specified`: a partial refund carries a reason.
+```
+
+```json
+{
+  "claims": {
+    "files": ["spec/*.md"],
+    "labels": { "Implemented": "done", "Specified": "open", "Target": "open", "Hypothesis": "open" }
+  }
+}
+```
+
+- A claim is a list item whose text opens with a label as a code span, after
+  a checkbox where there is one, exact in case: the reading spec-guard holds
+  a claim to its evidence by.
+- What a label means is a `state=` word, as `@spec-item` takes one, so the
+  repository says which labels leave work open. A word that names no state
+  stops the run with exit `2`.
+- The label outranks every other signal but a directive, and a checkbox or
+  marker that disagrees with it about whether work remains is a
+  `state-conflict`.
+- `<!-- @spec-item id="refund-limit" -->` names a claim, and
+  `[refund limits](spec/refunds.md#refund-limit)` cites it.
+- `item[label=Specified]` selects claims by label, and the graph export and a
+  query's JSON give each claim its `label`.
+- `claims.files` that match no file the run reads stop the run with exit `2`.
+
+See [ADR-0024](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md).
+
 ### References, resolved forgivingly and validated strictly
 
 All of these reach the same document:
@@ -703,7 +740,7 @@ document[phase=active] -delegates-to-> item[openness=open]
 Node types   document · item · *        (also documents docs doc items nodes node any)
 Attributes   id kind title path file line phase status receptivity alias
              document state (or disposition) openness section text body
-             evidence conflicted fm.<front-matter-key>
+             evidence conflicted label fm.<front-matter-key>
 Operators    =  !=  ^=  $=  *=  ~=   and [attr] for "is present"
 Relations    -kind->   <-kind-   =kind=>   <=kind=      (= forms are transitive)
              comma-separate kinds: -assumes,depends-on->
@@ -883,6 +920,7 @@ command. spec-graph reads the first of `.spec-graph.json`,
   "severities": { "self-reference": "off" },
   "strict": true,
   "maxRelated": 3,
+  "claims": { "files": ["spec/*.md"], "labels": { "Implemented": "done", "Specified": "open" } },
   "rules": {
     "no-draft-dependency": {
       "query": "document[phase=active] -depends-on-> document[phase=draft]",
@@ -922,6 +960,9 @@ decision to discard what the repository already declared. `--verbose` prints
 which file was read, on stderr with everything else a run says about itself, so
 it can be combined with any `--format` and leave the document on stdout intact.
 `--no-config` skips the mechanism entirely.
+
+`claims` has no flag either: which documents hold claims, and what each label
+means, are the repository's ([claims](#claims-with-their-labels)).
 
 `maxRelated` has no flag. It caps how many related locations one finding lists
 — the lines under it in the terminal, `related` in JSON, `relatedLocations` in
@@ -1573,6 +1614,7 @@ Twenty-three ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0021 — Releases are published by CI, with provenance](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0021-releases-are-published-by-ci.md)
 - [ADR-0022 — Globs are the family's path dialect](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0022-globs-are-the-family-path-dialect.md)
 - [ADR-0023 — The scanner is the family's](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0023-the-scanner-is-the-familys.md)
+- [ADR-0024 — A claim's label is its state](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

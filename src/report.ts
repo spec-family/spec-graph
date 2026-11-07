@@ -957,6 +957,8 @@ function serialiseNode(node: SpecNode): Record<string, unknown> {
         section: node.section,
         disposition: node.disposition,
         openness: node.openness,
+        // Only a claim says one, so an export of a repository with none is as it was.
+        ...(node.label === null ? {} : { label: node.label }),
       };
 }
 

@@ -33,11 +33,13 @@ const ROADMAP = doc(
   '#### Notes',
   '',
   'Nothing a protocol of its own.',
+  '- **Corpus**:the examples.',
   '',
   '### Agent pass rate',
   '',
   '**Method:** the same tasks in two languages.',
   '**Agent**: one model, one harness.',
+  '-  **Tasks :** forty.',
   '**Last result:** none yet.',
   '',
   '## Later',
@@ -66,11 +68,12 @@ describe('a measurement protocol', () => {
   it('is each section one level under the heading, with the fields it writes, an item closed by a dated result', () => {
     const extracted = extractDocument({ path: 'ROADMAP.md', text: ROADMAP, protocols: { heading: 'measurement protocols', result: 'last result' } })!;
     expect(extracted.protocols.map((p) => [p.id, p.anchor, p.title, p.fields.map((f) => `${f.name}=${f.value}`), p.result?.dated, p.result?.none])).toEqual([
-      ['ROADMAP#refund-latency', 'refund-latency', 'Refund latency', ['Method=1,000 refunds after 100 warm-up runs; the median.', 'Last result=(2026-11-05, a laptop): a median of 4 ms.'], true, false],
-      ['ROADMAP#agent-pass-rate', 'agent-pass-rate', 'Agent pass rate', ['Method=the same tasks in two languages.', 'Agent=one model, one harness.', 'Last result=none yet.'], false, true],
+      ['ROADMAP#refund-latency', 'refund-latency', 'Refund latency', ['Method=1,000 refunds after 100 warm-up runs; the median.', 'Last result=(2026-11-05, a laptop): a median of 4 ms.', 'Corpus=the examples.'], true, false],
+      ['ROADMAP#agent-pass-rate', 'agent-pass-rate', 'Agent pass rate', ['Method=the same tasks in two languages.', 'Agent=one model, one harness.', 'Tasks=forty.', 'Last result=none yet.'], false, true],
     ]);
     expect(extracted.items.map((item) => [item.conflicts, item.label])).toEqual([[[], null], [[], null]]);
-    expect(extracted.items[1]!.body).toBe('Method: the same tasks in two languages.\nAgent: one model, one harness.\nLast result: none yet.');
+    expect(extracted.items[1]!.body).toBe('Method: the same tasks in two languages.\nAgent: one model, one harness.\nTasks: forty.\nLast result: none yet.');
+    expect(extracted.items.map((item) => item.kind)).toEqual(['item', 'item']);
     expect(extracted.items.map((item) => [item.id, item.declared, item.disposition, item.evidence.source, item.evidence.raw])).toEqual([
       ['ROADMAP#refund-latency', true, 'satisfied', 'marker', '(2026-11-05, a laptop): a median of 4 ms.'],
       ['ROADMAP#agent-pass-rate', true, 'unresolved', 'marker', 'none yet.'],
@@ -187,12 +190,35 @@ describe('a figure marked @spec-figure', () => {
 
   it('fails naming no record, or a record that is no protocol, and leaves one that does not resolve to broken-reference', () => {
     expect(findings({ 'docs/report.md': report('reason="measured once"') })).toEqual(['unrecorded-figure docs/report.md:3 the figure names no record']);
+    expect(analysed({ 'docs/report.md': report('reason="measured once"') }).diagnostics.find((d) => d.rule === 'unrecorded-figure')?.related).toEqual([]);
+    expect(findings({ 'docs/report.md': report('record="../NOWHERE.md#refund-latency"') })).toEqual([
+      'broken-reference docs/report.md:3 "../NOWHERE.md#refund-latency" does not resolve to any document',
+    ]);
     expect(findings({ 'docs/report.md': report('record="../ROADMAP.md"') })).toEqual([
       "unrecorded-figure docs/report.md:3 the figure's record, ../ROADMAP.md, is no measurement protocol",
     ]);
     expect(findings({ 'docs/report.md': report('record="../ROADMAP.md#refund-latencies"') })).toEqual([
       'broken-reference docs/report.md:3 "../ROADMAP.md#refund-latencies" points at an anchor that does not exist',
     ]);
+  });
+
+  it('fails resting on a protocol that writes no result', () => {
+    const roadmap = doc('# Roadmap', '', '## Measurement protocols', '', '### Fees', '', '- **Method**: cents.', '');
+    expect(findings({ 'ROADMAP.md': roadmap, 'docs/report.md': report('record="../ROADMAP.md#fees"') })).toEqual([
+      'incomplete-protocol ROADMAP.md:5 "Fees" lacks "Last result"',
+      'unrecorded-figure docs/report.md:3 the figure rests on "Fees", which has no dated result',
+    ]);
+  });
+
+  it('is held to its own record, beside another figure in the same document', () => {
+    const text = doc('# Report', '', '<!-- @spec-figure record="../ROADMAP.md#refund-latency" -->', 'Refunds take 4 ms.', '', '<!-- @spec-figure record="../ROADMAP.md#agent-pass-rate" -->', 'Agents pass.', '');
+    expect(findings({ 'docs/report.md': text })).toEqual(['unrecorded-figure docs/report.md:6 the figure rests on "Agent pass rate", which has no dated result']);
+  });
+
+  it('is read only from @spec-figure, and a record another directive gives names nothing', () => {
+    const text = doc('# Report', '', '<!-- @spec-node record="../NOWHERE.md" -->', 'Refunds take 4 ms.', '');
+    expect(findings({ 'docs/report.md': text })).toEqual([]);
+    expect(analysed({ 'docs/report.md': text }).corpus.figures).toEqual([]);
   });
 
   it('is held where no protocols are configured, its record then no protocol', () => {
@@ -227,7 +253,7 @@ describe('protocols in the configuration', () => {
   it('reads every part, and the parts it may go without', () => {
     expect(parseConfig(JSON.stringify({ protocols: CONFIG }), 'x')).toMatchObject({ problems: [], config: { protocols: CONFIG } });
     const bare = { files: ['ROADMAP.md'], heading: 'Measurement protocols', result: 'Last result' };
-    expect(parseConfig(JSON.stringify({ protocols: bare }), 'x').config.protocols).toEqual(bare);
+    expect(parseConfig(JSON.stringify({ protocols: bare }), 'x').config.protocols).toStrictEqual(bare);
     expect(createProtocolCheck(undefined)).toBeUndefined();
     expect(createProtocolCheck({ ...bare, heading: ' Measurement Protocols ', result: ' Last Result ' })).toMatchObject({
       heading: 'measurement protocols',
@@ -256,6 +282,8 @@ describe('protocols in the configuration', () => {
     expect(problems({ ...base, fields: { '*': 'Method' } })).toEqual([at('"protocols.fields" must be an object of protocol anchor, or "*" for every protocol, to the fields it must write')]);
     expect(problems({ ...base, claims: 'Target' })).toEqual([at('"protocols.claims" must be an array of labels')]);
     expect(problems({ ...base, claims: [' '] })).toEqual([at('"protocols.claims" must be an array of labels')]);
+    expect(problems({ ...base, claims: [3] })).toEqual([at('"protocols.claims" must be an array of labels')]);
+    expect(problems({ ...base, fields: { '*': ['Method'], fees: 'Unit' } })).toEqual([at('"protocols.fields" must be an object of protocol anchor, or "*" for every protocol, to the fields it must write')]);
     expect(problems({ ...base, kind: 'timing' })).toEqual([at('unknown key "protocols.kind"')]);
     expect(parseConfig(JSON.stringify({ protocols: { ...base, kind: 'timing' } }), 'x').config.protocols).toBeUndefined();
   });

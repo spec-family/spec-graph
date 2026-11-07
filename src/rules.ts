@@ -972,7 +972,8 @@ function protocolFindings(graph: SpecGraph, corpus: ResolvedCorpus, options: Rul
   // A figure is held wherever it is marked, protocols configured or not: one
   // marked where none are has no record to rest on.
   for (const figure of corpus.figures) {
-    const edge = corpus.edges.find((candidate) => candidate.origin === 'directive' && sameStart(candidate.declaredAt, figure.recordAt));
+    // Only the directive declares an edge where its record is written.
+    const edge = corpus.edges.find((candidate) => sameStart(candidate.declaredAt, figure.recordAt));
     // A record that does not resolve is a broken reference already, and one
     // defect is one finding.
     if (figure.record.length > 0 && edge === undefined) continue;
@@ -1020,6 +1021,8 @@ function protocolFindings(graph: SpecGraph, corpus: ResolvedCorpus, options: Rul
     }
   }
   for (const item of graph.items) {
+    // An item that is no claim has a label of null, which no set of labels
+    // holds: the first test is for the type, and its mutant is equivalent.
     if (item.label === null || !check.claims.has(item.label)) continue;
     // An item contains nothing, so every edge from one is a citation.
     if (graph.out(item.id).some((edge) => corpus.protocols.has(edge.to))) continue;

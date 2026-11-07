@@ -920,7 +920,7 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     ...extractItems({ scanned, directives, ownerAt, file, index, claims: input.claims }),
     ...(input.ledger === true ? extractLedgerRows({ scanned, ownerAt, file, index }) : []),
   ];
-  const protocols = input.protocols === undefined ? [] : extractProtocols({ scanned, ...input.protocols, ownerAt, file, index });
+  const protocols = extractProtocols({ scanned, config: input.protocols, ownerAt, file, index });
   allItems.push(...protocols.map((protocol) => protocol.item));
   const commits: CommitCitation[] = findCommitReferences(scanned).map((reference) => ({
     owner: ownerOf(allItems, reference.start) ?? ownerAt(reference.start),
@@ -1380,17 +1380,15 @@ function ledgerItem(input: {
 
 interface ProtocolContext {
   readonly scanned: ScannedDocument;
-  /** The heading's text, in lower case. */
-  readonly heading: string;
-  /** The result field's name, in lower case. */
-  readonly result: string;
+  /** The heading and the result field's name, in lower case, where the file holds protocols. */
+  readonly config: { readonly heading: string; readonly result: string } | undefined;
   readonly ownerAt: (offset: number) => string;
   readonly file: string;
   readonly index: LineIndex;
 }
 
 /** A field a protocol writes: `**Corpus**: every module`, `- **Last result:** none yet`. */
-const PROTOCOL_FIELD = /^(?:[-*+]\s+)?\*\*([^*]+?)\*\*\s*:?\s*(.*)$/;
+const PROTOCOL_FIELD = /^(?:[-*+]\s+)?\*\*([^*]+?):?\*\*:?\s*(.*)/;
 
 /** A result that says when it was measured, by an ISO date. */
 const DATED = /\b\d{4}-\d{2}-\d{2}\b/;
@@ -1406,7 +1404,9 @@ const NONE_YET = /^(?:\*\*|__|\*|_)?none yet\b/i;
  * (ADR-0028).
  */
 function extractProtocols(context: ProtocolContext): { item: ItemNode; protocol: Protocol }[] {
-  const { scanned, heading, result, ownerAt, file, index } = context;
+  if (context.config === undefined) return [];
+  const { scanned, ownerAt, file, index } = context;
+  const { heading, result } = context.config;
   const headings = scanned.headings;
   const top = headings.findIndex((candidate) => candidate.text.toLowerCase() === heading);
   if (top === -1) return [];
@@ -1428,9 +1428,9 @@ function extractProtocols(context: ProtocolContext): { item: ItemNode; protocol:
       // line that starts where the next heading does is that heading, which
       // writes no field: `<=` for the `<` and `>` for the `>=` answer alike.
       if (line.start < section.end || line.start >= end || !isMarkdownLine(line)) continue;
-      const found = PROTOCOL_FIELD.exec(scanned.masks.structure.slice(line.contentStart, line.end).trim());
+      const found = PROTOCOL_FIELD.exec(scanned.masks.structure.slice(line.contentStart, line.end));
       if (found === null) continue;
-      fields.push({ name: found[1]!.replace(/:$/, '').trim(), value: scanned.text.slice(line.contentStart, line.end).trim().replace(PROTOCOL_FIELD, '$2'), at: refOf(file, index, line.contentStart, line.end) });
+      fields.push({ name: found[1]!.trim(), value: scanned.text.slice(line.contentStart, line.end).trim().replace(PROTOCOL_FIELD, '$2'), at: refOf(file, index, line.contentStart, line.end) });
     }
     const documentId = ownerAt(section.start);
     const id = `${documentId}#${section.anchor}`;
@@ -1684,6 +1684,8 @@ function extractReferences(context: ReferenceContext): ReferenceCandidate[] {
   // A figure's record is a citation the directive makes: one that does not
   // resolve is a broken reference like any other (ADR-0028).
   for (const directive of directives) {
+    // Another directive given a record names nothing: the attribute is a
+    // parse problem there, as any it does not take.
     if (directive.name !== 'spec-figure') continue;
     const record = attr(directive, 'record');
     if (!record) continue;

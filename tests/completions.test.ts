@@ -271,7 +271,7 @@ describe('a commit a checked document names', () => {
 
   it('refuses to run unlooked-for, where a checked document names one and no history was given', () => {
     expect(() => findings({ 'ROADMAP.md': doc('# R', '', '- [x] Limits (commit 1a2b3c4).', '') }, {})).toThrow(
-      'a checklist or a ledger names a commit, and no history was given to look for it in: pass "history"',
+      'a checklist, a ledger or a register names a commit, and no history was given to look for it in: pass "history"',
     );
   });
 });

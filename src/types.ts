@@ -309,6 +309,35 @@ export interface ItemNode extends NodeBase {
 export type SpecNode = DocumentNode | ItemNode;
 
 /**
+ * Which registers are held to a status vocabulary, and what each status asks
+ * for: `{ "files": ["docs/review.md"], "resolution": "Proposed resolution",
+ * "statuses": { "open": {}, "proposed": { "needs": ["resolution"] }, "done":
+ * { "closes": true, "needs": ["citation", "commit"] } } }` (ADR-0027).
+ */
+export interface RegistersConfig {
+  readonly files: readonly string[];
+  /** The header of the column a resolution is written in. */
+  readonly resolution?: string | undefined;
+  readonly statuses: Readonly<Record<string, { readonly closes?: boolean | undefined; readonly needs?: readonly RegisterNeed[] | undefined }>>;
+}
+
+/** What a register row's status can ask for: a resolution, a citation of what it changed, the commit that changed it. */
+export type RegisterNeed = 'resolution' | 'citation' | 'commit';
+
+/** A register's row, by its cells, for a region a table's row declares (ADR-0027). */
+export interface RegisterRow {
+  readonly cells: readonly { readonly header: string; readonly text: string; readonly at: SourceRef }[];
+}
+
+/** A specification whose id another in the corpus already had: the second is not in the graph. */
+export interface DuplicateId {
+  readonly id: string;
+  readonly at: SourceRef;
+  /** Where the specification that kept the id was declared. */
+  readonly first: SourceRef;
+}
+
+/**
  * A commit a document names, `commit "Subject"` or `commit 1a2b3c4`, and
  * the node that names it: the item or the row it is written in, or else the
  * specification (ADR-0025).
@@ -431,7 +460,10 @@ export type RuleId =
   | 'unknown-relation-key'
   | 'unevidenced-completion'
   | 'premature-completion'
-  | 'unknown-commit';
+  | 'unknown-commit'
+  | 'duplicate-key'
+  | 'unknown-register-status'
+  | 'incomplete-register-row';
 
 /**
  * A rule a repository wrote for itself, as a selector plus a sentence.

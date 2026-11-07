@@ -30,7 +30,7 @@ import {
   withinOneEdit,
 } from './identity.js';
 import { basenamePosix, dirnamePosix, extnamePosix, resolveFrom } from './paths.js';
-import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation } from './types.js';
+import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, RegisterRow } from './types.js';
 
 export interface ResolveOptions {
   /**
@@ -95,6 +95,10 @@ export interface ResolvedCorpus {
   readonly families: readonly string[];
   /** Every commit the documents name, with the node that names it (ADR-0025). */
   readonly commits: readonly CommitCitation[];
+  /** Each register row kept as a table, by its specification's id (ADR-0027). */
+  readonly rows: ReadonlyMap<string, RegisterRow>;
+  /** Each specification whose id was already taken, and left out of the graph. */
+  readonly duplicates: readonly DuplicateId[];
 }
 
 /**
@@ -126,6 +130,11 @@ interface Index {
   readonly anchors: Map<string, ReadonlySet<string>>;
   readonly itemIds: Set<string>;
   readonly familyOf: Map<string, string | null>;
+  /**
+   * The specifications declared inside each file, by their ids in lower case:
+   * what an anchor into a register names, `register.md#refund-limit` its row.
+   */
+  readonly regionsOf: Map<string, Map<string, string>>;
 }
 
 /** Resolves every extracted reference against the whole corpus. */
@@ -139,6 +148,8 @@ export function resolveCorpus(
   const items: ItemNode[] = [];
   const problems: ParseProblem[] = [];
   const misreadKeys: MisreadKey[] = [];
+  const rows = new Map<string, RegisterRow>();
+  const duplicates: DuplicateId[] = [];
 
   for (const entry of extracted) {
     const existing = nodes.get(entry.document.id);
@@ -147,10 +158,12 @@ export function resolveCorpus(
         message: `duplicate document id "${entry.document.id}", already declared by ${existing.path}`,
         at: entry.document.at,
       });
+      duplicates.push({ id: entry.document.id, at: entry.document.at, first: existing.at });
       continue;
     }
     nodes.set(entry.document.id, entry.document);
     documents.push(entry.document);
+    if (entry.row !== null) rows.set(entry.document.id, entry.row);
     for (const item of entry.items) {
       // Nodes are keyed by id, so a second item would replace the first in the
       // graph while both were still counted, and one of them would vanish from
@@ -251,6 +264,8 @@ export function resolveCorpus(
     suppressed,
     families: [...index.families].sort(),
     commits: extracted.flatMap((entry) => entry.commits),
+    rows,
+    duplicates,
   };
 }
 
@@ -271,6 +286,7 @@ function buildIndex(extracted: readonly ExtractedDocument[]): Index {
     anchors: new Map(),
     itemIds: new Set(),
     familyOf: new Map(),
+    regionsOf: new Map(),
   };
 
   for (const entry of extracted) {
@@ -317,6 +333,13 @@ function buildIndex(extracted: readonly ExtractedDocument[]): Index {
     }
 
     for (const item of entry.items) index.itemIds.add(item.id);
+    const regions = new Map<string, string>();
+    for (const region of entry.subSpecifications) {
+      // The first to declare an id keeps it, as the graph keeps the first.
+      const key = region.document.id.toLowerCase();
+      if (!regions.has(key)) regions.set(key, region.document.id);
+    }
+    index.regionsOf.set(id, regions);
   }
 
   // A bucket seeded with anything but the empty list would hold a spelling no
@@ -672,6 +695,13 @@ function bindAnchor(
   // calling it broken.
   const loose = anchor.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
   if (anchors.has(loose)) return makeEdge(candidate, documentId);
+
+  // A specification declared inside the file, a register's row among them, is
+  // named by its id: `register.md#refund-limit` reaches the row that
+  // `refund-limit` names, which renders as no heading anywhere (ADR-0027).
+  // Every document registered its regions, none for most.
+  const region = index.regionsOf.get(documentId)!.get(anchor.toLowerCase());
+  if (region !== undefined) return makeEdge(candidate, region);
 
   const silenced = filteredBy(candidate.target, splitAnchor(candidate.target).target, options);
   if (silenced !== null) return suppression(candidate, silenced);

@@ -40,7 +40,9 @@ import type {
   SpecNode,
 } from './types.js';
 import { EDGE_TRAITS } from './types.js';
+import { formatRef } from './source.js';
 import { holdsCommit, type CommitHistory } from './history.js';
+import { missingOf, registerRows, statusWord, type RegisterCheck, type RegisterNeed } from './registers.js';
 
 /* -------------------------------------------------------------------------- */
 /* Configuration                                                              */
@@ -62,6 +64,9 @@ export const DEFAULT_SEVERITIES: Readonly<Record<RuleId, Severity>> = Object.fre
   'unevidenced-completion': 'error',
   'premature-completion': 'error',
   'unknown-commit': 'error',
+  'duplicate-key': 'error',
+  'unknown-register-status': 'error',
+  'incomplete-register-row': 'error',
 });
 
 export const RULE_IDS = Object.keys(DEFAULT_SEVERITIES) as readonly RuleId[];
@@ -83,6 +88,9 @@ export const RULE_DESCRIPTIONS: Readonly<Record<RuleId, string>> = Object.freeze
   'unevidenced-completion': 'an item a checklist marks done cites no claim and names no commit',
   'premature-completion': 'an item marked done cites a claim whose label leaves work open',
   'unknown-commit': 'a checked document names a commit the history of its ref does not hold',
+  'duplicate-key': 'a configured register gives a key to a second row, which the graph leaves out',
+  'unknown-register-status': 'a row of a configured register has a status the configuration does not know',
+  'incomplete-register-row': 'a row of a configured register lacks what its status asks for',
 });
 
 /**
@@ -113,6 +121,9 @@ export const RULE_DECISIONS: Readonly<Record<RuleId, string>> = Object.freeze({
   'unevidenced-completion': 'docs/adr/0026-a-completion-cites-its-evidence.md',
   'premature-completion': 'docs/adr/0026-a-completion-cites-its-evidence.md',
   'unknown-commit': 'docs/adr/0025-commits-are-read-from-git.md',
+  'duplicate-key': 'docs/adr/0027-a-register-row-is-held-to-its-status.md',
+  'unknown-register-status': 'docs/adr/0027-a-register-row-is-held-to-its-status.md',
+  'incomplete-register-row': 'docs/adr/0027-a-register-row-is-held-to-its-status.md',
 });
 
 /**
@@ -176,6 +187,8 @@ export interface RuleOptions {
   readonly isLedger?: ((path: string) => boolean) | undefined;
   /** The history the commits a checked document names are looked for in (ADR-0025). */
   readonly history?: CommitHistory | undefined;
+  /** The registers held to a status vocabulary (ADR-0027). */
+  readonly registers?: RegisterCheck | undefined;
   /** Cap on related locations attached to one finding. */
   readonly maxRelated?: number | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
@@ -227,6 +240,7 @@ export function runRules(graph: SpecGraph, corpus: ResolvedCorpus, options: Rule
   stateConflicts(graph, emit);
   completions(graph, corpus, options, emit);
   unknownCommits(corpus, options, emit);
+  registerFindings(corpus, options, emit);
   misreadKeys(corpus, emit);
   selfReferences(graph, emit);
   projectFindings(graph, projectRules, emit);
@@ -841,7 +855,7 @@ function unknownCommits(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit
   // `runRules` that gives none has had nothing looked for.
   if (history === undefined) return;
   for (const citation of corpus.commits) {
-    if (options.isChecklist?.(citation.at.file) !== true && options.isLedger?.(citation.at.file) !== true) continue;
+    if (!holdsToCommits(options, citation.at.file)) continue;
     if (holdsCommit(history, citation)) continue;
     const named = citation.kind === 'subject' ? `commit "${citation.value}"` : `commit ${citation.value}`;
     emit('unknown-commit', () => ({
@@ -853,6 +867,69 @@ function unknownCommits(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit
       hint: `name a commit ${history.ref} reaches, by its subject as written or by the start of its hash`,
     }));
   }
+}
+
+/** Whether a document is one a check holds to the commits it names: a checklist, a ledger or a register. */
+export function holdsToCommits(options: RuleOptions, path: string): boolean {
+  return options.isChecklist?.(path) === true || options.isLedger?.(path) === true || options.registers?.isRegister(path) === true;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Registers                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const NEED_WORDS: Readonly<Record<RegisterNeed, string>> = {
+  resolution: 'a resolution',
+  citation: 'a link to what it changed',
+  commit: 'the commit that changed it',
+};
+
+/**
+ * A configured register's rows held to its status vocabulary (ADR-0027): a
+ * key given twice, a status no configured word names, and a row that lacks
+ * what its status asks for.
+ */
+function registerFindings(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
+  const check = options.registers;
+  if (check === undefined) return;
+  for (const duplicate of corpus.duplicates) {
+    if (!check.isRegister(duplicate.at.file)) continue;
+    emit('duplicate-key', () => ({
+      message: `"${duplicate.id}" is a key already, given at ${formatRef(duplicate.first)}`,
+      at: duplicate.at,
+      nodes: [duplicate.id],
+      target: `${duplicate.at.file}:${duplicate.at.span.start.line}`,
+      related: [related(duplicate.first, 'the row that keeps the key')],
+      hint: 'give the row a key of its own: a citation of this one reaches the first',
+    }));
+  }
+  for (const row of registerRows(corpus, check)) {
+    const word = statusWord(row.rawStatus);
+    const status = check.statuses.get(word);
+    if (status === undefined) {
+      emit('unknown-register-status', () => ({
+        message: word.length === 0 ? `"${row.id}" has no status` : `"${row.id}" has the status "${word}", which the configuration does not know`,
+        at: row.statusAt ?? row.at,
+        nodes: [row.id],
+        related: [],
+        hint: `give it one of ${[...check.statuses.keys()].join(', ')}, or add the word to "registers.statuses"`,
+      }));
+      continue;
+    }
+    const missing = missingOf(row, corpus, check, status);
+    if (missing.length === 0) continue;
+    emit('incomplete-register-row', () => ({
+      message: `"${row.id}" is ${word} and lacks ${listed(missing.map((need) => NEED_WORDS[need]))}`,
+      at: row.statusAt!,
+      nodes: [row.id],
+      related: [],
+      hint: `a row that is ${word} has ${listed(status.needs.map((need) => NEED_WORDS[need]))}: write what it lacks, or give it the status it has`,
+    }));
+  }
+}
+
+function listed(parts: readonly string[]): string {
+  return parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]!}`;
 }
 
 function describeSignals(item: ItemNode): string {

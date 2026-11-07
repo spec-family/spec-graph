@@ -42,6 +42,23 @@ records.
   a shallow clone is exit 2. Upgrading: a CI job that checks commits needs
   `fetch-depth: 0` on `actions/checkout` ([ADR-0025](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0025-commits-are-read-from-git.md)).
 
+- **`registers` holds a register kept as a table to a status vocabulary.**
+  A row's status is the word its status cell opens with, and the
+  configuration names each word and what it asks for: a `resolution`, a
+  `citation` of what changed, the `commit` that changed it. A status no word
+  names is `unknown-register-status`, a row that lacks what its status asks
+  for `incomplete-register-row`, a key given twice `duplicate-key`, all
+  errors. The rows still open are counted per register in the report and
+  listed in JSON as `registers` ([ADR-0027](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)).
+
+### Changed
+
+- **A link with a specification's id as its anchor reaches the
+  specification**, `[refund-limit](review.md#refund-limit)` the register row
+  `refund-limit` names, in any register, configured or not. Upgrading: such
+  a link was a `broken-reference`, and is now an edge to the row
+  ([ADR-0027](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)).
+
 ## 0.21.0
 
 The first release as `@spec-family/spec-graph`, from

@@ -110,7 +110,10 @@ follows `npx --no-install @spec-family/` at a prompt.
 | `self-reference` | info | A document delegating to, or depending on, itself |
 | `unevidenced-completion` | error | An item a checklist marks done that cites no claim and names no commit, where `checklists` is configured |
 | `premature-completion` | error | An item marked done that cites a claim whose label leaves work open, where `checklists` or `ledgers` is configured |
-| `unknown-commit` | error | A checklist or a ledger naming a commit the history of its ref does not hold |
+| `unknown-commit` | error | A checklist, a ledger or a register naming a commit the history of its ref does not hold |
+| `duplicate-key` | error | A key a configured register gives to a second row, which the graph leaves out |
+| `unknown-register-status` | error | A row of a configured register with no status, or one the configuration does not know |
+| `incomplete-register-row` | error | A row of a configured register that lacks what its status asks for |
 
 Override any of them:
 
@@ -373,7 +376,7 @@ See [ADR-0026](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026
 
 ### Commits, looked for in git
 
-A commit a checklist or a ledger names, `commit "Subject"` or
+A commit a checklist, a ledger or a register names, `commit "Subject"` or
 `commit 1a2b3c4`, must be in the history of `gitRef`, `HEAD` unless set:
 `unknown-commit` otherwise. A subject is matched as written, a hash as the
 start of an id.
@@ -650,6 +653,39 @@ one: see [References](#references-resolved-forgivingly-and-validated-strictly).
 The register itself stays in the graph as the thing that holds them, so
 `spec-graph query 'document[id=register] -contains-> document'` lists what is
 inside it.
+
+A register can be held to a status vocabulary of its own, and a row cited by
+its key as an anchor, `[refund-limit](review.md#refund-limit)`:
+
+```json
+{
+  "registers": {
+    "files": ["docs/review.md"],
+    "resolution": "Proposed resolution",
+    "statuses": {
+      "open": {},
+      "proposed": { "needs": ["resolution"] },
+      "done": { "closes": true, "needs": ["citation", "commit"] }
+    }
+  }
+}
+```
+
+- A row's status is the word its status cell opens with, `done` of
+  `done: the refund rules (commit "...")`. A word the configuration does not
+  name is `unknown-register-status`.
+- `needs` is what a status asks for: `resolution`, text in the column
+  `resolution` names; `citation`, a reference in the status cell to what
+  changed; `commit`, the commit that changed it, looked for in git
+  ([commits](#commits-looked-for-in-git)). A row that lacks one is
+  `incomplete-register-row`.
+- A key given to two rows is `duplicate-key`, at the second.
+- The rows still open, every status without `closes`, are counted per
+  register in the report, listed under `--verbose`, and in JSON as
+  `registers`.
+- A link to a register with a row's key as the anchor reaches the row, in any
+  register, configured or not; a key written in prose is no citation. See
+  [ADR-0027](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md).
 
 Both forms need **two** signals, and that is deliberate: `## Q3 2026 Roadmap`
 parses as family `Q`, number 3, and `## v1.2.0` in a changelog parses as family
@@ -974,6 +1010,7 @@ command. spec-graph reads the first of `.spec-graph.json`,
   "checklists": ["ROADMAP.md"],
   "ledgers": ["docs/STATUS.md"],
   "gitRef": "origin/main",
+  "registers": { "files": ["docs/review.md"], "statuses": { "open": {}, "done": { "closes": true, "needs": ["commit"] } } },
   "rules": {
     "no-draft-dependency": {
       "query": "document[phase=active] -depends-on-> document[phase=draft]",
@@ -1014,10 +1051,12 @@ which file was read, on stderr with everything else a run says about itself, so
 it can be combined with any `--format` and leave the document on stdout intact.
 `--no-config` skips the mechanism entirely.
 
-`claims`, `checklists`, `ledgers` and `gitRef` have no flag either: which
-documents hold claims and are held to them, and which history their commits
-are looked for in, are the repository's ([claims](#claims-with-their-labels),
+`claims`, `checklists`, `ledgers`, `registers` and `gitRef` have no flag
+either: which documents hold claims and are held to them, and which history
+their commits are looked for in, are the repository's
+([claims](#claims-with-their-labels),
 [checklists and ledgers](#checklists-and-ledgers-held-to-what-they-cite),
+[registers](#registers-many-specifications-in-one-file),
 [commits](#commits-looked-for-in-git)).
 
 `maxRelated` has no flag. It caps how many related locations one finding lists
@@ -1673,6 +1712,7 @@ Twenty-three ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0024 — A claim's label is its state](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0024-a-claims-label-is-its-state.md)
 - [ADR-0025 — Commits are read from git](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0025-commits-are-read-from-git.md)
 - [ADR-0026 — A completion cites its evidence](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0026-a-completion-cites-its-evidence.md)
+- [ADR-0027 — A register row is held to its status](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

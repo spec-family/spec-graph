@@ -11,7 +11,10 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.23.1
+
+An orientation document reads less as a path, and `diff`'s verdict names a
+claim's label as what changed.
 
 ### Fixed
 

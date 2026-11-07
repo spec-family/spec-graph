@@ -58,11 +58,12 @@ Two thresholds are regression guards, set below the last measurement. They move
 **up** when the measurement moves further than the noise, and **never** down to
 accommodate a regression:
 
-- **Mutation score >= 93** (`break` in `stryker.config.mjs`). **97.05% on the
-  hosted runner** governs - it is where the build fails - measured over 10,712
-  mutants on a5f9db3 (run 42412517451), 96.95% over 10,462 on b5d0bfb (run
-  42399032585), as over 10,460 on ec488cb (run 42395078442), 96.59% over
-  9,149 on ded84ce (run 40317444875), 96.51% over 8,861 once nothing a
+- **Mutation score >= 93** (`break` in `stryker.config.mjs`). **97.06% on the
+  hosted runner** governs - it is where the build fails - measured over 10,757
+  mutants on cb0f463 (run 42423287185), 97.05% over 10,712 on a5f9db3 (run
+  42412517451), 96.95% over 10,462 on b5d0bfb (run 42399032585), as over
+  10,460 on ec488cb (run 42395078442), 96.59% over 9,149 on ded84ce (run
+  40317444875), 96.51% over 8,861 once nothing a
   mutator reads stood under an `as` (run 38158750946; ADR-0007, 2026-10-12),
   96.50% over 8,841 on ec232ac before that, and
   96.28% on d5f9abd after two passes over the survivors of every module killed

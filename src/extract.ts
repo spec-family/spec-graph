@@ -1306,9 +1306,11 @@ function extractLedgerRows(context: LedgerContext): ItemNode[] {
   const out: ItemNode[] = [];
   const ordinals = new Map<string, number>();
   for (const table of scanned.tables) {
+    if (isRegisterTable(table)) continue;
     const column = statusColumnOf(table);
-    if (column === -1 || isRegisterTable(table)) continue;
     for (const row of table.rows) {
+      // No status column is -1, and no row has a cell there; a row written
+      // short has none under it either.
       const cell = row.cells[column];
       if (cell === undefined) continue;
       const word = cellText(cell).split(/[:;,(]/)[0]!.trim();

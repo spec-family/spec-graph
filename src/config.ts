@@ -317,7 +317,8 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
   if (raw['gitRef'] !== undefined) {
     const ref = raw['gitRef'];
     // A ref that opens with a dash is an option to git, whatever it was meant as.
-    if (typeof ref !== 'string' || ref.trim().length === 0 || ref.trim() !== ref || ref.startsWith('-')) {
+    // A ref of spaces alone is one with space around it.
+    if (typeof ref !== 'string' || ref.length === 0 || ref.trim() !== ref || ref.startsWith('-')) {
       problems.push(`${source}: "gitRef" must be a branch, a tag or a commit, such as "origin/main"`);
     } else {
       config.gitRef = ref;

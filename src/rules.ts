@@ -830,13 +830,16 @@ function completions(graph: SpecGraph, corpus: ResolvedCorpus, options: RuleOpti
   }
 }
 
-/** The claims an item cites, each once, in the order its citations come. */
+/**
+ * The claims an item cites, each once, in the order its citations come. An
+ * item contains nothing, so every edge from one is a citation, and every edge
+ * reaches a node of the graph.
+ */
 function citedClaims(graph: SpecGraph, id: string): ItemNode[] {
   const out: ItemNode[] = [];
   for (const edge of graph.out(id)) {
-    if (edge.kind === 'contains') continue;
-    const target = graph.node(edge.to);
-    if (target?.kind === 'item' && target.label !== null && !out.includes(target)) out.push(target);
+    const target = graph.node(edge.to)!;
+    if (target.kind === 'item' && target.label !== null && !out.includes(target)) out.push(target);
   }
   return out;
 }
@@ -847,11 +850,13 @@ function citedClaims(graph: SpecGraph, id: string): ItemNode[] {
  */
 function unknownCommits(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
   const { history } = options;
+  // `analyse` reads a history whenever a checked document names a commit,
+  // and `analyseSources` refuses to run without one then; a caller of
+  // `runRules` that gives none has had nothing looked for.
+  if (history === undefined) return;
   for (const citation of corpus.commits) {
     if (!holdsToCommits(options, citation.at.file)) continue;
-    // A run that holds commits to a history reads one whenever a checked
-    // document names a commit, so this is for the type.
-    if (history === undefined || holdsCommit(history, citation)) continue;
+    if (holdsCommit(history, citation)) continue;
     const named = citation.kind === 'subject' ? `commit "${citation.value}"` : `commit ${citation.value}`;
     emit('unknown-commit', () => ({
       message: `${named} is not in the history of ${history.ref}`,

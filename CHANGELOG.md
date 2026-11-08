@@ -11,7 +11,12 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.24.0
+
+Every agent's instructions are held as `CLAUDE.md` is, and a command one
+names runs something its manifest declares. Spec Kit, OpenSpec and Kiro are
+read with no configuration, a file a template named is named by its path,
+and a `Status:` label under the title is read, as spec-guard reads it.
 
 ### Added
 

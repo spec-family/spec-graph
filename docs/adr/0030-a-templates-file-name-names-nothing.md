@@ -63,6 +63,16 @@ them: such a file is named by its path, less the extension.**
   to it still do, and a name two files answer to is ambiguous, as any is.
 - **At the root**, `plan.md`'s path is its name, and it is `plan`, as it was.
 
+*Amended 2026-11-08.* **A file directly in a directory a template fills
+is named by its path too.** Spec Kit writes `specs/<feature>/checklists/`
+and `contracts/` for each feature, with files named for what each holds,
+`ux.md` or `albums-api.md`, in every feature alike: two features with a
+UX checklist were one id, and the later left the graph. The directories are
+a table beside the names, `TEMPLATE_DIRECTORIES` in `src/identity.ts`:
+`checklists` and `contracts`, in any case, holding the file directly. A
+declaration, a number and a title's identifier still name such a file, as
+above.
+
 ## Consequences
 
 Each feature of a Spec Kit, OpenSpec or Kiro repository is its own document,

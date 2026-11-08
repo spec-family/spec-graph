@@ -110,6 +110,15 @@ The declaration and the file name are *not* ranked against each other, which is
 the asymmetry rather than an omission: both name the same file, so a declaration
 carrying no number still takes the number from the name beside it.
 
+*Amended 2026-11-08.* A file name names a document only where it tells the
+document apart. One a template gives every document of its kind - Spec Kit's
+`spec.md` in each feature, OpenSpec's `tasks.md` in each change - names none
+of them, and nor does a name in a directory a template fills, such as
+`checklists/`: such a file is named by its path, and still answers to its
+name ([ADR-0030](0030-a-templates-file-name-names-nothing.md)). An id is never
+decided by which other files the corpus holds
+([ADR-0031](0031-sdd-layouts-are-read-as-written.md)).
+
 Link constructs are blanked before prose is scanned for bare identifiers, so a
 citation written as `[ADR-7](https://example.com/adr-7)` yields one reference
 rather than three. This relies on the masking guarantee in

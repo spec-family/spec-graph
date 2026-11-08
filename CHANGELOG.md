@@ -70,6 +70,19 @@ records.
 
 ### Changed
 
+- **Spec Kit, OpenSpec and Kiro are read with no configuration.** The
+  patterns read when none are given add `.specify/memory/*.md`,
+  `openspec/**/*.md` and `.kiro/specs/**/*.md` to those that already read
+  Spec Kit's `specs/`. A change under `openspec/changes/archive/` is a
+  record, as an archived brief is, where an `archive/` directory anywhere
+  else still retires what it holds; and a file directly in `checklists/` or
+  `contracts/`, which Spec Kit fills in every feature alike, is named by
+  its path
+  ([ADR-0031](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0031-sdd-layouts-are-read-as-written.md),
+  [ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md), amended 2026-11-08).
+  Upgrading: a run with no patterns reads those directories now, and a
+  finding in them is new; `docs/checklists/release.md` is
+  `docs/checklists/release`, in findings, exports and a baseline's entries.
 - **A document `orientation` names is read whether or not the patterns
   reach it**, so every agent's instructions are held as `CLAUDE.md` is:
   `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md` and

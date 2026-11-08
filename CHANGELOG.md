@@ -45,8 +45,30 @@ records.
   exports and a baseline's entries; where a baseline holds a finding on such
   a file, record it again with `--record-baseline`.
 
+- **A `Status:` label under the title is read, as spec-guard reads it.**
+  `Status: Draft`, `**Status**: Superseded` and `**Status:** Accepted`
+  opening a line above the first `##`, as Spec Kit's header block, design
+  documents and postmortems write them, gave no status, so a superseded
+  design document holding open items passed. The first such line is read
+  where no front matter, `## Status` section or status table says the
+  status; one in a list, a quote, code or a comment is not, and a value
+  that opens with no letter leaves the phase unknown
+  ([ADR-0002](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002-lifecycle-lattice.md), amended 2026-11-08).
+  Upgrading: a document whose only status is such a label takes its phase
+  from it, and can be found retired, frozen or a record where it read as
+  unknown; a finding that follows, such as `orphaned-obligation`, is new.
+
 ### Changed
 
+- **A document `orientation` names is read whether or not the patterns
+  reach it**, so every agent's instructions are held as `CLAUDE.md` is:
+  `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md` and
+  `.cursor/rules/*.mdc`, named in `orientation.files`. Named there and not in
+  the patterns, Copilot's and Cursor's were never read, and checked nothing
+  ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md), amended 2026-11-08).
+  Upgrading: a configured orientation document outside the patterns is read
+  now, as a document too, and a path or a link in it that names nothing is a
+  finding.
 - **The package description names what spec-graph has grown to catch.** It
   listed ghost handovers, stale premises and broken references, three of the
   23 rules; it names work marked done without its evidence, and commits and

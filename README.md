@@ -174,6 +174,8 @@ status is read in English (`status: superseded`):
 - front matter: `status:`, `state:`, `stage:`
 - a `## Status` section
 - a `| Status | Accepted |` table at the top
+- a `Status: Draft` or `**Status**: Draft` line under the title, as spec-guard
+  reads one
 - a `docs/adr/archive/` directory
 
 `Accepted, later superseded by ADR-0009` is retired: retirement is terminal, so
@@ -207,6 +209,7 @@ that `provisionally accepted` is a draft.
 | Front matter, the first key present | `status`, `state`, `stage`, `lifecycle`, `phase`, `adr-status` |
 | A section, under the heading, with or without a colon | `Status`, `State`, `Stage`, `Lifecycle`, `Current status` |
 | A two-column table above the first `##`, in the cell right of the first key in the left column, the header row included | `Status`, `State` |
+| A label opening a line above the first `##`, the first one, where none of the three above is written | `Status:`, `**Status**:`, `**Status:**` |
 | A directory, for a document that declares no status | `archive`, `archived`, `attic`, `deprecated`, `graveyard`, `historical`, `obsolete`, `rejected`, `retired`, `superseded`, `superceded`, `withdrawn` |
 
 The table is where many teams put a document's fields, `| Status | Accepted |`:
@@ -217,6 +220,12 @@ The table is where many teams put a document's fields, `| Status | Accepted |`:
 - A table with more columns, one under a heading below the title, and one
   spec-graph reads as a register are never read for the document's status: a
   legend or a register describes other things.
+
+The label is the line spec-guard reads, so the two tools agree on a document's
+status: not in a list, a quote, single emphasis, code or a comment, and not
+without the colon. A value that opens with no letter, `Status: 2026-11-01
+accepted` or ``Status: `draft` ``, cannot be read, and the phase is unknown.
+See [ADR-0002](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002-lifecycle-lattice.md), amended 2026-11-08.
 
 </details>
 
@@ -454,6 +463,19 @@ exist. Name those documents, and what they name is held to the repository:
   another, or names a target by a pattern or a variable, are left alone,
   and so is a make target a file beside the Makefile can stand for.
   `<!-- @spec-command created="bench" -->` marks a name the work adds.
+- A document `files` names is read whether or not the patterns reach it.
+
+Every agent's instructions are held the same way. Name the ones the
+repository keeps:
+
+```json
+{
+  "orientation": {
+    "files": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md", ".cursor/rules/*.mdc"],
+    "extensions": [".md", ".ts"]
+  }
+}
+```
 
 See [ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md).
 

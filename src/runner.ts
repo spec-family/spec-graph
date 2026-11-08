@@ -104,12 +104,13 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
   const root = toPosix(options.root).replace(/\/+$/, '');
   const patterns = options.patterns && options.patterns.length > 0 ? options.patterns : DEFAULT_PATTERNS;
 
-  const walked = await walkFiles({
-    root,
-    patterns,
-    ignore: options.ignore,
-    followSymlinks: options.followSymlinks,
-  });
+  const walk = (reach: readonly string[]): Promise<WalkedFile[]> =>
+    walkFiles({ root, patterns: reach, ignore: options.ignore, followSymlinks: options.followSymlinks });
+  // A document orientation names is read where the patterns do not reach it:
+  // an agent's instructions live in .github/ and .cursor/rules/, where no
+  // documentation pattern looks, and naming one there checked nothing
+  // (ADR-0029). Walked apart, so a `!` in either list takes back only its own.
+  const walked = joinWalks(await walk(patterns), options.orientation === undefined ? [] : await walk(options.orientation.files));
 
   const sources = await readAll(walked, options.concurrency ?? DEFAULT_CONCURRENCY);
   const present = new Set(walked.map((file) => file.path.toLowerCase()));
@@ -396,6 +397,15 @@ export function createManifestReader(root: string): (directory: string, kind: Co
     return directory === '' ? undefined : find(dirnamePosix(directory), kind);
   };
   return find;
+}
+
+/**
+ * Two walks as one, each file once and in the order a walk gives: a file read
+ * twice is a second document under the same id.
+ */
+function joinWalks(first: readonly WalkedFile[], second: readonly WalkedFile[]): WalkedFile[] {
+  const byPath = new Map([...first, ...second].map((file) => [file.path, file]));
+  return [...byPath.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
 }
 
 /** Reads files with bounded concurrency, skipping ones that cannot be read. */

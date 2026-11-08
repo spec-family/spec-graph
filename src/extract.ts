@@ -1190,12 +1190,28 @@ function readStatus(
     }
   }
 
-  const cell = statusTableCell(scanned);
+  const rows = statusTableRows(scanned);
+  // A row written short, or with nothing on the right, declares nothing.
+  const cell = rows.find((value) => value !== undefined && value.text.length > 0);
   if (cell) {
     return {
       raw: cell.text,
       at: refOf(file, index, cell.start, cell.end),
       phase: phaseOf(cell.text),
+    };
+  }
+
+  // A status written in a place ranked above the label, readable or not, is
+  // where the document put it, and spec-guard reads no label in its place.
+  // Nor under front matter that never closes, whose status cannot be read.
+  const written =
+    scanned.unclosedFrontMatter !== null || STATUS_KEYS.some((key) => byKey.has(key)) || heading !== undefined || rows.length > 0;
+  const label = written ? null : statusLabel(scanned, regions);
+  if (label) {
+    return {
+      raw: label.raw,
+      at: refOf(file, index, label.start, label.end),
+      phase: label.readable ? phaseOf(label.text) : 'unknown',
     };
   }
 
@@ -1206,9 +1222,9 @@ function readStatus(
 const STATUS_TABLE_KEYS: ReadonlySet<string> = new Set(['status', 'state']);
 
 /**
- * The status a key-value table at the top of a document gives:
- * `| Status | Accepted |`, as the right cell of the first row whose left cell
- * is a status key, the header row included.
+ * The right cell of each row of a key-value table at the top of a document
+ * whose left cell is a status key, the header row included, and nothing for
+ * a row written short: `| Status | Accepted |`.
  *
  * Read only where a document describes itself. A table under a heading below
  * the title is a legend or a register, and one with more than two columns is
@@ -1216,8 +1232,9 @@ const STATUS_TABLE_KEYS: ReadonlySet<string> = new Set(['status', 'state']);
  * spec-graph reads as a register is left to its rows. Ranked with a `## Status`
  * section, after one: a document that has both is read from the section.
  */
-function statusTableCell(scanned: ScannedDocument): TableCell | null {
+function statusTableRows(scanned: ScannedDocument): (TableCell | undefined)[] {
   const body = scanned.headings.find((h) => h.level >= 2)?.start ?? scanned.text.length;
+  const found: (TableCell | undefined)[] = [];
   for (const table of scanned.tables) {
     // Tables come in order, and none starts on a heading's line, so `>` would
     // stop at the same table.
@@ -1225,12 +1242,57 @@ function statusTableCell(scanned: ScannedDocument): TableCell | null {
     if (table.headers.length !== 2 || isRegisterTable(table)) continue;
     for (const cells of [table.headers, ...table.rows.map((row) => row.cells)]) {
       // A row always has a first cell: a line with no cell ends the table.
-      const key = cells[0] as TableCell;
-      const value = cells[1];
-      // A row written short, or with nothing on the right, declares nothing.
-      if (value === undefined || value.text.length === 0) continue;
-      if (STATUS_TABLE_KEYS.has(key.text.replace(/[*_]/g, '').toLowerCase())) return value;
+      const key = cells[0]!;
+      if (STATUS_TABLE_KEYS.has(key.text.replace(/[*_]/g, '').toLowerCase())) found.push(cells[1]);
     }
+  }
+  return found;
+}
+
+/**
+ * The status label spec-guard reads: `Status:`, `**Status**:` or
+ * `**Status:**`, in any case, opening a line indented at most three spaces,
+ * and the value after it. spec-guard's `parser.ts` holds the same
+ * expression, so the two tools find one line to be the label.
+ */
+const STATUS_LABEL = /^[ \t]{0,3}(?:(\*\*|__)status(?:\1[ \t]*:|[ \t]*:\1)|status[ \t]*:)(.*)/i;
+
+/**
+ * A `Status: Draft` line in the document's preamble, read where and as
+ * spec-guard reads one (ADR-0002, amended 2026-11-08).
+ *
+ * The preamble is everything before the first heading of level two or deeper
+ * the scanner reads, so a `##` shown in code or kept in a comment does not
+ * end it: a line of prose with a colon in it, accepted anywhere, is
+ * eventually a sentence. The first such line decides. Its value is read with
+ * code and comments blanked, and one that does not open with a letter,
+ * through any emphasis, cannot be read: a date, a quote, a symbol or a code
+ * span first is no word, and the document is in no phase. A line inside a
+ * register's section is that section's.
+ *
+ * spec-guard keeps comments in the text it reads the label from, so a label
+ * left in a template's comment of several lines withdraws a document there,
+ * and a hint in a comment before the value leaves it unreadable. Here a
+ * comment says nothing either way, as it says nothing in a status section.
+ */
+function statusLabel(
+  scanned: ScannedDocument,
+  regions: readonly SpecificationRegion[],
+): { raw: string; text: string; readable: boolean; start: number; end: number } | null {
+  const body = scanned.headings.find((h) => h.level >= 2)?.line ?? Number.POSITIVE_INFINITY;
+  const view = scanned.masks.structure;
+  for (const line of scanned.lines) {
+    if (line.line >= body) break;
+    const found = STATUS_LABEL.exec(view.slice(line.start, line.end));
+    if (!found || regionAt(regions, line.start) !== null) continue;
+    const value = found[2]!;
+    const text = value.trim();
+    // As written, code and all, for the report and for the successor a
+    // supersession names: "Superseded by `ADR-0002`" names one.
+    const written = scanned.text.slice(line.end - value.length, line.end);
+    const raw = written.trim();
+    const start = line.end - written.trimStart().length;
+    return { raw, text, readable: /^[*_]*[a-zA-Z]/.test(text), start, end: start + raw.length };
   }
   return null;
 }

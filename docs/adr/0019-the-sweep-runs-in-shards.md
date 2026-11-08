@@ -14,7 +14,7 @@ to keep a slow runner from cancelling it. The figure arrived per tag and once a
 week. A pull request that touched the pipeline waited 30 to 110 minutes for an
 incremental signal that was not the figure either.
 
-@descent-vtt/spec-guard reached the same wall at 42m39s, against a limit of 45,
+spec-guard reached the same wall at 42m39s, against a limit of 45,
 and split its sweep across parallel jobs. One merge step puts the reports back
 together, refuses anything that is not exactly one sweep, and applies the gate
 to the merged score. Its sweep now takes 15m33s from the first shard to the

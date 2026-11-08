@@ -11,6 +11,16 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Changed
+
+- **The package description names what spec-graph has grown to catch.** It
+  listed ghost handovers, stale premises and broken references, three of the
+  23 rules; it names work marked done without its evidence, and commits and
+  paths that are not there, as well. Nothing it checks or reports changed.
+  Upgrading: nothing to do.
+
 ## 0.23.1
 
 An orientation document reads less as a path, and `diff`'s verdict names a

@@ -14,6 +14,8 @@
  * them would be worse than reporting nothing.
  */
 
+import { basenamePosix, dirnamePosix } from './paths.js';
+
 /**
  * Directory names that name a specification family, mapped to a canonical prefix.
  *
@@ -376,7 +378,7 @@ function ownName(posixPath: string): string {
 
 /** The name of the directory holding a file, or nothing at the root: `specs/001/checklists/ux.md` -> `checklists`. */
 function parentName(posixPath: string): string {
-  return posixPath.split('/').slice(-2, -1)[0] ?? '';
+  return basenamePosix(dirnamePosix(posixPath));
 }
 
 function fileStem(posixPath: string): string {

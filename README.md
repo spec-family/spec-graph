@@ -465,6 +465,24 @@ exist. Name those documents, and what they name is held to the repository:
   `<!-- @spec-command created="bench" -->` marks a name the work adds.
 - A document `files` names is read whether or not the patterns reach it.
 
+<details>
+<summary>Every word pnpm and yarn run as their own command, and every file make builds a target from</summary>
+
+`pnpm x` and `yarn x` run the script `x`, unless `x` is one of the tool's own
+commands. `test` is none: it runs the `test` script.
+
+| Tool | Its own commands |
+| --- | --- |
+| `pnpm` | `add`, `approve-builds`, `audit`, `bin`, `c`, `cache`, `cat-file`, `cat-index`, `config`, `create`, `dedupe`, `deploy`, `dlx`, `doctor`, `env`, `exec`, `fetch`, `find-hash`, `help`, `i`, `ignored-builds`, `import`, `init`, `install`, `install-test`, `it`, `licenses`, `link`, `list`, `ln`, `ls`, `outdated`, `pack`, `patch`, `patch-commit`, `patch-remove`, `prune`, `publish`, `rb`, `rebuild`, `recursive`, `remove`, `rm`, `root`, `self-update`, `server`, `setup`, `start`, `store`, `un`, `uninstall`, `unlink`, `up`, `update`, `upgrade`, `why` |
+| `yarn` | `add`, `autoclean`, `bin`, `cache`, `check`, `config`, `constraints`, `create`, `dedupe`, `dlx`, `exec`, `explain`, `generate-lock-entry`, `global`, `help`, `import`, `info`, `init`, `install`, `licenses`, `link`, `list`, `login`, `logout`, `node`, `npm`, `outdated`, `owner`, `pack`, `patch`, `patch-commit`, `plugin`, `policies`, `publish`, `rebuild`, `remove`, `set`, `start`, `tag`, `team`, `unlink`, `unplug`, `up`, `upgrade`, `upgrade-interactive`, `version`, `versions`, `why`, `workspace`, `workspaces` |
+
+`make x` needs no rule of its own where a file beside the Makefile is `x`,
+which is up to date, or one make's built-in rules build `x` from: `x.c`,
+`x.cc`, `x.cpp`, `x.C`, `x.f`, `x.F`, `x.p`, `x.r`, `x.s`, `x.S`, `x.y`, `x.l`,
+`x.o` or `x.sh`.
+
+</details>
+
 Every agent's instructions are held the same way. Name the ones the
 repository keeps:
 

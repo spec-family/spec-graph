@@ -67,6 +67,7 @@ describe('the command a code span names', () => {
     ['a script that may be missing', 'npm run lint --if-present'],
     ['make with no target', 'make'],
     ['make with a flag', 'make -C api build'],
+    ['make with a flag that moves nothing', 'make -j4 build'],
     ['make with only a variable', 'make V=1'],
     ['just with no recipe', 'just'],
     ['just with a flag', 'just --list'],
@@ -122,12 +123,30 @@ describe('the targets of a Makefile', () => {
       'hidden: x',
       'endef',
       'release: VERSION = 2.0',
+      'SITE = https://example.com',
+      '  indented: x',
+      'docs\\',
+      'site: x',
+      'define RULE :=',
+      'endef',
+      'redefine: x',
+      'headers: include lib',
+      'copy-include dist: x',
+      'notes:',
+      '\t@echo define the schema',
+      'after: notes',
+      'define TEMPLATE',
+      'notendef: here',
+      'inside: x',
+      'endef',
       'ifeq ($(CI),1)',
       'ci: test',
       'endif',
       '',
     ].join('\n');
-    expect([...targetsOf(makefile)!].sort()).toEqual(['.PHONY', 'build', 'check', 'ci', 'clean', 'format', 'lint', 'release', 'test']);
+    expect([...targetsOf(makefile)!].sort()).toEqual(
+      ['.PHONY', 'after', 'build', 'check', 'ci', 'clean', 'copy-include', 'dist', 'docs', 'format', 'headers', 'indented', 'lint', 'notes', 'redefine', 'release', 'site', 'test'],
+    );
   });
 
   it('are read across CRLF line ends', () => {
@@ -160,9 +179,13 @@ describe('the recipes of a justfile', () => {
       'test filter="" *args: build',
       'serve port="http://localhost:8000": build',
       '_helper:',
+      '  go mod tidy',
+      '# alias old := build',
+      'alias  dbg:= build',
       '',
     ].join('\n');
-    expect([...recipesOf(justfile)!].sort()).toEqual(['_helper', 'build', 'quiet', 'serve', 't', 'test']);
+    expect([...recipesOf(justfile)!].sort()).toEqual(['_helper', 'build', 'dbg', 'quiet', 'serve', 't', 'test']);
+    expect([...recipesOf('build:\r\n  cargo build\r\ntest: build\r\n')!]).toEqual(['build', 'test']);
   });
 
   it('are unknown where it imports a file or a module', () => {
@@ -274,6 +297,30 @@ describe('a command an orientation document names', () => {
     expect(findings({ 'CLAUDE.md': doc('# Claude', '', '`npm run lnt`') }, { 'package.json': PACKAGE }, new Set(['lnt', 'lnt.sh'])).map((d) => d.target)).toEqual(['lnt']);
   });
 
+  it('is allowed undeclared by @spec-command alone, not by a path another directive marks', () => {
+    const text = doc('# Claude', '', '<!-- @spec-path created="lnt" external="lnt" -->', '', '`npm run lnt`');
+    expect(findings({ 'CLAUDE.md': text }).map((d) => d.target)).toEqual(['lnt']);
+  });
+
+  it('is read out of a span of two backticks as written inside it, and not from one holding a backtick', () => {
+    expect(lines(findings({ 'CLAUDE.md': doc('# Claude', '', 'Run ``  npm run lnt  ``, not `` npm run l`nt ``.') }))).toEqual([
+      'CLAUDE.md:3:5 `npm run lnt` runs the script "lnt", which package.json does not declare',
+    ]);
+  });
+
+  it('holds a make target to its Makefile alone where nothing says which files are there', async () => {
+    // A caller of runRules with no pathExists: no file is looked for beside the Makefile.
+    const { buildGraph } = await import('../src/graph.js');
+    const { runRules } = await import('../src/rules.js');
+    const { corpus, graph } = analyseSources([{ path: 'CLAUDE.md', text: doc('# Claude', '', '`make hello`') }], {
+      orientation: createOrientationCheck({ files: ['CLAUDE.md'] }),
+      fileExists: () => true,
+    });
+    const found = runRules(buildGraph({ nodes: corpus.nodes, edges: corpus.edges }), corpus, { manifestFor: manifests({ Makefile: 'build:\n' }) });
+    expect(found.map((d) => `${d.rule} ${d.target}`)).toEqual(['missing-command hello']);
+    expect(graph.documents.map((d) => d.id)).toEqual(['CLAUDE']);
+  });
+
   it('is read only in an orientation document, and only in a code span', () => {
     expect(findings({ 'docs/guide.md': doc('# Guide', '', '`npm run lnt`'), 'CLAUDE.md': doc('# Claude', '', 'Run npm run lnt.', '', '```bash', 'npm run lnt', '```') })).toEqual([]);
   });
@@ -306,6 +353,29 @@ describe('the manifest nearest a directory, read from disk', () => {
       expect(find('', 'target')).toBeUndefined();
       // A directory that is not there lists nothing, and the search goes on above it.
       expect(find('gone/away', 'script')?.file).toBe('package.json');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('is found under each name its tool reads, alone in a directory', async () => {
+    const root = `tests/fixtures/.tmp/commands-names-${process.pid}`;
+    await rm(root, { recursive: true, force: true });
+    try {
+      const names: readonly (readonly [string, CommandKind])[] = [
+        ['makefile', 'target'],
+        ['Makefile', 'target'],
+        ['justfile', 'recipe'],
+        ['Justfile', 'recipe'],
+        ['JUSTFILE', 'recipe'],
+      ];
+      // Each in a directory of its own, named apart on a disk that folds case.
+      for (const [at, [name]] of names.entries()) {
+        await mkdir(`${root}/d${at}`, { recursive: true });
+        await writeFile(`${root}/d${at}/${name}`, 'x:\n');
+      }
+      const find = createManifestReader(root);
+      expect(names.map(([, kind], at) => find(`d${at}`, kind)?.file)).toEqual(names.map(([name], at) => `d${at}/${name}`));
     } finally {
       await rm(root, { recursive: true, force: true });
     }

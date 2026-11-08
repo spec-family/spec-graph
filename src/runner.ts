@@ -376,24 +376,20 @@ function finish(analysed: Analysed, files: readonly string[], started: number, r
  * name: the first of the kind's file names there, then in each directory
  * above, up to the root (ADR-0029). A name is matched as the directory lists
  * it, so `makefile` is not `Makefile` on a host whose disk folds case, and a
- * run reports the same file everywhere. Each directory is listed once.
+ * run reports the same file everywhere. Asked only of the directories that
+ * hold an orientation document naming a command, and those above them.
  */
 export function createManifestReader(root: string): (directory: string, kind: CommandKind) => Manifest | undefined {
-  const listings = new Map<string, ReadonlySet<string>>();
   const listed = (directory: string): ReadonlySet<string> => {
-    let names = listings.get(directory);
-    if (names === undefined) {
-      try {
-        names = new Set(readdirSync(`${root}/${directory}`, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name));
-      } catch {
-        names = new Set();
-      }
-      listings.set(directory, names);
+    try {
+      return new Set(readdirSync(`${root}/${directory}`, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name));
+    } catch {
+      return new Set();
     }
-    return names;
   };
   const find = (directory: string, kind: CommandKind): Manifest | undefined => {
-    const name = MANIFESTS[kind].find((candidate) => listed(directory).has(candidate));
+    const names = listed(directory);
+    const name = MANIFESTS[kind].find((candidate) => names.has(candidate));
     if (name !== undefined) {
       const file = directory === '' ? name : `${directory}/${name}`;
       return { file, names: namesIn(kind, readFileSync(`${root}/${file}`, 'utf8')) };
@@ -409,7 +405,8 @@ export function createManifestReader(root: string): (directory: string, kind: Co
  */
 function joinWalks(first: readonly WalkedFile[], second: readonly WalkedFile[]): WalkedFile[] {
   const byPath = new Map([...first, ...second].map((file) => [file.path, file]));
-  return [...byPath.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
+  // Sorted as strings are, by code unit, which is the order a walk gives.
+  return [...byPath.keys()].sort().map((path) => byPath.get(path)!);
 }
 
 /** Reads files with bounded concurrency, skipping ones that cannot be read. */

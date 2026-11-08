@@ -89,10 +89,10 @@ export function commandIn(text: string): Command | null {
       return first === 'test' || first === 't' ? script('test', 'npm') : null;
     case 'pnpm':
       if (first === 'run') return script(words[2], 'pnpm');
-      return first === undefined || PNPM_COMMANDS.has(first) ? null : script(first === 't' ? 'test' : first, 'pnpm');
+      return first !== undefined && PNPM_COMMANDS.has(first) ? null : script(first === 't' ? 'test' : first, 'pnpm');
     case 'yarn':
       if (first === 'run') return script(words[2], 'yarn');
-      return first === undefined || YARN_COMMANDS.has(first) ? null : script(first, 'yarn');
+      return first !== undefined && YARN_COMMANDS.has(first) ? null : script(first, 'yarn');
     case 'make': {
       // `VAR=value` sets a variable for the run and names no target; a flag
       // is no name, so `make -C api build` is read as nothing.
@@ -118,7 +118,7 @@ export function scriptsOf(text: string): ReadonlySet<string> | null {
   try {
     parsed = JSON.parse(text);
   } catch {
-    return null;
+    // Left undefined, which the test below reads as no object.
   }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
   const scripts = (parsed as { scripts?: unknown }).scripts;
@@ -135,17 +135,22 @@ export function scriptsOf(text: string): ReadonlySet<string> | null {
  * a `define` block is skipped, and a comment is no rule.
  */
 export function targetsOf(text: string): ReadonlySet<string> | null {
-  const lines = text.replace(/\r\n?/g, '\n').replace(/\\\n/g, ' ').split('\n');
+  // A continuation joins two lines with a space, as make reads it, however
+  // the second is indented. A carriage return alone ends no line to make.
+  const lines = text.replace(/\\\r?\n/g, ' ').split(/\r?\n/);
   const names = new Set<string>();
   let defining = false;
   for (const line of lines) {
-    if (/^\s*define\b/.test(line)) defining = true;
     if (defining) {
       if (/^\s*endef\b/.test(line)) defining = false;
       continue;
     }
+    // A recipe line is shell, whatever words it holds: `\techo define` opens no block.
     if (line.startsWith('\t')) continue;
-    const code = line.replace(/#.*$/, '');
+    // The line that opens a block is read on, and holds no rule: `define
+    // NAME :=` writes its colon before an `=`.
+    if (/^\s*define\b/.test(line)) defining = true;
+    const code = line.split('#', 1)[0]!;
     if (/^\s*-?s?include\s/.test(code) || code.includes('$(eval')) return null;
     const rule = /^([^:=]+?)\s*::?(?![:=])/.exec(code);
     if (rule === null) continue;
@@ -166,7 +171,7 @@ export function targetsOf(text: string): ReadonlySet<string> | null {
  */
 export function recipesOf(text: string): ReadonlySet<string> | null {
   const names = new Set<string>();
-  for (const line of text.replace(/\r\n?/g, '\n').split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     if (/^(?:import|mod)\??\s/.test(line)) return null;
     const alias = /^alias\s+([A-Za-z_][\w-]*)\s*:=/.exec(line);
     if (alias !== null) {

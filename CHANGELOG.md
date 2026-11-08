@@ -13,24 +13,34 @@ records.
 
 ## Unreleased
 
-### Changed
+### Added
 
-- **Spec Kit, OpenSpec and Kiro are read with no configuration.** The
-  patterns read when none are given add `.specify/memory/*.md`,
-  `openspec/**/*.md` and `.kiro/specs/**/*.md` to those that already read
-  Spec Kit's `specs/`. A change under `openspec/changes/archive/` is a
-  record, as an archived brief is, where an `archive/` directory anywhere
-  else still retires what it holds; and a file directly in `checklists/` or
-  `contracts/`, which Spec Kit fills in every feature alike, is named by
-  its path
-  ([ADR-0031](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0031-sdd-layouts-are-read-as-written.md),
-  [ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md), amended 2026-11-08).
-  Upgrading: a run with no patterns reads those directories now, and a
-  finding in them is new; `docs/checklists/release.md` is
-  `docs/checklists/release`, in findings, exports and a baseline's entries.
+- **`missing-command`: a command an orientation document names runs a
+  name its manifest declares.** In a document `orientation.files` names, a
+  code span `npm run x`, `npm test`, `pnpm x` or `yarn x` runs a script of
+  the nearest `package.json`, `make x` a target of the Makefile and `just x`
+  a recipe of the justfile: `missing-command`, an error, where it does not.
+  A flag that moves the command elsewhere, a shell line, a placeholder, a
+  manifest that includes another and a make target a file stands for are
+  left alone, and `<!-- @spec-command created="bench" -->` marks a name the
+  work adds
+  ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md), amended 2026-11-08).
+  Upgrading: a repository that configures `orientation` can see the new
+  error on a command its orientation documents name; one that configures
+  none sees nothing change.
 
 ### Fixed
 
+- **A file whose id another already has is left out of the graph, all of
+  it, and the warning says so.** Its document and items were left out, but
+  its links, commits, paths, figures and protocols were still read, under
+  the id it shares: a link from one `notes.md` to the other was the first
+  depending on itself, and a broken link in the second was reported as the
+  first's. The warning reads "duplicate document id "notes", already
+  declared by a/notes.md, so this file is left out of the graph: nothing in
+  it is checked". Upgrading: a finding that came from the later of two
+  files sharing an id is gone; give the file an id of its own and it is
+  checked.
 - **A file a template named is named by its path.** Spec Kit's
   `specs/<feature>/spec.md`, OpenSpec's `openspec/changes/<change>/tasks.md`
   and Kiro's `.kiro/specs/<feature>/design.md` were each named by the file
@@ -60,6 +70,19 @@ records.
 
 ### Changed
 
+- **Spec Kit, OpenSpec and Kiro are read with no configuration.** The
+  patterns read when none are given add `.specify/memory/*.md`,
+  `openspec/**/*.md` and `.kiro/specs/**/*.md` to those that already read
+  Spec Kit's `specs/`. A change under `openspec/changes/archive/` is a
+  record, as an archived brief is, where an `archive/` directory anywhere
+  else still retires what it holds; and a file directly in `checklists/` or
+  `contracts/`, which Spec Kit fills in every feature alike, is named by
+  its path
+  ([ADR-0031](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0031-sdd-layouts-are-read-as-written.md),
+  [ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md), amended 2026-11-08).
+  Upgrading: a run with no patterns reads those directories now, and a
+  finding in them is new; `docs/checklists/release.md` is
+  `docs/checklists/release`, in findings, exports and a baseline's entries.
 - **A document `orientation` names is read whether or not the patterns
   reach it**, so every agent's instructions are held as `CLAUDE.md` is:
   `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md` and

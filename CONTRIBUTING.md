@@ -43,6 +43,7 @@ files ─▶ markdown.ts ─▶ extract.ts ─▶ resolve.ts ─▶ graph.ts ─
 | `markdown.ts` | What spec-graph reads out of spec-core's scan: which links are references, which anchors a heading answers to, which lines are Markdown. |
 | `yaml.ts` | Front matter as spec-graph reads it from spec-core's reader: keys in lower case, a value a string or a list, and why a value was not read. |
 | `directives.ts` | `<!-- @spec-* -->` annotations, the override escape hatch. |
+| `commands.ts` | The commands an orientation document names, and the names a `package.json`, Makefile or justfile declares. |
 | `lifecycle.ts` | Status vocabulary → four-phase lattice. |
 | `identity.ts` | Document ids and the aliases that resolve to them. |
 | `state.ts` | Item state, resolved from competing signals. |

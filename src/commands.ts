@@ -79,7 +79,8 @@ const NOT_ONE_COMMAND = /[;&|<>$`(){}[\]\\]/;
 export function commandIn(text: string): Command | null {
   if (NOT_ONE_COMMAND.test(text)) return null;
   const words = text.trim().split(/\s+/);
-  const [tool, first] = words;
+  // A tool named alone has no first word, and the empty one names nothing.
+  const [tool, first = ''] = words;
   if (words.some((word) => ELSEWHERE.test(word))) return null;
   const script = (name: string | undefined, kind: 'npm' | 'pnpm' | 'yarn'): Command | null =>
     name !== undefined && named(name) ? { tool: kind, kind: 'script', names: [name] } : null;
@@ -89,10 +90,10 @@ export function commandIn(text: string): Command | null {
       return first === 'test' || first === 't' ? script('test', 'npm') : null;
     case 'pnpm':
       if (first === 'run') return script(words[2], 'pnpm');
-      return first !== undefined && PNPM_COMMANDS.has(first) ? null : script(first === 't' ? 'test' : first, 'pnpm');
+      return PNPM_COMMANDS.has(first) ? null : script(first === 't' ? 'test' : first, 'pnpm');
     case 'yarn':
       if (first === 'run') return script(words[2], 'yarn');
-      return first !== undefined && YARN_COMMANDS.has(first) ? null : script(first, 'yarn');
+      return YARN_COMMANDS.has(first) ? null : script(first, 'yarn');
     case 'make': {
       // `VAR=value` sets a variable for the run and names no target; a flag
       // is no name, so `make -C api build` is read as nothing.
@@ -101,7 +102,7 @@ export function commandIn(text: string): Command | null {
     }
     case 'just':
       // The words after the recipe may be its arguments, so only the first is a name.
-      return first === undefined || !/^[A-Za-z_][\w-]*$/.test(first) ? null : { tool: 'just', kind: 'recipe', names: [first] };
+      return !/^[A-Za-z_][\w-]*$/.test(first) ? null : { tool: 'just', kind: 'recipe', names: [first] };
     default:
       return null;
   }

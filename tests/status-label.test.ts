@@ -26,6 +26,7 @@ describe('a status label in the preamble', () => {
     ['bold, the colon outside', '**Status**: Superseded', 'retired "Superseded"'],
     ['bold, the colon inside', '**Status:** Accepted', 'active "Accepted"'],
     ['bold with underscores', '__Status__: Proposed', 'draft "Proposed"'],
+    ['bold, with spaces before the colon inside it', '**Status :** Accepted', 'active "Accepted"'],
     ['in any case, with no space after the colon', 'STATUS:accepted', 'active "accepted"'],
     ['with spaces before the colon', 'Status : Draft', 'draft "Draft"'],
     ['bold, with spaces before the colon outside it', '**Status** : Superseded', 'retired "Superseded"'],
@@ -59,7 +60,7 @@ describe('a status label in the preamble', () => {
       'docs/design/cache.md': doc('# Cache design', '', 'Status:   Superseded', '', '## Open items', '', '- [ ] Decide the TTL'),
     });
     // At the status, which is what a reader would change.
-    expect(diagnostics.map((d) => `${d.rule} ${d.at.file}:${d.at.span.start.line}:${d.at.span.start.column}`)).toEqual(['orphaned-obligation docs/design/cache.md:3:11']);
+    expect(diagnostics.map((d) => `${d.rule} ${d.at.file}:${d.at.span.start.line}:${d.at.span.start.column}-${d.at.span.end.column}`)).toEqual(['orphaned-obligation docs/design/cache.md:3:11-21']);
   });
 
   it('names what superseded the document, as a status anywhere else does', () => {

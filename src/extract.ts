@@ -1958,6 +1958,9 @@ function extractReferences(context: ReferenceContext): ReferenceCandidate[] {
  * the other to be discovered on the next run.
  */
 function withoutOverlaps(candidates: readonly ReferenceCandidate[]): ReferenceCandidate[] {
+  // A mutant that seeds this with a value that is no candidate is equivalent:
+  // it belongs to no node, so `belongsTo` leaves it out of every document's
+  // references, and it overlaps nothing it could replace.
   const out: ReferenceCandidate[] = [];
   for (const candidate of candidates) {
     // Today the only readings that can overlap are a status line and the prose

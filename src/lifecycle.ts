@@ -154,13 +154,14 @@ const RETIRING_DIRECTORIES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * A directory that holds a layout's records, by the directory it sits in.
+ * A directory that holds a layout's records, written after the directory it
+ * sits in.
  * OpenSpec moves each change it has applied - the proposal, the tasks and
  * its specs' deltas - to `openspec/changes/archive/<date>-<change>/`: what is
  * there is what was done, as an archived brief is, and no decision retired.
  * Read before the retiring directories, whose `archive` it is too (ADR-0031).
  */
-const RECORD_DIRECTORIES: readonly (readonly [parent: string, directory: string])[] = [['changes', 'archive']];
+const RECORD_DIRECTORIES: ReadonlySet<string> = new Set(['changes/archive']);
 
 /** Front-matter keys that may carry a status, in order of preference. */
 export const STATUS_KEYS: readonly string[] = ['status', 'state', 'stage', 'lifecycle', 'phase', 'adr-status'];
@@ -256,7 +257,7 @@ export function phaseFromPath(posixPath: string): Phase {
   // The file name itself is not a directory; a document called `archive`, with
   // or without an extension, is not retired.
   for (let i = 1; i < segments.length - 1; i += 1) {
-    if (RECORD_DIRECTORIES.some(([parent, directory]) => segments[i - 1] === parent && segments[i] === directory)) return 'record';
+    if (RECORD_DIRECTORIES.has(`${segments[i - 1]!}/${segments[i]!}`)) return 'record';
   }
   for (let i = 0; i < segments.length - 1; i += 1) {
     if (RETIRING_DIRECTORIES.has(segments[i] as string)) return 'retired';

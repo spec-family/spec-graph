@@ -81,6 +81,17 @@ directory that is not there either, is missed: ADR-0006 prefers that to a
 finding on two words, and `new/dir/` or `@spec-path created` says what is
 meant.
 
+*Amended 2026-11-08, again.* **A document `orientation` names is read
+whether or not the patterns reach it.** Other agents keep their
+instructions where `CLAUDE.md` is, `AGENTS.md` and `GEMINI.md`, and where no
+documentation pattern looks: Copilot in `.github/copilot-instructions.md`,
+Cursor in `.cursor/rules/*.mdc`, Markdown under a few lines of front matter.
+Named in `orientation.files` and not in the patterns, such a document was
+never read, and a run over it was as green as one over a document that names
+nothing. Its patterns are walked apart from the patterns to check, under the
+same `--ignore`, and a file both reach is read once; walked apart, a `!` in
+either list takes back only what that list reached.
+
 ## Not this round
 
 - **A mapping table held to fields in other documents**, such as a table of

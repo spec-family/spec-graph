@@ -20,7 +20,7 @@
 
 import { bindToItems, type HtmlComment, type ListItem, type ScannedDocument } from './markdown.js';
 
-export type DirectiveName = 'spec-node' | 'spec-item' | 'spec-edge' | 'spec-ignore' | 'spec-history' | 'spec-figure' | 'spec-path';
+export type DirectiveName = 'spec-node' | 'spec-item' | 'spec-edge' | 'spec-ignore' | 'spec-history' | 'spec-figure' | 'spec-path' | 'spec-command';
 
 const KNOWN: ReadonlySet<string> = new Set<DirectiveName>([
   'spec-node',
@@ -30,6 +30,7 @@ const KNOWN: ReadonlySet<string> = new Set<DirectiveName>([
   'spec-history',
   'spec-figure',
   'spec-path',
+  'spec-command',
 ]);
 
 export interface Attribute {
@@ -66,6 +67,8 @@ const SCHEMA: Readonly<Record<DirectiveName, readonly string[]>> = {
   'spec-figure': ['record', 'reason'],
   // Paths a document may name that the repository does not hold (ADR-0029).
   'spec-path': ['created', 'external', 'reason'],
+  // Scripts, targets and recipes a document may name that no manifest declares yet (ADR-0029).
+  'spec-command': ['created', 'reason'],
 };
 
 /**

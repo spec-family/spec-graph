@@ -13,6 +13,22 @@ records.
 
 ## Unreleased
 
+### Added
+
+- **`missing-command`: a command an orientation document names runs a
+  name its manifest declares.** In a document `orientation.files` names, a
+  code span `npm run x`, `npm test`, `pnpm x` or `yarn x` runs a script of
+  the nearest `package.json`, `make x` a target of the Makefile and `just x`
+  a recipe of the justfile: `missing-command`, an error, where it does not.
+  A flag that moves the command elsewhere, a shell line, a placeholder, a
+  manifest that includes another and a make target a file stands for are
+  left alone, and `<!-- @spec-command created="bench" -->` marks a name the
+  work adds
+  ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md), amended 2026-11-08).
+  Upgrading: a repository that configures `orientation` can see the new
+  error on a command its orientation documents name; one that configures
+  none sees nothing change.
+
 ### Fixed
 
 - **A file a template named is named by its path.** Spec Kit's

@@ -30,7 +30,7 @@ import {
   withinOneEdit,
 } from './identity.js';
 import { basenamePosix, dirnamePosix, extnamePosix, resolveFrom } from './paths.js';
-import type { DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, Figure, PathMention, Protocol, RegisterRow } from './types.js';
+import type { CommandMention, DanglingRef, DocumentNode, Edge, ItemNode, MisreadKey, ParseProblem, SpecNode, SuppressedRef, CommitCitation, DuplicateId, Figure, PathMention, Protocol, RegisterRow } from './types.js';
 
 export interface ResolveOptions {
   /**
@@ -106,6 +106,9 @@ export interface ResolvedCorpus {
   /** Every path an orientation document names, and the paths each may name unheld (ADR-0029). */
   readonly paths: readonly PathMention[];
   readonly pathsAllowed: ReadonlyMap<string, ReadonlySet<string>>;
+  /** Every command an orientation document names, and the names each may run undeclared (ADR-0029). */
+  readonly commands: readonly CommandMention[];
+  readonly commandsAllowed: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /**
@@ -277,6 +280,8 @@ export function resolveCorpus(
     figures: extracted.flatMap((entry) => entry.figures),
     paths: extracted.flatMap((entry) => entry.paths),
     pathsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.pathsAllowed)])),
+    commands: extracted.flatMap((entry) => entry.commands),
+    commandsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.commandsAllowed)])),
   };
 }
 

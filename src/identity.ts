@@ -42,6 +42,29 @@ const FAMILY_DIRECTORIES: ReadonlyMap<string, string> = new Map([
   ['specs', 'SPEC'],
 ]);
 
+/**
+ * File names a template gives every document of its kind, without the
+ * extension and in lower case.
+ *
+ * Spec Kit writes `specs/<feature>/spec.md`, `plan.md` and `tasks.md`, OpenSpec
+ * `openspec/changes/<change>/proposal.md`, Kiro `.kiro/specs/<feature>/design.md`.
+ * Such a name tells one feature's document from another's by its directory
+ * alone, so the path names it (ADR-0030). README and index are not here: a
+ * directory stands for its README, and `fileStem` names one after it.
+ */
+const TEMPLATE_NAMES: ReadonlySet<string> = new Set([
+  'spec',
+  'specification',
+  'plan',
+  'tasks',
+  'design',
+  'proposal',
+  'requirements',
+  'research',
+  'data-model',
+  'quickstart',
+]);
+
 /** Front-matter keys that may carry an explicit identifier, in preference order. */
 export const ID_KEYS: readonly string[] = ['id', 'adr', 'adr-id', 'rfc', 'rfc-id', 'kep-number', 'number', 'slug'];
 
@@ -191,6 +214,10 @@ export function identify(input: IdentityInput): DocumentIdentity {
     // with it the difference between this branch and the next, is reached only
     // by a caller identifying an empty path.
     id = stem.length > 0 ? stem : String(number);
+  } else if (ownsFile && TEMPLATE_NAMES.has(ownName(input.path).toLowerCase())) {
+    // Every feature of the layout has one, so the name is no name: two were one
+    // id, and the later left the graph. At the root the path is the name.
+    id = stripExtension(input.path);
   } else {
     id = stem.length > 0 ? stem : input.path;
   }
@@ -331,10 +358,15 @@ export function familyFromPath(posixPath: string): string | null {
 /* Internals                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function fileStem(posixPath: string): string {
+/** A file's own name, less its extension: `docs/adr/README.md` -> `README`. */
+function ownName(posixPath: string): string {
   const base = posixPath.slice(posixPath.lastIndexOf('/') + 1);
   const dot = base.lastIndexOf('.');
-  const stem = dot > 0 ? base.slice(0, dot) : base;
+  return dot > 0 ? base.slice(0, dot) : base;
+}
+
+function fileStem(posixPath: string): string {
+  const stem = ownName(posixPath);
   // `docs/adr/0007-sharding/README.md` is identified by its directory - but a
   // README at the repository root has no directory to be named after, and must
   // keep its own name. A repository-relative path never starts with `/`, so

@@ -163,9 +163,9 @@ describe('what is not a specification', () => {
   it('a heading with an identifier but no status', () => {
     // `## Q3 2026 Roadmap` parses as family Q, number 3. One signal is not enough.
     const files = {
-      'docs/plan.md': ['# Plan', '', '## Q3 2026 Roadmap', '', 'Ship the thing.', '', '## Q4 2026 Roadmap', '', 'Ship more.'].join('\n'),
+      'docs/roadmap.md': ['# Roadmap', '', '## Q3 2026 Roadmap', '', 'Ship the thing.', '', '## Q4 2026 Roadmap', '', 'Ship more.'].join('\n'),
     };
-    expect(ids(files)).toEqual(['plan']);
+    expect(ids(files)).toEqual(['roadmap']);
   });
 
   it('a changelog', () => {
@@ -198,18 +198,18 @@ describe('what is not a specification', () => {
   it('a heading whose only status is in a comment', () => {
     // A template's hint to whoever fills it in declares nothing.
     const files = {
-      'docs/plan.md': ['# Plan', '', '## ADR-0100: Something', '', '<!--', '**Status:** proposed', '-->', '', 'Words.'].join(
+      'docs/roadmap.md': ['# Roadmap', '', '## ADR-0100: Something', '', '<!--', '**Status:** proposed', '-->', '', 'Words.'].join(
         '\n',
       ),
     };
-    expect(ids(files)).toEqual(['plan']);
+    expect(ids(files)).toEqual(['roadmap']);
   });
 
   it('a heading whose only status is in a code block', () => {
     const files = {
-      'docs/plan.md': ['# Plan', '', '## ADR-0100: Something', '', '```md', 'Status: proposed', '```'].join('\n'),
+      'docs/roadmap.md': ['# Roadmap', '', '## ADR-0100: Something', '', '```md', 'Status: proposed', '```'].join('\n'),
     };
-    expect(ids(files)).toEqual(['plan']);
+    expect(ids(files)).toEqual(['roadmap']);
   });
 
   it('a status section of an ordinary document', () => {

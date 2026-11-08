@@ -516,6 +516,13 @@ trusts:
 A document is named by an explicit `id:` (or `adr:`, `adr-id:`, `rfc:`,
 `rfc-id:`, `kep-number:`, `number:` or `slug:`), then by its file name, then by
 its H1, and the H1 is read as a name only when neither of the others gave one.
+A file name a template gives every document of its kind - `spec.md`,
+`specification.md`, `plan.md`, `tasks.md`, `design.md`, `proposal.md`,
+`requirements.md`, `research.md`, `data-model.md` and `quickstart.md` -
+names none of them, so such a file is named by its path less the extension,
+`specs/001-login/spec`, and still answers to its name; a `README.md` is named
+by its directory
+([ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md)).
 A row of a register is named by its ID column instead: see
 [Registers](#registers-many-specifications-in-one-file).
 
@@ -1768,7 +1775,7 @@ a relative `cwd` is read from that directory.
 
 ## Design
 
-Twenty-three ADRs, which `spec-graph` validates on every CI run:
+Thirty ADRs, which `spec-graph` validates on every CI run:
 
 - [ADR-0001 — A hand-written Markdown scanner](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0001-hand-written-markdown-scanner.md)
 - [ADR-0002 — A four-phase lifecycle lattice](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002-lifecycle-lattice.md)
@@ -1799,6 +1806,7 @@ Twenty-three ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0027 — A register row is held to its status](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0027-a-register-row-is-held-to-its-status.md)
 - [ADR-0028 — A figure rests on a record](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md)
 - [ADR-0029 — An orientation document names what exists](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md)
+- [ADR-0030 — A template's file name names nothing](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

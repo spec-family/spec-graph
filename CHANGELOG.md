@@ -13,6 +13,22 @@ records.
 
 ## Unreleased
 
+### Fixed
+
+- **A file a template named is named by its path.** Spec Kit's
+  `specs/<feature>/spec.md`, OpenSpec's `openspec/changes/<change>/tasks.md`
+  and Kiro's `.kiro/specs/<feature>/design.md` were each named by the file
+  name, so every feature's spec was `spec`: the second was a duplicate
+  document id, left out of the graph, and a link from one feature's spec to
+  another's was a `self-reference`. A file named `spec`, `specification`,
+  `plan`, `tasks`, `design`, `proposal`, `requirements`, `research`,
+  `data-model` or `quickstart`, and named by nothing else, is
+  `specs/001-login/spec`, and still answers to its name
+  ([ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md)).
+  Upgrading: a lone `docs/design.md` is `docs/design` now, in findings,
+  exports and a baseline's entries; where a baseline holds a finding on such
+  a file, record it again with `--record-baseline`.
+
 ### Changed
 
 - **The package description names what spec-graph has grown to catch.** It

@@ -124,7 +124,7 @@ describe('a @spec-node written for the whole file', () => {
 describe('a directive that is not a @spec-node', () => {
   it('does not name the file, even when it carries an id', () => {
     const text = '# Plan\n\n## Open Questions\n\n<!-- @spec-item id="shard-key" -->\n- [ ] Which shard key?\n';
-    expect(extract('docs/notes/plan.md', text).document.id).toBe('plan');
+    expect(extract('docs/notes/roadmap.md', text).document.id).toBe('roadmap');
   });
 });
 
@@ -167,7 +167,7 @@ describe('a title', () => {
   });
 
   it('falls back to the id when the file has no H1', () => {
-    expect(extract('docs/notes/plan.md', '## Background\n\nWords.\n').document.title).toBe('plan');
+    expect(extract('docs/notes/roadmap.md', '## Background\n\nWords.\n').document.title).toBe('roadmap');
   });
 });
 

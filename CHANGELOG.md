@@ -31,6 +31,16 @@ records.
 
 ### Fixed
 
+- **A file whose id another already has is left out of the graph, all of
+  it, and the warning says so.** Its document and items were left out, but
+  its links, commits, paths, figures and protocols were still read, under
+  the id it shares: a link from one `notes.md` to the other was the first
+  depending on itself, and a broken link in the second was reported as the
+  first's. The warning reads "duplicate document id "notes", already
+  declared by a/notes.md, so this file is left out of the graph: nothing in
+  it is checked". Upgrading: a finding that came from the later of two
+  files sharing an id is gone; give the file an id of its own and it is
+  checked.
 - **A file a template named is named by its path.** Spec Kit's
   `specs/<feature>/spec.md`, OpenSpec's `openspec/changes/<change>/tasks.md`
   and Kiro's `.kiro/specs/<feature>/design.md` were each named by the file

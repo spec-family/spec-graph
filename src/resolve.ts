@@ -160,17 +160,23 @@ export function resolveCorpus(
   const misreadKeys: MisreadKey[] = [];
   const rows = new Map<string, RegisterRow>();
   const duplicates: DuplicateId[] = [];
+  // What the graph holds. A specification whose id was taken is left out,
+  // and so is everything in it: read under the id it shares, its citations
+  // were the first document's, and a link from one to the other was that
+  // document depending on itself.
+  const kept: ExtractedDocument[] = [];
 
   for (const entry of extracted) {
     const existing = nodes.get(entry.document.id);
     if (existing && existing.kind === 'document') {
       problems.push({
-        message: `duplicate document id "${entry.document.id}", already declared by ${existing.path}`,
+        message: `duplicate document id "${entry.document.id}", already declared by ${existing.path}, so this file is left out of the graph: nothing in it is checked`,
         at: entry.document.at,
       });
       duplicates.push({ id: entry.document.id, at: entry.document.at, first: existing.at });
       continue;
     }
+    kept.push(entry);
     nodes.set(entry.document.id, entry.document);
     documents.push(entry.document);
     if (entry.row !== null) rows.set(entry.document.id, entry.row);
@@ -233,7 +239,7 @@ export function resolveCorpus(
     });
   }
 
-  for (const entry of extracted) {
+  for (const entry of kept) {
     for (const candidate of entry.references) {
       if (!nodes.has(candidate.from)) continue;
       const outcome = resolveOne(candidate, entry, index, nodes, options);
@@ -273,12 +279,12 @@ export function resolveCorpus(
     misreadKeys,
     suppressed,
     families: [...index.families].sort(),
-    commits: extracted.flatMap((entry) => entry.commits),
+    commits: kept.flatMap((entry) => entry.commits),
     rows,
     duplicates,
-    protocols: new Map(extracted.flatMap((entry) => entry.protocols).map((protocol) => [protocol.id, protocol])),
-    figures: extracted.flatMap((entry) => entry.figures),
-    paths: extracted.flatMap((entry) => entry.paths),
+    protocols: new Map(kept.flatMap((entry) => entry.protocols).map((protocol) => [protocol.id, protocol])),
+    figures: kept.flatMap((entry) => entry.figures),
+    paths: kept.flatMap((entry) => entry.paths),
     pathsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.pathsAllowed)])),
     commands: extracted.flatMap((entry) => entry.commands),
     commandsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.commandsAllowed)])),

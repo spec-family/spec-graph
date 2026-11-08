@@ -219,6 +219,63 @@ describe('corpus integrity', () => {
     expect(documents[0]?.path).toBe('docs/adr/0001-a.md');
   });
 
+  it('says the later file is left out, and pins none of its citations on the document that kept the id', () => {
+    // Its links resolved from the first document's node: a link from one
+    // `notes.md` to the other was the first depending on itself, and a broken
+    // link in the second was the first's, at a line the first does not have.
+    const { problems, edges, dangling } = resolve({
+      'a/notes.md': '---\nstatus: accepted\n---\n\n# A\n',
+      'b/notes.md': '---\nstatus: accepted\ndepends-on: ../a/notes.md\n---\n\n# B\n\nSee [the plan](plan.md) and ADR-0099.\n',
+      'docs/adr/0001-x.md': '---\nstatus: accepted\n---\n\n# X\n',
+    });
+    expect(problems.map((p) => `${p.at.file} ${p.message}`)).toEqual([
+      'b/notes.md duplicate document id "notes", already declared by a/notes.md, so this file is left out of the graph: nothing in it is checked',
+    ]);
+    expect(edges.filter((edge) => edge.origin !== 'structural')).toEqual([]);
+    expect(dangling).toEqual([]);
+  });
+
+  it('holds none of the later file to its commits, paths, figures or protocols', async () => {
+    const { analyseSources } = await import('../src/runner.js');
+    const { createOrientationCheck, createProtocolCheck } = await import('../src/runner.js');
+    const { historyOf } = await import('../src/history.js');
+    const later = [
+      '# B',
+      '',
+      'Start at `src/missing.ts`.',
+      '',
+      '- [x] Shipped in commit 1234567',
+      '',
+      '<!-- @spec-figure -->',
+      'Refunds take 2s.',
+      '',
+      '## Measurement protocols',
+      '',
+      '### Refund latency',
+      '',
+      '- Last result: fast',
+      '',
+    ].join('\n');
+    const rules = (files: Record<string, string>): string[] =>
+      analyseSources(Object.entries(files).map(([path, text]) => ({ path, text })), {
+        orientation: createOrientationCheck({ files: ['**/*.md'], extensions: ['.ts'] }),
+        protocols: createProtocolCheck({ files: ['**/*.md'], heading: 'Measurement protocols', result: 'Last result' }),
+        isChecklist: () => true,
+        fileExists: () => false,
+        history: historyOf('HEAD', 'abcdef0\u001fSomething else\n'),
+      })
+        .diagnostics.map((d) => `${d.rule} ${d.at.file}`)
+        .sort();
+    // The control: read as its own document, it is held to all four.
+    expect(rules({ 'b/notes.md': later })).toEqual([
+      'incomplete-protocol b/notes.md',
+      'missing-path b/notes.md',
+      'unknown-commit b/notes.md',
+      'unrecorded-figure b/notes.md',
+    ]);
+    expect(rules({ 'a/notes.md': '# A\n', 'b/notes.md': later })).toEqual([]);
+  });
+
   it('gives a declared id to one obligation, and numbers the one after it', () => {
     for (const gap of ['', '\n']) {
       const { items, nodes } = resolve({

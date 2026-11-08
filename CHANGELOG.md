@@ -29,6 +29,19 @@ records.
   exports and a baseline's entries; where a baseline holds a finding on such
   a file, record it again with `--record-baseline`.
 
+- **A `Status:` label under the title is read, as spec-guard reads it.**
+  `Status: Draft`, `**Status**: Superseded` and `**Status:** Accepted`
+  opening a line above the first `##`, as Spec Kit's header block, design
+  documents and postmortems write them, gave no status, so a superseded
+  design document holding open items passed. The first such line is read
+  where no front matter, `## Status` section or status table says the
+  status; one in a list, a quote, code or a comment is not, and a value
+  that opens with no letter leaves the phase unknown
+  ([ADR-0002](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002-lifecycle-lattice.md), amended 2026-11-08).
+  Upgrading: a document whose only status is such a label takes its phase
+  from it, and can be found retired, frozen or a record where it read as
+  unknown; a finding that follows, such as `orphaned-obligation`, is new.
+
 ### Changed
 
 - **The package description names what spec-graph has grown to catch.** It

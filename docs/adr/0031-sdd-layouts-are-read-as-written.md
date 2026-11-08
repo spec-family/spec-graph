@@ -67,7 +67,20 @@ configuration, and read as their tools mean them.**
   an `orphaned-obligation`, because the tasks are in another document with no
   status. Grouping a feature's files would change what a document is, which
   ids a feature's files answer to and what a finding names as the place to
-  fix, and is proposed to the maintainer rather than decided here.
+  fix. The maintainer chose, on 2026-11-08, to build it in a later round,
+  behind a configuration switch that is off by default: from the first
+  release after round 27, JSON fields and exit codes stay unchanged for two
+  minors, and a new behaviour ships opt-in first (spec-core's
+  [ADR-0009](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md),
+  amended in round 27).
+- **A repository's own template names.** A name a layout gives every
+  document that is not in the table, and that two files share, is still a
+  duplicate document id, and the later file is left out of the graph. A key
+  that adds names to the table waits for a repository that needs one. No id
+  is decided by which other files the corpus holds: one that moved when a
+  second file of the same name was added would read, in a diff and against a
+  baseline, as a document removed and another added, by a change that touched
+  neither ([ADR-0006](0006-false-positives-cost-more.md)).
 
 ## Consequences
 

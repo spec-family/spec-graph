@@ -207,6 +207,42 @@ describe('orientation through the command line', () => {
     }
   });
 
+  it("reads other agents' instructions orientation names where the patterns do not reach, each once", async () => {
+    // AGENTS.md and GEMINI.md sit beside CLAUDE.md; Copilot's and Cursor's are
+    // under .github/ and .cursor/rules/, which no documentation pattern reads,
+    // and naming one in orientation checked nothing.
+    const { mkdir, rm, writeFile } = await import('node:fs/promises');
+    const root = `tests/fixtures/.tmp/orientation-agents-${process.pid}`;
+    await rm(root, { recursive: true, force: true });
+    try {
+      await mkdir(`${root}/src`, { recursive: true });
+      await mkdir(`${root}/.github`, { recursive: true });
+      await mkdir(`${root}/.cursor/rules`, { recursive: true });
+      await writeFile(`${root}/src/app.ts`, 'export {};\n');
+      const files = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.github/copilot-instructions.md', '.cursor/rules/*.mdc'];
+      await writeFile(`${root}/.spec-graph.json`, JSON.stringify({ patterns: ['CLAUDE.md'], orientation: { files, extensions: ['.ts'] } }));
+      const text = doc('# Instructions', '', 'Start at `src/app.ts`, not `src/gone.ts`.', '');
+      for (const file of ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.github/copilot-instructions.md']) await writeFile(`${root}/${file}`, text);
+      await writeFile(`${root}/.cursor/rules/app.mdc`, doc('---', 'description: The app', 'globs: src/**/*.ts', 'alwaysApply: false', '---', '', text));
+      await writeFile(`${root}/.cursor/rules/notes.md`, text);
+      let out = '';
+      const code = await main({ argv: ['check', '--format', 'json'], cwd: `${process.cwd()}/${root}`, stdout: (t) => (out += t), stderr: () => {}, env: { NO_COLOR: '1' }, isTTY: false });
+      expect(code).toBe(EXIT_FAILED);
+      const report = JSON.parse(out) as { files: string[]; problems: unknown[]; diagnostics: { rule: string; file: string }[] };
+      expect(report.files).toEqual(['.cursor/rules/app.mdc', '.github/copilot-instructions.md', 'AGENTS.md', 'CLAUDE.md', 'GEMINI.md']);
+      expect(report.problems).toEqual([]);
+      expect(report.diagnostics.map((d) => `${d.rule} ${d.file}`)).toEqual([
+        'missing-path .cursor/rules/app.mdc',
+        'missing-path .github/copilot-instructions.md',
+        'missing-path AGENTS.md',
+        'missing-path CLAUDE.md',
+        'missing-path GEMINI.md',
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('stops with exit 2 on a configuration it cannot read', async () => {
     const { mkdir, rm, writeFile } = await import('node:fs/promises');
     const root = `tests/fixtures/.tmp/orientation-bad-${process.pid}`;

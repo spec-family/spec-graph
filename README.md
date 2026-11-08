@@ -443,6 +443,19 @@ exist. Name those documents, and what they name is held to the repository:
 - `<!-- @spec-path created="docs/plan.md" external="dist/cli.js" -->` marks a
   path the document's work creates, or another repository's.
 - A commit it names is looked for in git, as a checklist's is.
+- A document `files` names is read whether or not the patterns reach it.
+
+Every agent's instructions are held the same way. Name the ones the
+repository keeps:
+
+```json
+{
+  "orientation": {
+    "files": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md", ".cursor/rules/*.mdc"],
+    "extensions": [".md", ".ts"]
+  }
+}
+```
 
 See [ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md).
 

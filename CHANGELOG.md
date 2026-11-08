@@ -31,6 +31,15 @@ records.
 
 ### Changed
 
+- **A document `orientation` names is read whether or not the patterns
+  reach it**, so every agent's instructions are held as `CLAUDE.md` is:
+  `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md` and
+  `.cursor/rules/*.mdc`, named in `orientation.files`. Named there and not in
+  the patterns, Copilot's and Cursor's were never read, and checked nothing
+  ([ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md), amended 2026-11-08).
+  Upgrading: a configured orientation document outside the patterns is read
+  now, as a document too, and a path or a link in it that names nothing is a
+  finding.
 - **The package description names what spec-graph has grown to catch.** It
   listed ghost handovers, stale premises and broken references, three of the
   23 rules; it names work marked done without its evidence, and commits and

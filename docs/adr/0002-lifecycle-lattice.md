@@ -128,6 +128,39 @@ punctuated full-width, `Superseded by ADR-0003，ADR-0004`, is split as one
 punctuated in ASCII: left whole, it names no document, and each successor
 would be reported as one the status never acknowledged.
 
+*Amended 2026-11-08.* **A `Status:` label under the title is read, where and
+as spec-guard reads one.** Spec Kit's header block writes `**Status**: Draft`,
+and so do design documents and postmortems; read as no status, a superseded
+design document holding open items passed. spec-core's family contract lists
+the label among the places a status is read
+([its ADR-0005](https://github.com/spec-family/spec-core/blob/main/docs/adr/0005-the-family-contract.md),
+amended 2026-09-30), and spec-guard has read it since; two tools reading one
+document differently is the disagreement that contract exists to prevent.
+
+- **The line**: `Status:`, `**Status**:`, `**Status:**` or `__Status__:`, in
+  any case, opening a line indented at most three spaces, with spec-guard's
+  expression. Not in a list, a quote, single emphasis, code or a comment, and
+  not without the colon.
+- **Where**: the preamble, before the first heading of level two or deeper,
+  so a `##` in code or a comment does not end it; a line inside a register's
+  section is that section's. The first such line decides.
+- **The value** is read with code and comments blanked. One that does not open
+  with a letter, through emphasis - a date, a quote, a symbol, a code span - is
+  a status that cannot be read, and the phase is unknown, as spec-guard leaves
+  the document in force. A readable one takes its phase from the vocabulary,
+  as every other status here does.
+- **Ranked last**, and read only where no directive, front-matter status key,
+  status section or status table row was written, readable or not, and under
+  no front matter that never closes: spec-guard reads the label in the place
+  of none of them.
+- **One difference, deliberate.** spec-guard keeps comments in the text it
+  reads the label from, so a `Status:` line inside a template's comment of
+  several lines withdraws a document there, and `Status: <!-- one of: draft,
+  accepted --> Accepted` cannot be read. Here a comment says nothing either
+  way, as it says nothing in a status section: the first is no label, the
+  second is accepted. Run against spec-guard's reader over 1,428 generated
+  lines, the two differ on those and on nothing else.
+
 ## Open Questions
 
 - [ ] Should `frozen` and `retired` be distinguishable in the `receptivity`

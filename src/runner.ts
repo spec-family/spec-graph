@@ -7,18 +7,19 @@
  * never existed on disk.
  */
 
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
+import { MANIFESTS, namesIn, type CommandKind } from './commands.js';
 import { extractSpecifications, type ExtractedDocument } from './extract.js';
 import { createGlobMatcher, createReferenceFilter, walkFiles, type WalkedFile } from './glob.js';
 import { buildGraph, type SpecGraph } from './graph.js';
 import { isFamilyName } from './identity.js';
-import { toPosix } from './paths.js';
+import { dirnamePosix, toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
 import { createRegisterCheck, summariseRegisters, type RegisterCheck, type RegisterSummary } from './registers.js';
-import { holdsToCommits, runRules, type OrientationCheck, type ProtocolCheck, type RuleOptions } from './rules.js';
+import { holdsToCommits, runRules, type Manifest, type OrientationCheck, type ProtocolCheck, type RuleOptions } from './rules.js';
 import { readHistory } from './git.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
 import type { AnalysisSummary, AnyRuleId, ClaimsConfig, CommitCitation, Diagnostic, Disposition, OrientationConfig, ParseProblem, ProtocolsConfig, RegistersConfig, Severity } from './types.js';
@@ -140,6 +141,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
       // corpus but one written for it.
       isIgnoredReference: createReferenceFilter(options.ignoreReferences ?? []),
       isIgnoredFamily: createFamilyFilter(options.families, options.ignoreFamilies),
+      manifestFor: createManifestReader(root),
       severities: options.severities,
       projectRules: options.projectRules,
       maxRelated: options.maxRelated,
@@ -362,6 +364,38 @@ function finish(analysed: Analysed, files: readonly string[], started: number, r
     ok: counts.error === 0,
     ...(registers === undefined ? {} : { registers: summariseRegisters(corpus, registers) }),
   };
+}
+
+/**
+ * The manifest nearest a directory of the repository that declares a kind of
+ * name: the first of the kind's file names there, then in each directory
+ * above, up to the root (ADR-0029). A name is matched as the directory lists
+ * it, so `makefile` is not `Makefile` on a host whose disk folds case, and a
+ * run reports the same file everywhere. Each directory is listed once.
+ */
+export function createManifestReader(root: string): (directory: string, kind: CommandKind) => Manifest | undefined {
+  const listings = new Map<string, ReadonlySet<string>>();
+  const listed = (directory: string): ReadonlySet<string> => {
+    let names = listings.get(directory);
+    if (names === undefined) {
+      try {
+        names = new Set(readdirSync(`${root}/${directory}`, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name));
+      } catch {
+        names = new Set();
+      }
+      listings.set(directory, names);
+    }
+    return names;
+  };
+  const find = (directory: string, kind: CommandKind): Manifest | undefined => {
+    const name = MANIFESTS[kind].find((candidate) => listed(directory).has(candidate));
+    if (name !== undefined) {
+      const file = directory === '' ? name : `${directory}/${name}`;
+      return { file, names: namesIn(kind, readFileSync(`${root}/${file}`, 'utf8')) };
+    }
+    return directory === '' ? undefined : find(dirnamePosix(directory), kind);
+  };
+  return find;
 }
 
 /** Reads files with bounded concurrency, skipping ones that cannot be read. */

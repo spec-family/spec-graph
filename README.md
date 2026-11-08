@@ -119,6 +119,7 @@ follows `npx --no-install @spec-family/` at a prompt.
 | `target-without-protocol` | error | A claim whose label asks for a measurement and cites no protocol |
 | `unrecorded-figure` | error | A figure marked `@spec-figure` that names no record, or one with no dated result |
 | `missing-path` | error | A path an orientation document names in a code span that the repository does not hold |
+| `missing-command` | error | A script, target or recipe an orientation document runs in a code span that its `package.json`, Makefile or justfile does not declare |
 
 Override any of them:
 
@@ -443,6 +444,16 @@ exist. Name those documents, and what they name is held to the repository:
 - `<!-- @spec-path created="docs/plan.md" external="dist/cli.js" -->` marks a
   path the document's work creates, or another repository's.
 - A commit it names is looked for in git, as a checklist's is.
+- A command it names in a code span runs a name its manifest declares:
+  `npm run x`, `npm test`, `pnpm x` and `yarn x` a script of the
+  `package.json` nearest the document, `make x` a target of the Makefile,
+  `just x` a recipe of the justfile. `missing-command` where it does not.
+  A tool's own command (`pnpm add`), a flag that moves the command
+  elsewhere (`--filter`, `-w`, `-C`, `--if-present`), a line with an
+  operator, a placeholder or a variable, and a manifest that includes
+  another, or names a target by a pattern or a variable, are left alone,
+  and so is a make target a file beside the Makefile can stand for.
+  `<!-- @spec-command created="bench" -->` marks a name the work adds.
 
 See [ADR-0029](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md).
 
@@ -785,6 +796,7 @@ Directives are ordinary HTML comments — invisible in every Markdown renderer:
 <!-- @spec-history -->
 <!-- @spec-figure record="ROADMAP.md#refund-latency" -->
 <!-- @spec-path created="docs/plan.md" -->
+<!-- @spec-command created="bench" -->
 ```
 
 Each takes these attributes. Any other is a parse problem, listed by
@@ -799,6 +811,7 @@ Each takes these attributes. Any other is a parse problem, listed by
 | `@spec-history` | none |
 | `@spec-figure` | `record`, `reason` |
 | `@spec-path` | `created`, `external`, `reason` |
+| `@spec-command` | `created`, `reason` |
 
 - `reason`, `note`, `owner` and a node's `kind` are for whoever reads the
   source; spec-graph reads nothing from them.

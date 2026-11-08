@@ -25,6 +25,7 @@ import { receptivityOf } from './lifecycle.js';
 import { dirnamePosix, joinPosix, normalisePosix, resolveFrom } from './paths.js';
 import { renderTemplate, type ProjectRule } from './project-rules.js';
 import { execute, parseQuery, type QuerySpec } from './select.js';
+import { IMPLICIT_SOURCES, type CommandKind } from './commands.js';
 import type { ResolvedCorpus } from './resolve.js';
 import type {
   AnyRuleId,
@@ -73,6 +74,7 @@ export const DEFAULT_SEVERITIES: Readonly<Record<RuleId, Severity>> = Object.fre
   'target-without-protocol': 'error',
   'unrecorded-figure': 'error',
   'missing-path': 'error',
+  'missing-command': 'error',
 });
 
 export const RULE_IDS = Object.keys(DEFAULT_SEVERITIES) as readonly RuleId[];
@@ -102,6 +104,7 @@ export const RULE_DESCRIPTIONS: Readonly<Record<RuleId, string>> = Object.freeze
   'target-without-protocol': 'a claim whose label asks for a measurement cites no protocol',
   'unrecorded-figure': 'a marked figure names no record, or one with no dated result',
   'missing-path': 'an orientation document names a path the repository does not hold',
+  'missing-command': 'an orientation document names a script, target or recipe no manifest declares',
 });
 
 /**
@@ -140,6 +143,7 @@ export const RULE_DECISIONS: Readonly<Record<RuleId, string>> = Object.freeze({
   'target-without-protocol': 'docs/adr/0028-a-figure-rests-on-a-record.md',
   'unrecorded-figure': 'docs/adr/0028-a-figure-rests-on-a-record.md',
   'missing-path': 'docs/adr/0029-an-orientation-document-names-what-exists.md',
+  'missing-command': 'docs/adr/0029-an-orientation-document-names-what-exists.md',
 });
 
 /**
@@ -211,6 +215,12 @@ export interface RuleOptions {
   readonly orientation?: OrientationCheck | undefined;
   /** Whether the repository holds a path, a file or a directory (ADR-0029). */
   readonly pathExists?: ((path: string) => boolean) | undefined;
+  /**
+   * The manifest nearest a directory that declares a kind of name - the
+   * `package.json`, Makefile or justfile a command run there reads - or
+   * nothing where none is there (ADR-0029). Without it no command is looked for.
+   */
+  readonly manifestFor?: ((directory: string, kind: CommandKind) => Manifest | undefined) | undefined;
   /** Cap on related locations attached to one finding. */
   readonly maxRelated?: number | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
@@ -265,6 +275,7 @@ export function runRules(graph: SpecGraph, corpus: ResolvedCorpus, options: Rule
   registerFindings(corpus, options, emit);
   protocolFindings(graph, corpus, options, emit);
   missingPaths(corpus, options, emit);
+  missingCommands(corpus, options, emit);
   misreadKeys(corpus, emit);
   selfReferences(graph, emit);
   projectFindings(graph, projectRules, emit);
@@ -1113,6 +1124,48 @@ function missingPaths(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit):
       hint: `correct it, or mark it in the document: <!-- @spec-path created="${mention.path}" --> for one this work creates, external="${mention.path}" for one in another repository`,
     }));
   }
+}
+
+/** A manifest's path, and the names it declares, or `null` where it may declare more than it says. */
+export interface Manifest {
+  readonly file: string;
+  readonly names: ReadonlySet<string> | null;
+}
+
+/**
+ * A script, target or recipe an orientation document names in a command that
+ * the manifest nearest the document does not declare (ADR-0029, amended
+ * 2026-11-08). Nothing is said where no manifest is there, where one may
+ * declare more than it says, where `@spec-command` marks the name as one the
+ * work creates, or, for make, where a file of the target's name, or one its
+ * built-in rules make it from, is beside the Makefile.
+ */
+function missingCommands(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
+  const { manifestFor, pathExists } = options;
+  if (manifestFor === undefined) return;
+  for (const mention of corpus.commands) {
+    // Every document read has its set, empty where it marks nothing.
+    if (corpus.commandsAllowed.get(mention.at.file)!.has(mention.name)) continue;
+    const manifest = manifestFor(dirnamePosix(mention.at.file), mention.kind);
+    if (manifest === undefined || manifest.names === null || manifest.names.has(mention.name)) continue;
+    if (mention.kind === 'target' && madeWithoutRule(mention.name, dirnamePosix(manifest.file), pathExists)) continue;
+    const declared = [...manifest.names].sort();
+    const mark = `or mark it in the document: <!-- @spec-command created="${mention.name}" --> for one this work creates`;
+    const shown = listed(declared.length > 8 ? [...declared.slice(0, 8), `${declared.length - 8} more`] : declared);
+    emit('missing-command', () => ({
+      message: `\`${mention.command}\` runs the ${mention.kind} "${mention.name}", which ${manifest.file} does not declare`,
+      at: mention.at,
+      nodes: [mention.owner],
+      target: mention.name,
+      related: [],
+      hint: declared.length === 0 ? `add it to ${manifest.file}, which declares none, ${mark}` : `run one ${manifest.file} declares, ${shown}, ${mark}`,
+    }));
+  }
+}
+
+/** Whether make has the target with no rule for it: a file of its name, or one a built-in rule makes it from, beside the Makefile. */
+function madeWithoutRule(target: string, directory: string, pathExists: ((path: string) => boolean) | undefined): boolean {
+  return pathExists !== undefined && IMPLICIT_SOURCES.some((extension) => pathExists(normalisePosix(joinPosix(directory, `${target}${extension}`))));
 }
 
 function sameStart(a: SourceRef, b: SourceRef): boolean {

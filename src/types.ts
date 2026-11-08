@@ -392,6 +392,19 @@ export interface PathMention {
   readonly at: SourceRef;
 }
 
+/** A command an orientation document names in a code span, by one name it runs (ADR-0029). */
+export interface CommandMention {
+  /** The node it is written in. */
+  readonly owner: string;
+  readonly tool: 'npm' | 'pnpm' | 'yarn' | 'make' | 'just';
+  /** A script of `package.json`, a target of a Makefile or a recipe of a justfile. */
+  readonly kind: 'script' | 'target' | 'recipe';
+  readonly name: string;
+  /** The code span as written, less its backticks. */
+  readonly command: string;
+  readonly at: SourceRef;
+}
+
 /** A register's row, by its cells, for a region a table's row declares (ADR-0027). */
 export interface RegisterRow {
   readonly cells: readonly { readonly header: string; readonly text: string; readonly at: SourceRef }[];
@@ -536,7 +549,8 @@ export type RuleId =
   | 'undated-result'
   | 'target-without-protocol'
   | 'unrecorded-figure'
-  | 'missing-path';
+  | 'missing-path'
+  | 'missing-command';
 
 /**
  * A rule a repository wrote for itself, as a selector plus a sentence.

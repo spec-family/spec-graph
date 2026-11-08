@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 const LOADERS: Readonly<Record<string, () => Promise<unknown>>> = {
   baseline: () => import('../src/baseline.js'),
   cli: () => import('../src/cli.js'),
+  commands: () => import('../src/commands.js'),
   config: () => import('../src/config.js'),
   diff: () => import('../src/diff.js'),
   directives: () => import('../src/directives.js'),

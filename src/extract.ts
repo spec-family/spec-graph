@@ -15,6 +15,7 @@
  * broken reference to specification 256.
  */
 
+import { commandIn } from './commands.js';
 import { attr, attrList, bindItemDirectives, parseDirectives, type Directive } from './directives.js';
 import {
   identify,
@@ -68,6 +69,7 @@ import {
   type ItemNode,
   type MisreadKey,
   type ParseProblem,
+  type CommandMention,
   type PathMention,
   type Phase,
   type SourceRef,
@@ -138,6 +140,10 @@ export interface ExtractedDocument {
   readonly paths: readonly PathMention[];
   /** The paths `@spec-path` says the file may name that the repository does not hold, as written. */
   readonly pathsAllowed: readonly string[];
+  /** The commands the file names, where it orients a reader, one per name each runs (ADR-0029). */
+  readonly commands: readonly CommandMention[];
+  /** The names `@spec-command` says the file may run that no manifest declares yet. */
+  readonly commandsAllowed: readonly string[];
   readonly identity: DocumentIdentity;
   readonly scanned: ScannedDocument;
   /**
@@ -982,6 +988,8 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     figures: figuresOf(directives, allItems, ownerAt, at),
     paths: input.orientation === undefined ? [] : pathsOf(scanned, input.orientation.extensions, allItems, ownerAt, at),
     pathsAllowed: directives.filter((directive) => directive.name === 'spec-path').flatMap((directive) => [...attrList(directive, 'created'), ...attrList(directive, 'external')]),
+    commands: input.orientation === undefined ? [] : commandsOf(scanned, allItems, ownerAt, at),
+    commandsAllowed: directives.filter((directive) => directive.name === 'spec-command').flatMap((directive) => attrList(directive, 'created')),
     identity,
     scanned,
     subSpecifications: filled,
@@ -1101,6 +1109,8 @@ function buildRegion(context: RegionInput): BuiltRegion {
       figures: [],
       paths: [],
       pathsAllowed: [],
+      commands: [],
+      commandsAllowed: [],
       row:
         region.row === null
           ? null
@@ -1527,6 +1537,24 @@ function pathsOf(
     const path = pathIn(scanned.text.slice(span.start, span.end).replace(/^`+|`+$/g, '').trim(), extensions);
     if (path === null) continue;
     out.push({ owner: ownerOf(items, span.start) ?? ownerAt(span.start), path, at: at(span.start, span.end) });
+  }
+  return out;
+}
+
+/** The commands an orientation document names in its code spans, one per name each runs. */
+function commandsOf(
+  scanned: ScannedDocument,
+  items: readonly ItemNode[],
+  ownerAt: (offset: number) => string,
+  at: (start: number, end: number) => SourceRef,
+): CommandMention[] {
+  const out: CommandMention[] = [];
+  for (const span of scanned.codeSpans) {
+    const command = scanned.text.slice(span.start, span.end).replace(/^`+|`+$/g, '').trim();
+    const read = commandIn(command);
+    if (read === null) continue;
+    const owner = ownerOf(items, span.start) ?? ownerAt(span.start);
+    for (const name of read.names) out.push({ owner, tool: read.tool, kind: read.kind, name, command, at: at(span.start, span.end) });
   }
   return out;
 }

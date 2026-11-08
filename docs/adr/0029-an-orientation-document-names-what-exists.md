@@ -81,6 +81,44 @@ directory that is not there either, is missed: ADR-0006 prefers that to a
 finding on two words, and `new/dir/` or `@spec-path created` says what is
 meant.
 
+*Amended 2026-11-08, for round 27.* **A command an orientation document
+names runs a name its manifest declares.** The same documents tell the next
+reader what to run, `npm run lint` or `make check`, and an agent that writes
+one names a script nobody wrote, or one renamed since: the reader runs it and
+is told it is missing, or worse, guesses which was meant.
+
+<!-- @spec-edge kind="depends-on" to="ADR-0006" reason="only what can be told is held to a manifest" -->
+
+- **Five tools, in a code span.** `npm run x`, `npm run-script x`, `npm
+  test`, `pnpm x`, `pnpm run x`, `yarn x` and `yarn run x` run a script
+  of the `package.json` nearest the document; `make x y` runs targets of the
+  Makefile (`GNUmakefile`, `makefile` or `Makefile`, in make's order);
+  `just x` runs a recipe or an alias of the justfile. A command in prose or
+  in a fenced block is not read, nor is any other tool.
+- **Nearest**: in the document's directory, then each directory above it, up
+  to the root, by the name the directory lists, so a host whose disk folds
+  case reads the file another reads.
+- **`missing-command`**, an error, at the code span, naming the manifest and
+  what it declares.
+- **Left alone, since a false finding costs more than a missed one**: a
+  tool's own command (`pnpm add`, `yarn workspace`, `npm start`), a flag
+  before the name or one that moves the command to another package or file
+  (`--filter`, `-w`, `--workspace`, `--prefix`, `-C`, `--cwd`, `-r`)
+  or skips a missing script (`--if-present`), a line holding an operator, a
+  placeholder or a variable, an assignment before the tool, no manifest at
+  all, a `package.json` that is no JSON object, a Makefile that includes
+  another, evaluates text or names a target by a pattern or a variable, a
+  justfile that imports a file or a module, and a make target a file beside
+  the Makefile stands for: one of its name, which is up to date, or one
+  make's built-in rules build it from, `hello.c` for `hello`.
+- **Marked, never guessed**: `<!-- @spec-command created="bench" -->` says
+  the work adds the name; it takes a list.
+- **Read where the repository is.** `analyse` reads the manifests;
+  `analyseSources` holds a command to a manifest only where it is given
+  `manifestFor`. It does not refuse to run without one, as it refuses for a
+  path, because every brief already names `npm run lint`, and a caller that
+  ran yesterday would stop.
+
 ## Not this round
 
 - **A mapping table held to fields in other documents**, such as a table of

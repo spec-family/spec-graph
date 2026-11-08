@@ -17,6 +17,7 @@
  * Adapted from @spec-family/spec-guard, where the same merge has scored every
  * sweep since its 0.9.0.
  *
+ *   node scripts/mutation-shards.mjs toolchain
  *   node scripts/mutation-shards.mjs cache <shard>
  *   node scripts/mutation-shards.mjs merge <directory holding the shard reports>
  */
@@ -145,6 +146,37 @@ export function mutateFor(base, shard, assigned = ASSIGNED) {
     : [...base, ...assigned.flat().map((file) => `!${file}`)];
 }
 
+// To an incremental run a test is its file, its name and where it starts, and
+// three packages decide those: Stryker's core matches the last sweep's tests
+// to this run's, its vitest runner names each test and, since 10.1, says where
+// it starts, and vitest gives the runner both. A test of the last sweep that
+// the match misses is carried into the report as one that did not run this
+// time, beside the test it was. Stryker 10.1.1 started from the file 10.0.0
+// wrote, which has no locations, missed every test, and each shard's report
+// held the suite twice (ADR-0007, 2026-11-08). So the incremental file is
+// keyed on these three versions, and a run of any others restores none and
+// tests every mutant.
+export const TOOLCHAIN = ['@stryker-mutator/core', '@stryker-mutator/vitest-runner', 'vitest'];
+
+export function toolchainKey(versionOf) {
+  return TOOLCHAIN.map((name) => {
+    const version = versionOf(name);
+    if (typeof version !== 'string' || !/^\d+\.\d+\.\d+\S*$/.test(version)) {
+      throw new ShardError(`No version of ${name} to key the incremental file on, got ${JSON.stringify(version)}: run npm ci first.`);
+    }
+    return `${name.replace('@stryker-mutator/', '')}-${version}`;
+  }).join('+');
+}
+
+const installedVersion = (name) => {
+  try {
+    return JSON.parse(readFileSync(path.join('node_modules', name, 'package.json'), 'utf8')).version;
+  } catch (error) {
+    if (error.code === 'ENOENT') return undefined;
+    throw error;
+  }
+};
+
 // A test is its file and its name; ids are numbered afresh in every run.
 const testKey = (file, name) => JSON.stringify([file, name]);
 
@@ -154,7 +186,9 @@ function testsOf(shard, report) {
     for (const test of entry.tests) {
       const key = testKey(file, test.name);
       if (tests.has(key)) {
-        throw new ShardError(`Shard ${shard} has two tests named "${test.name}" in ${file}, so its tests cannot be matched by name.`);
+        throw new ShardError(
+          `Shard ${shard} has two tests named "${test.name}" in ${file}, so its tests cannot be matched by name. A run started from an incremental file another Stryker or vitest wrote reports every test twice; see toolchainKey.`,
+        );
       }
       tests.set(key, test);
     }
@@ -354,8 +388,18 @@ const minutes = (seconds) => `${Math.floor(seconds / 60)}m${String(Math.round(se
 
 async function main(argv) {
   const [command, argument] = argv;
+  if (command === 'toolchain' && argument === undefined) {
+    try {
+      console.log(toolchainKey(installedVersion));
+      return 0;
+    } catch (error) {
+      if (!(error instanceof ShardError)) throw error;
+      console.error(`${process.env.GITHUB_ACTIONS === 'true' ? '::error::' : ''}${error.message}`);
+      return 1;
+    }
+  }
   if (!['cache', 'merge'].includes(command) || argument === undefined) {
-    console.error('usage: node scripts/mutation-shards.mjs cache <shard> | merge <directory holding the shard reports>');
+    console.error('usage: node scripts/mutation-shards.mjs toolchain | cache <shard> | merge <directory holding the shard reports>');
     return 2;
   }
   const { default: config } = await import(pathToFileURL(path.resolve('stryker.config.mjs')).href);

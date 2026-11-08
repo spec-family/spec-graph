@@ -12,10 +12,10 @@ name: Mutation
 # Two tiers. A push to `main`, a tag, the weekly schedule and a manual dispatch
 # run the full sweep, which re-derives every verdict from the code. A pull
 # request runs incrementally, from the incremental file the last full sweep on
-# `main` published, and only a full sweep publishes one: an incremental run's
-# file is derived from a cache rather than from the code, and feeding it back is
-# how ADR-0007 came to record an incremental lineage drifting from every rebuild
-# for a week at a time.
+# `main` published with the same Stryker and vitest, and only a full sweep
+# publishes one: an incremental run's file is derived from a cache rather than
+# from the code, and feeding it back is how ADR-0007 came to record an
+# incremental lineage drifting from every rebuild for a week at a time.
 #
 # Both tiers run in shards. The sweep took 166 to 171 minutes on one runner, on
 # identical source, three times. Each shard mutates its own files
@@ -97,20 +97,30 @@ jobs:
       # 11 run none either (tests/npm.test.ts).
       - run: npm ci --ignore-scripts
 
-      # A pull request starts from whatever `main` last published, by prefix. A
-      # run can restore only caches from its own ref or the default branch, so a
-      # file published anywhere but `main` would be one nothing could read. A
-      # miss is not a failure: it costs the whole sweep, and the result is the
-      # same. A full sweep restores nothing at all, so no verdict can be carried
-      # into it.
+      # The versions of Stryker and vitest that npm ci installed. An incremental
+      # file matches its tests to this run's by what those versions make of a
+      # test, so it is restored only by the toolchain that wrote it
+      # (scripts/mutation-shards.mjs, toolchainKey; ADR-0007, 2026-11-08). It
+      # runs in a full sweep too, which publishes under it.
+      - name: Name the toolchain
+        id: toolchain
+        run: echo "key=$(node scripts/mutation-shards.mjs toolchain)" >> "$GITHUB_OUTPUT"
+
+      # A pull request starts from whatever `main` last published with its
+      # toolchain, by prefix. A run can restore only caches from its own ref or
+      # the default branch, so a file published anywhere but `main` would be one
+      # nothing could read. A miss is not a failure: it costs the whole sweep,
+      # and the result is the same, so a pull request that moves Stryker or
+      # vitest sweeps every mutant. A full sweep restores nothing at all, so no
+      # verdict can be carried into it.
       - name: Restore the incremental file
         if: env.FULL != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: reports/stryker-incremental.json
-          key: stryker-sweep-${{ github.run_id }}
+          key: stryker-sweep-${{ steps.toolchain.outputs.key }}-${{ github.run_id }}
           restore-keys: |
-            stryker-sweep-
+            stryker-sweep-${{ steps.toolchain.outputs.key }}-
 
       # The file holds the whole sweep, and Stryker reports the verdicts it holds
       # for files a run does not mutate as though the run had produced them. So
@@ -166,6 +176,11 @@ jobs:
       # The merge scores with Stryker's own metrics library.
       - run: npm ci --ignore-scripts
 
+      # The key the shards restored by, from the same lockfile.
+      - name: Name the toolchain
+        id: toolchain
+        run: echo "key=$(node scripts/mutation-shards.mjs toolchain)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: mutation-shard-*
@@ -183,7 +198,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: reports/stryker-incremental.json
-          key: stryker-sweep-${{ github.run_id }}-${{ github.run_attempt }}
+          key: stryker-sweep-${{ steps.toolchain.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       # Stryker makes no mutant of anything under a TypeScript `as`, so the
       # score above says nothing of what stands there. This counts those

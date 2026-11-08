@@ -42,6 +42,8 @@ export declare function mutates(patterns: string[], file: string): boolean;
 export declare function checkAssignment(base: string[], assigned?: string[][]): Map<string, number>;
 export declare function mutateFor(base: string[], shard: unknown, assigned?: string[][]): string[];
 export declare function cacheFor(report: Report, patterns: string[]): Report;
+export declare const TOOLCHAIN: string[];
+export declare function toolchainKey(versionOf: (name: string) => unknown): string;
 export declare function mergeReports(
   shards: { shard: number; report: Report }[],
   options: { base: string[]; thresholds: Thresholds; assigned?: string[][] },

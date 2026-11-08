@@ -65,6 +65,15 @@ const TEMPLATE_NAMES: ReadonlySet<string> = new Set([
   'quickstart',
 ]);
 
+/**
+ * Directories a template fills with files named for what each holds, in
+ * every feature alike: Spec Kit writes `specs/<feature>/checklists/ux.md` and
+ * `contracts/<api>.md` for each feature that has them. A file directly in
+ * one is named by its path, as a template's file name is (ADR-0030, amended
+ * 2026-11-08). In lower case.
+ */
+const TEMPLATE_DIRECTORIES: ReadonlySet<string> = new Set(['checklists', 'contracts']);
+
 /** Front-matter keys that may carry an explicit identifier, in preference order. */
 export const ID_KEYS: readonly string[] = ['id', 'adr', 'adr-id', 'rfc', 'rfc-id', 'kep-number', 'number', 'slug'];
 
@@ -214,7 +223,7 @@ export function identify(input: IdentityInput): DocumentIdentity {
     // with it the difference between this branch and the next, is reached only
     // by a caller identifying an empty path.
     id = stem.length > 0 ? stem : String(number);
-  } else if (ownsFile && TEMPLATE_NAMES.has(ownName(input.path).toLowerCase())) {
+  } else if (ownsFile && (TEMPLATE_NAMES.has(ownName(input.path).toLowerCase()) || TEMPLATE_DIRECTORIES.has(parentName(input.path).toLowerCase()))) {
     // Every feature of the layout has one, so the name is no name: two were one
     // id, and the later left the graph. At the root the path is the name.
     id = stripExtension(input.path);
@@ -363,6 +372,11 @@ function ownName(posixPath: string): string {
   const base = posixPath.slice(posixPath.lastIndexOf('/') + 1);
   const dot = base.lastIndexOf('.');
   return dot > 0 ? base.slice(0, dot) : base;
+}
+
+/** The name of the directory holding a file, or nothing at the root: `specs/001/checklists/ux.md` -> `checklists`. */
+function parentName(posixPath: string): string {
+  return posixPath.split('/').slice(-2, -1)[0] ?? '';
 }
 
 function fileStem(posixPath: string): string {

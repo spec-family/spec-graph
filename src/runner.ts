@@ -30,6 +30,10 @@ export const DEFAULT_PATTERNS: readonly string[] = Object.freeze([
   'adr/**/*.md',
   'rfcs/**/*.md',
   'specs/**/*.md',
+  // The layouts spec-driven-development tools write (ADR-0031).
+  '.specify/memory/*.md',
+  'openspec/**/*.md',
+  '.kiro/specs/**/*.md',
   '*.md',
 ]);
 

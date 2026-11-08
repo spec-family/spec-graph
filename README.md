@@ -520,11 +520,40 @@ A file name a template gives every document of its kind - `spec.md`,
 `specification.md`, `plan.md`, `tasks.md`, `design.md`, `proposal.md`,
 `requirements.md`, `research.md`, `data-model.md` and `quickstart.md` -
 names none of them, so such a file is named by its path less the extension,
-`specs/001-login/spec`, and still answers to its name; a `README.md` is named
-by its directory
+`specs/001-login/spec`, and still answers to its name, and so is a file
+directly in `checklists/` or `contracts/`; a `README.md` is named by its
+directory
 ([ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md)).
 A row of a register is named by its ID column instead: see
 [Registers](#registers-many-specifications-in-one-file).
+
+### Spec Kit, OpenSpec and Kiro
+
+The layouts spec-driven-development tools write are read as they are, with
+no configuration:
+
+- **Spec Kit.** Each file of `specs/<NNN-feature>/` - `spec.md`, `plan.md`,
+  `tasks.md`, `research.md`, `data-model.md`, `quickstart.md`, and each one
+  under `checklists/` and `contracts/` - is a document of its own, named by its
+  path, `specs/001-login/spec`, so a link from one feature to another is a
+  link. `**Status**: Draft` in the header block is the status, and the
+  checkboxes of `tasks.md` are that feature's open work.
+  `.specify/memory/constitution.md` is read too.
+- **OpenSpec.** `openspec/specs/<capability>/spec.md` and each file of
+  `openspec/changes/<change>/`, the change's own `specs/` included, are
+  documents of their own. A change under `openspec/changes/archive/` is a
+  record: its unticked tasks are what was left, and citing it is normal.
+- **Kiro.** Each of `.kiro/specs/<feature>/requirements.md`, `design.md` and
+  `tasks.md`.
+
+Their agents' instructions are orientation documents, held to the paths and
+commands they name once named:
+
+```json
+{ "orientation": { "files": ["CLAUDE.md", "AGENTS.md", ".kiro/steering/*.md"], "extensions": [".md", ".ts"] } }
+```
+
+See [ADR-0031](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0031-sdd-layouts-are-read-as-written.md).
 
 ### When `[[...]]` tags a concept
 
@@ -1168,6 +1197,10 @@ it was.
 
 ### Patterns
 
+With no patterns, spec-graph reads `docs/**/*.md`, `doc/**/*.md`,
+`adr/**/*.md`, `rfcs/**/*.md`, `specs/**/*.md`, `.specify/memory/*.md`,
+`openspec/**/*.md`, `.kiro/specs/**/*.md` and `*.md`.
+
 The patterns to check, `--ignore`, `--history` and `historyPatterns` are the
 glob dialect every spec-* tool reads, so a scope means the same to spec-graph
 as to the tool that wrote it. They are matched against the whole
@@ -1775,7 +1808,7 @@ a relative `cwd` is read from that directory.
 
 ## Design
 
-Thirty ADRs, which `spec-graph` validates on every CI run:
+Thirty-one ADRs, which `spec-graph` validates on every CI run:
 
 - [ADR-0001 — A hand-written Markdown scanner](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0001-hand-written-markdown-scanner.md)
 - [ADR-0002 — A four-phase lifecycle lattice](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002-lifecycle-lattice.md)
@@ -1807,6 +1840,7 @@ Thirty ADRs, which `spec-graph` validates on every CI run:
 - [ADR-0028 — A figure rests on a record](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0028-a-figure-rests-on-a-record.md)
 - [ADR-0029 — An orientation document names what exists](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0029-an-orientation-document-names-what-exists.md)
 - [ADR-0030 — A template's file name names nothing](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md)
+- [ADR-0031 — Spec-driven-development layouts are read as written](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0031-sdd-layouts-are-read-as-written.md)
 
 **Zero runtime dependencies.** Node 22+, native ESM, TypeScript strict with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The Markdown

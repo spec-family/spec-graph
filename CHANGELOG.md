@@ -11,6 +11,29 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Changed
+
+- **The suite runs on vitest 5, and the mutation sweep keeps its own record
+  of the test file that failed last.** `vitest` and `@vitest/coverage-v8`
+  are at 5.0.5, the version spec-core runs, now that Stryker 10.1's vitest
+  runner reads vitest 5's test names. The hold on 4 is lifted: Dependabot
+  proposes vitest's majors again, and `tests/docs.test.ts` no longer fails
+  one. Vitest 5's cache keeps a failure from a run narrowed to a mutant's
+  tests until a run of the whole file passes, so the sweep's order in
+  `vitest.mutation.config.ts` keeps its own record of each file's verdict,
+  by a reporter, `lastRun`, as spec-core's does (ADR-0007, 2026-11-09).
+  Both full sweeps of the change read 97.24% over 11,408 mutants, main's
+  score with main's survivors, and no survivor ran no test. Killed mutants
+  that are not static ran 14.96 and 14.56 tests to a kill, where main's last
+  four sweeps on vitest 4 ran 14.10 to 14.70; the rise that holds in both
+  is in those that 21 to 40 test files cover, which after the file that
+  failed last run in the order of vitest 5's times, each whole file's.
+  Development tooling only: nothing spec-graph checks or reports changed,
+  and the package still installs nothing, so no release is needed for it.
+  Upgrading: nothing to do.
+
 ## 0.24.1
 
 The README is a front page, and the reference ships in the package, in

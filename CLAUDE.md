@@ -26,11 +26,13 @@ These are not preferences. Breaking one is a decision that needs an ADR.
   beyond `tsc`, no bundler.
 - **Strict types.** `strict`, plus `noUncheckedIndexedAccess`,
   `exactOptionalPropertyTypes`, `noUnusedLocals`, `noUnusedParameters`.
-- **Vitest 4** for tests, **Stryker** for mutation testing. Vitest stays on 4
-  while Stryker's runner runs no test against a mutant on 5, where a sweep
-  reads 4%: Dependabot proposes no major of it, `tests/docs.test.ts` fails
-  one made by hand, and ADR-0007 (2026-10-07) has the reason and where the
-  steps that lift the hold are.
+- **Vitest 5** for tests, **Stryker** for mutation testing. Vitest is on 5
+  since 2026-11-09, once Stryker 10.1's runner read its test names, spec-core
+  had taken it by its ADR-0008, and the full sweep of the change read as
+  main's. Vitest 5's cache keeps a failure from a narrowed run, so the sweep's
+  order keeps its own record of the file that failed last
+  (`vitest.mutation.config.ts`). ADR-0007 (2026-11-09) has both and what the
+  sweep measured.
 - **LF line endings, no control characters.** Enforced by `tests/docs.test.ts`;
   a stray NUL makes a file read as binary to grep, diff and review tooling, and
   an escape a shell collapsed into its character renders as nothing at all.

@@ -758,6 +758,10 @@ them would take 96.31 to 95.49, where it took 96.32 to 93.23. `extract.ts`'s
 
 ### 2026-10-07: vitest is held on 4
 
+*Amended 2026-11-09*: the hold is lifted, by the entry of that date. The
+pull request that lifted it swept every mutant on its own, with no
+dispatch, as the entry of 2026-11-08 says it would.
+
 **Vitest stays on 4 until Stryker's runner reads 5.** On vitest 5,
 `@stryker-mutator/vitest-runner` 10.0.0, the newest there is, runs no test
 against a mutant a test covers and scores it as survived, with every test
@@ -1273,6 +1277,72 @@ request that lifts vitest to 5 sweeps in full on its own.
 `tests/mutation-shards.test.ts` holds the key to the lockfile's versions, a
 key followed by a dash to starting no other, and both cache steps to it. The
 merge's refusal of two tests of one name now says where they can come from.
+
+### 2026-11-09: vitest 5, and the order's record of the file that failed last
+
+**The hold of 2026-10-07 is lifted.** Stryker 10.1.0 names #6214 in its
+notes, "support vitest v5": its vitest runner joins a test's name with
+` > ` where it finds vitest 5 or later, which is what #6210 asked for.
+Dependabot's pull request 115 brought both Stryker packages to 10.1.1 here
+(the entry of 2026-11-08). spec-core took vitest 5 by the steps of
+[its ADR-0008](https://github.com/spec-family/spec-core/blob/main/docs/adr/0008-toolchain.md)
+on 2026-11-08, in its pull request 57, and gave its sweep's order a record
+of its own on 2026-11-09, in its pull request 67. Step 4 of those steps is
+the same change in each tool, and here it is one pull request:
+
+- `vitest` and `@vitest/coverage-v8` to 5.0.5, the version spec-core runs.
+  5.1 is a change of its own.
+- The hold taken out: the two vitest entries under `ignore` in
+  `.github/dependabot.yml`, and the test in `tests/docs.test.ts` that
+  failed a vitest major made by hand.
+- Three tests in `tests/mutation-shards.test.ts` that failed on vitest 5,
+  each on a change of vitest's own, fixed as spec-core fixed them. A
+  sequencer asks vitest's cache by a file's specification,
+  `getTestSpecificationResult`, and the cache keeps no sizes, so
+  `QuickestFirst` reads a file's size from the disk, as vitest's own
+  sequencer does, and still runs the smaller first. `resolveConfig` returns
+  Vite's configuration, with vitest's under `test`. And the reporters a
+  suite that names none is given are decided when vitest is first imported,
+  so the test resolves each suite in a process started with
+  `GITHUB_ACTIONS` set, where it had stubbed the variable in its own.
+- The order's record, copied from spec-core whole.
+
+**Why the order keeps a record.** Vitest 5 counts a run that a test name
+pattern narrows, or that stops at its first failure, as partial
+(`isPartialRun`). From a partial run its cache takes a failure and keeps it
+until a run of the whole file passes, and takes no time over one it has
+(`ResultsCache.update`); each process also reads back what the others wrote
+to the cache's file. Stryker narrows the run of every mutant that is not
+static and stops each run at its first failure, so on vitest 5 a file that
+killed one mutant, in any worker, stayed first for every mutant after it,
+where vitest 4 put it first only after the run it failed in. spec-core's
+sweeps measured it: killed mutants ran 10.75 tests up to the one that
+failed, against 6.89 on vitest 4.
+
+So `vitest.mutation.config.ts` keeps its own record, as spec-core's does. A
+reporter, `lastRun`, records each file's verdict at its end, by vitest 4's
+rule: a file that passed or failed in a run has that verdict until a run
+runs it again, and a file the run skipped or did not reach keeps the one it
+had. `QuickestFirst` reads the record where it read the cache's `failed`.
+Vitest makes the sequencer and calls the reporters in the one process that
+drives a Stryker worker, so the record is that process's memory. The times
+stay the cache's: on vitest 5 those of a run of the whole file, which in a
+sweep is the dry run, where vitest 4 took each run's. A record of each run's
+time as well read no better in spec-core's sweeps. The reporter has no
+`onInit`: vitest 5 calls that at the start of every run, and spec-core's two
+sweeps with one that emptied the record read 25.05 and 25.50 tests to a
+kill, as an order with no record at all.
+
+`tests/mutation-shards.test.ts` holds the record with unit tests, each in a
+folder of its own, since the record is the module's, and with one test that
+drives vitest as Stryker's runner does: five narrowed runs of two files in
+a process of its own, taking the order the sequencer gives inside each run.
+Tried by hand, it fails with an `onInit` that empties the record, with the
+rank reading the cache's `failed`, and with `lastRun` left out of
+`reporters`. It also asserts that vitest's cache keeps a failure from a
+narrowed run. When a vitest release fails that, the cache forgets a failure
+as vitest 4's did, and spec-core's ADR-0008 says what a sweep must show
+before the record goes.
 
 ## Open Questions
 

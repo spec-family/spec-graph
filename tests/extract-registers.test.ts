@@ -166,7 +166,8 @@ describe('a section a @spec-node declares', () => {
 
   it('with no status of its own takes its phase from where the file is kept', () => {
     // "a document under an `archive/` directory that says nothing about itself
-    // is still retired" (README) - and a section is a document.
+    // is still retired" (docs/reference/lifecycle.md) - and a section is a
+    // document.
     const spec = byId(specsOf('docs/adr/archive/notes.md', NOTES('<!-- @spec-node title="Sharding" -->')), 'ADR-0009');
     expect([spec.document.rawStatus, spec.document.phase]).toEqual([null, 'retired']);
   });
@@ -192,7 +193,8 @@ describe('a register kept as a table', () => {
   ].join('\n');
 
   it('reports a relation column naming nothing, because the header made it deliberate', () => {
-    // "Deliberate references are validated" (README), and a typed column is as
+    // "Deliberate references are validated" (docs/reference/references.md),
+    // and a typed column is as
     // deliberate as front matter: its targets are not opportunistic prose.
     const { corpus } = analyse({ 'docs/register.md': TABLE });
     expect(corpus.dangling.map((ref) => `${ref.from} ${ref.kind} ${ref.target}`).sort()).toEqual([

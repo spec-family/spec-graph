@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
  * reported as a survivor. Imported here, the failure lands inside a test.
  */
 describe('extraction, loaded', () => {
-  it('reads the relation examples the README gives', async () => {
+  it('reads the relation examples the relations reference gives', async () => {
     const { extractDocument } = await import('../src/extract.js');
     const extracted = extractDocument({
       path: 'docs/adr/0003-chunking.md',

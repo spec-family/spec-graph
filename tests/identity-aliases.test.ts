@@ -29,10 +29,10 @@ const ids = (sources: Source[]): string[] =>
     .corpus.documents.map((d) => d.id)
     .sort();
 
-const readme = (): string => readFileSync('README.md', 'utf8');
+const reference = (): string => readFileSync('docs/reference/references.md', 'utf8');
 
 describe('the family a directory gives a numbered file', () => {
-  // The README lists these. The nearest enclosing one wins.
+  // The reference lists these. The nearest enclosing one wins.
   const FAMILIES: readonly (readonly [string, string])[] = [
     ['adr', 'ADR'],
     ['adrs', 'ADR'],
@@ -54,8 +54,8 @@ describe('the family a directory gives a numbered file', () => {
     ['specs', 'SPEC'],
   ];
 
-  it('is one of the ones the README lists', () => {
-    const text = readme();
+  it('is one of the ones the reference lists', () => {
+    const text = reference();
     const bullet = text.slice(text.indexOf('- **Bare numbers are family-scoped.**'), text.indexOf('- **Two candidates'));
     // `proposal(s)/` names both spellings.
     const listed = [...bullet.matchAll(/`([a-z-]+)(\(s\))?\/`/g)].flatMap(([, stem, plural]) =>
@@ -80,8 +80,8 @@ describe('the front-matter keys that declare an identifier', () => {
     ['number', 'docs/adr/sharding.md', '0007', 'ADR-0007'],
   ];
 
-  it('are the ones the README lists, every one the code exports', () => {
-    const listed = /an explicit `id:` \(or ([^)]*)\)/.exec(readme())?.[1] ?? '';
+  it('are the ones the reference lists, every one the code exports', () => {
+    const listed = /an explicit `id:` \(or ([^)]*)\)/.exec(reference())?.[1] ?? '';
     const documented = ['id', ...[...listed.matchAll(/`([a-z-]+):`/g)].map(([, key]) => key as string)];
     expect([...documented].sort()).toEqual([...ID_KEYS].sort());
     // Each is read below: all but `slug:` by the table, `slug:` on its own.

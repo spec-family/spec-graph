@@ -16,6 +16,7 @@ import { analyseSources } from '../src/runner.js';
  */
 
 const README = readFileSync('README.md', 'utf8');
+const CONFIGURATION = readFileSync('docs/reference/configuration.md', 'utf8');
 
 // Named for the process: Stryker runs a test file in several workers at once,
 // in one sandbox, and a fixed path is one they write and delete under each other.
@@ -45,12 +46,14 @@ const retired = (open: number): string =>
 
 describe('the examples the documentation gives', () => {
   it('are configurations this build reads without a problem', () => {
-    const readme = /## Configuration[\s\S]*?```json\n([\s\S]*?)```/.exec(README)?.[1];
+    const reference = /^# Configuration$[\s\S]*?```json\n([\s\S]*?)```/m.exec(CONFIGURATION)?.[1];
+    const readme = /^## Configuration$[\s\S]*?```json\n([\s\S]*?)```/m.exec(README)?.[1];
     const help = /\n {4}(\{ "patterns"[\s\S]*?\})\n\n/.exec(HELP)?.[1];
+    expect(reference).toBeDefined();
     expect(readme).toBeDefined();
     expect(help).toBeDefined();
     for (const [where, text] of [
-      ['README', readme],
+      ['the configuration reference', reference],
       ['--help', help],
     ] as const) {
       const loaded = parseConfig(text as string, SOURCE);
@@ -59,6 +62,8 @@ describe('the examples the documentation gives', () => {
       // all, so both of them show it.
       expect(loaded.config.maxRelated, where).toBeDefined();
     }
+    // The README's is the least a repository writes, and it reads as cleanly.
+    expect(parseConfig(readme as string, SOURCE).problems).toEqual([]);
   });
 });
 

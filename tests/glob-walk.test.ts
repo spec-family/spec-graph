@@ -8,9 +8,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_IGNORED_DIRECTORIES, walkFiles } from '../src/glob.js';
 
 /**
- * What a walk reads, held to the README's account of it.
+ * What a walk reads, held to the configuration reference's account of it.
  *
- * The README lists the directories a walk never enters and says a pattern that
+ * The reference lists the directories a walk never enters and says a pattern that
  * starts inside one is read from there. Everything else here is a decision the
  * walk makes about the tree in front of it: which entries are files, where a
  * link leads, how big is too big, and what order the answer comes back in.
@@ -20,12 +20,12 @@ import { DEFAULT_IGNORED_DIRECTORIES, walkFiles } from '../src/glob.js';
 // one sandbox (ADR-0007).
 const ROOT = `tests/fixtures/.tmp/glob-walk-${process.pid}`;
 
-/** The backticked names of the README sentence that lists what a walk skips. */
+/** The backticked names of the reference's sentence that lists what a walk skips. */
 function documentedSkips(): string[] {
-  const readme = readFileSync('README.md', 'utf8');
-  const at = readme.indexOf('The walk never enters');
-  if (at === -1) throw new Error('the README does not list the directories a walk skips');
-  const sentence = readme.slice(at, readme.indexOf('on its way', at));
+  const reference = readFileSync('docs/reference/configuration.md', 'utf8');
+  const at = reference.indexOf('The walk never enters');
+  if (at === -1) throw new Error('the reference does not list the directories a walk skips');
+  const sentence = reference.slice(at, reference.indexOf('on its way', at));
   return [...sentence.matchAll(/`([^`]+)`/g)].map((match) => match[1] as string);
 }
 
@@ -72,7 +72,7 @@ describe('the directories a walk skips', () => {
     }
   });
 
-  it('are the ones the README lists, and the README lists every one', () => {
+  it('are the ones the reference lists, and the reference lists every one', () => {
     const listed = documentedSkips();
     // A sentence that failed to parse would pass the check below vacuously.
     expect(listed.length).toBeGreaterThan(15);
@@ -231,7 +231,7 @@ describe('a bare --ignore name', () => {
   });
 
   it('is a directory\'s name, and takes out no file called that: a path does', async () => {
-    // The README has a bare name prune that directory, and a path take out
+    // The reference has a bare name prune that directory, and a path take out
     // what it matches. Read as a path too, `--ignore README.md` would take
     // the root's README.md out; it names no directory, and prunes nothing.
     const root = `${ROOT}/named`;

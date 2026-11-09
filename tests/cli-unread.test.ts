@@ -394,13 +394,13 @@ describe('an option given to a command that does not read it', () => {
     '--graph-format': ['mermaid'],
   };
 
-  /** The README's table: each option against the commands that read it. */
+  /** The CLI reference's table: each option against the commands that read it. */
   function documented(): Map<string, string[]> {
-    const readme = readFileSync('README.md', 'utf8');
-    const start = readme.indexOf('| Option | Read by |');
-    if (start === -1) throw new Error('the README has no table of options and the commands that read them');
+    const reference = readFileSync('docs/reference/cli.md', 'utf8');
+    const start = reference.indexOf('| Option | Read by |');
+    if (start === -1) throw new Error('the CLI reference has no table of options and the commands that read them');
     const table = new Map<string, string[]>();
-    for (const row of readme.slice(start, readme.indexOf('\n\n', start)).split('\n').slice(2)) {
+    for (const row of reference.slice(start, reference.indexOf('\n\n', start)).split('\n').slice(2)) {
       const [options, readers] = row.split('|').slice(1, 3) as [string, string];
       const names = [...readers.matchAll(/`([a-z]+)`/g)].map((match) => match[1] as string);
       for (const option of options.matchAll(/`(--[a-z-]+)`/g)) table.set(option[1] as string, names.length > 0 ? names : Object.keys(COMMANDS));
@@ -408,7 +408,7 @@ describe('an option given to a command that does not read it', () => {
     return table;
   }
 
-  it('is refused by that command with the commands that do read it, as the README\'s table has them', () => {
+  it('is refused by that command with the commands that do read it, as the CLI reference\'s table has them', () => {
     const table = documented();
     // Every option --help lists is in the table, so none is left undecided.
     for (const option of HELP.matchAll(/^ {2}(?:-[hv], )?(--[a-z-]+)(?: \/ (--[a-z-]+))?/gm)) {

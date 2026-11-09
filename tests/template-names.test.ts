@@ -32,7 +32,7 @@ const ids = (sources: Record<string, string>): string[] =>
     .corpus.documents.map((d) => d.id)
     .sort();
 
-/** The names, each with a path a layout gives it. The README lists them. */
+/** The names, each with a path a layout gives it. The reference page on references lists them. */
 const TEMPLATE_NAMES: readonly (readonly [string, string])[] = [
   ['spec', 'specs/001-login/spec.md'],
   ['specification', 'docs/features/login/specification.md'],
@@ -57,8 +57,8 @@ describe('a file a template named', () => {
     expect(identity.aliases).toEqual(expect.arrayContaining(['spec', 'docs/login/specmd', 'docs/login/spec']));
   });
 
-  it('are the names the README lists', () => {
-    const text = readFileSync('README.md', 'utf8');
+  it('are the names the reference lists', () => {
+    const text = readFileSync('docs/reference/references.md', 'utf8');
     const sentence = text.slice(text.indexOf('A file name a template gives'), text.indexOf('names none of them'));
     const listed = [...sentence.matchAll(/`([a-z-]+)\.md`/g)].map(([, name]) => name as string);
     expect(listed.sort()).toEqual(TEMPLATE_NAMES.map(([name]) => name).sort());

@@ -75,6 +75,10 @@ a code change. That is the whole point of the design:
 - a front-matter key a register's regions must *not* inherit → `UNINHERITED` in
   `extract.ts` ([ADR-0009](docs/adr/0009-a-specification-is-a-region.md))
 
+Most of those tables are listed word for word in the reference, under
+`docs/reference/`, and the tests read the words from there: a word added to a
+table goes on its page as well, or the suite fails.
+
 If a change needs to touch a rule, ask whether it belongs in a table instead.
 
 **A new diagnostic** goes in `rules.ts`. Write it as a selector query if it is

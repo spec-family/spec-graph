@@ -188,14 +188,15 @@ describe('precedence', () => {
 /* -------------------------------------------------------------------------- */
 
 /**
- * The README's table of every checkbox, marker and `state=` word, row by row.
+ * The obligations reference's table of every checkbox, marker and `state=`
+ * word, row by row.
  * The table is what a writer reads to learn what closes an item, so it is what
  * these hold the resolver to.
  */
 function documentedSignals(): { checkbox: [Disposition, string][]; marker: [Disposition, string][]; state: [Disposition, string][] } {
-  const readme = readFileSync('README.md', 'utf8');
-  const start = readme.indexOf('<summary>Every checkbox, marker');
-  const block = readme.slice(start, readme.indexOf('</details>', start));
+  const reference = readFileSync('docs/reference/obligations.md', 'utf8');
+  const start = reference.indexOf('<summary>Every checkbox, marker');
+  const block = reference.slice(start, reference.indexOf('</details>', start));
   const ticked = (cell: string): string[] => [...cell.matchAll(/`([^`]+)`/g)].map((m) => m[1] as string);
   const out = { checkbox: [] as [Disposition, string][], marker: [] as [Disposition, string][], state: [] as [Disposition, string][] };
   for (const match of block.matchAll(/^\| `([a-z-]+)` \|(.*)\|(.*)\|(.*)\|$/gm)) {
@@ -213,7 +214,7 @@ const spoken = (md: string, signal: StateSignal): string => md.slice(signal.at.s
 const capitalised = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
 describe('the documented checkboxes, markers and state words', () => {
-  it('are read from the README, every disposition of them', () => {
+  it('are read from the reference, every disposition of them', () => {
     const { checkbox, marker, state } = documentedSignals();
     expect(new Set(marker.map(([disposition]) => disposition)).size).toBe(7);
     expect(checkbox.length).toBe(10);
@@ -258,10 +259,10 @@ describe('the documented checkboxes, markers and state words', () => {
     }
   });
 
-  it('each stop the README lists makes a marker punctuated', () => {
-    const readme = readFileSync('README.md', 'utf8');
-    const at = readme.indexOf('Punctuated means followed by');
-    const stops = [...readme.slice(at, readme.indexOf(', so `Done.`', at)).matchAll(/`([^`]+)`/g)].map((m) => m[1] as string);
+  it('each stop the reference lists makes a marker punctuated', () => {
+    const reference = readFileSync('docs/reference/obligations.md', 'utf8');
+    const at = reference.indexOf('Punctuated means followed by');
+    const stops = [...reference.slice(at, reference.indexOf(', so `Done.`', at)).matchAll(/`([^`]+)`/g)].map((m) => m[1] as string);
     expect(stops).toHaveLength(6);
     for (const stop of stops) {
       const line = `Resolved${stop} one node.`;
@@ -291,7 +292,7 @@ describe('where a marker counts', () => {
     expect(stateOf('> - [ ] Pick a shard key\n> **Decided:** tenant id.').disposition).toBe('satisfied');
   });
 
-  it('under the README example, however far the answer is indented', () => {
+  it('under the example the reference gives, however far the answer is indented', () => {
     const md = [
       '- [ ] Should the write path shard before the migration?',
       '      **Resolved (2026-03):** no — one node holds three years of growth.',

@@ -112,7 +112,7 @@ describe('the human report, as a reader scans it', () => {
     expect(isAscii(header?.[1] as string)).toBe(true);
     expect(ascii[1]).toBe('');
 
-    // The separator the README's tally shows, `16ms · 2 accepted by ...`.
+    // The separator the baseline reference's tally shows, `16ms · 2 accepted by ...`.
     const unicode = formatReport(report, { ascii: false }).split('\n');
     expect(unicode[0]).toBe('spec-graph 3 documents · 1 item · 3 relations · 1 open');
     expect(unicode[1]).toBe('');
@@ -217,7 +217,7 @@ describe('the human report, as a reader scans it', () => {
     expect(formatMarkdown(twice, { max: -1 })).toBe(formatMarkdown(twice));
   });
 
-  it('ends with the tally the README shows: the duration, then what a baseline accepted and what it no longer needs', () => {
+  it('ends with the tally the baseline reference shows: the duration, then what a baseline accepted and what it no longer needs', () => {
     const text = formatReport(result(CLEAN, {}, 16), {
       baseline: baseline({ suppressed: 2, stale: 1, entries: [paid('ADR-0004')] }),
     });

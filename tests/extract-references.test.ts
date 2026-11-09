@@ -77,8 +77,9 @@ describe('what an edge records about where it was written', () => {
 describe('a @spec-edge naming a document the repository does not have', () => {
   it('is reported in either direction, as every deliberate reference is', () => {
     // "A link, a front-matter field or a directive that does not resolve is a
-    // broken foreign key and is reported" (README) - even in a family the
-    // repository has never heard of, which would silence a bare mention.
+    // broken foreign key and is reported" (docs/reference/references.md) -
+    // even in a family the repository has never heard of, which would silence
+    // a bare mention.
     const { corpus } = analyse({
       'docs/adr/0001-a.md': [
         '# A',
@@ -109,7 +110,8 @@ describe('a relation written with nothing in it', () => {
   });
 
   it('is not reported when a status names its successor in words rather than by identifier', () => {
-    // Only a deliberate reference is validated (README); a status line is prose
+    // Only a deliberate reference is validated (docs/reference/references.md);
+    // a status line is prose
     // that happens to name a successor, and "the multi-writer design" is not a
     // foreign key anybody wrote.
     const text = '---\nstatus: Superseded by the multi-writer design\n---\n\n# A\n';
@@ -267,7 +269,8 @@ describe('one citation, one reference', () => {
 describe('a governing phrase', () => {
   // "A phrase governs a reference when it stands no more than 40 characters
   // before it, in the same statement: a sentence, a paragraph, a list item or a
-  // table cell. A negation between the two cancels it." (README)
+  // table cell. A negation between the two cancels it."
+  // (docs/reference/relations.md)
   const DELEGATES = { kind: 'delegates-to', inverted: false } as const;
 
   it('reaches across a short noun phrase to the reference', () => {
@@ -632,7 +635,7 @@ describe('a phrase that follows the reference', () => {
 
   it('claims nothing when it is a depends-on phrase', () => {
     // "`[ADR-0002](0002.md) requires a migration` says nothing about this
-    // document." (README)
+    // document." (docs/reference/relations.md)
     expect(reading('# A\n\n[ADR-0002](0002-b.md) requires a schema migration.\n')).toEqual(REFERENCES);
   });
 

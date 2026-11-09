@@ -5,7 +5,7 @@ import { analyseSources, type Source } from '../src/runner.js';
 /**
  * Where a status section ends.
  *
- * The README reads a status "under the heading": the first line beneath
+ * The lifecycle reference reads a status "under the heading": the first line beneath
  * `## Status`, unless a heading comes first, in which case the section says
  * nothing. A setext heading is a heading, though its text line starts with no
  * `#`; read as the status, it made a register's own status the title of the
@@ -62,7 +62,7 @@ describe('a status section with a value', () => {
 });
 
 describe('a status line in a section of a register', () => {
-  // The README's `**Status:**` line is the word status and a colon. A label
+  // The registers reference's `**Status:**` line is the word status and a colon. A label
   // that only ends in it names some other state - of a review, of a build -
   // and read as the section's, it gave the decision the wrong phase, or made a
   // specification of a section that declares none.

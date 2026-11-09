@@ -41,6 +41,7 @@
     "/README.md",
     "bin",
     "dist",
+    "docs/reference",
     "src/vendor/spec-core/LICENSE"
   ],
   "publishConfig": {

@@ -60,14 +60,14 @@ updates:
         update-types: ['version-update:semver-major']
     open-pull-requests-limit: 5
   # Dependabot moves the pins in .github/workflows and reads no Markdown. The
-  # README shows a workflow with the same actions, and
+  # README and docs/reference/ci.md show workflows with the same actions, and
   # tests/action-pins.test.ts holds each to the major the workflows here run,
   # never ahead of them. So a patch or a minor of checkout or setup-node
-  # passes and leaves the README where it was, and a major fails that test
-  # until the README follows: copy the new commit and version into its
-  # `uses:` line, on Dependabot's branch. No workflow here runs upload-sarif,
-  # so no bump reaches the README's pin of it: that one follows spec-guard's
-  # ci.yml, by hand, when spec-guard's moves a major.
+  # passes and leaves the guides where they were, and a major fails that test
+  # until they follow: copy the new commit and version into each `uses:`
+  # line, on Dependabot's branch. No workflow here runs upload-sarif, so no
+  # bump reaches docs/reference/ci.md's pin of it: that one follows
+  # spec-guard's ci.yml, by hand, when spec-guard's moves a major.
   - package-ecosystem: github-actions
     directory: /
     schedule:

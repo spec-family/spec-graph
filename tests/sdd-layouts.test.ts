@@ -39,9 +39,9 @@ describe('the patterns read when none are given', () => {
     },
   );
 
-  it('are the ones the README lists', () => {
-    const readme = readFileSync('README.md', 'utf8');
-    const block = readme.slice(readme.indexOf('With no patterns, spec-graph reads'), readme.indexOf('\n\n', readme.indexOf('With no patterns, spec-graph reads')));
+  it('are the ones the configuration reference lists', () => {
+    const reference = readFileSync('docs/reference/configuration.md', 'utf8');
+    const block = reference.slice(reference.indexOf('With no patterns, spec-graph reads'), reference.indexOf('\n\n', reference.indexOf('With no patterns, spec-graph reads')));
     expect([...block.matchAll(/`([^`]+)`/g)].map(([, pattern]) => pattern)).toEqual([...DEFAULT_PATTERNS]);
   });
 });

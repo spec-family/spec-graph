@@ -6,7 +6,7 @@ import { analyseSources, type Source } from '../src/runner.js';
  * A status given by a table at the top of a document.
  *
  * `| Status | Accepted |` under the title is where many teams put a
- * document's fields. The README reads it narrowly (ADR-0002): a table of exactly two
+ * document's fields. The lifecycle reference reads it narrowly (ADR-0002): a table of exactly two
  * columns, above the first heading below the title, whose left cell is a
  * status key, the header row included. A legend, a register and a table of
  * anything else are not the document's own status. Every document is made up

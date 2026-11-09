@@ -8,15 +8,15 @@ import { analyseSources, createOrientationCheck } from '../src/runner.js';
 
 /**
  * The words pnpm and yarn answer to themselves, and the files make builds a
- * target from, held to the README rather than to `commands.ts` (ADR-0029). A
- * word the README drops, or one that starts running a script, fails here.
+ * target from, held to the orientation reference rather than to `commands.ts`
+ * (ADR-0029). A word the reference drops, or one that starts running a script, fails here.
  */
 
-/** The README's block on the words a tool runs itself. */
+/** The orientation reference's block on the words a tool runs itself. */
 function documented(): { pnpm: string[]; yarn: string[]; sources: string[] } {
-  const readme = readFileSync('README.md', 'utf8');
-  const start = readme.indexOf('<summary>Every word pnpm and yarn run');
-  const block = readme.slice(start, readme.indexOf('</details>', start));
+  const reference = readFileSync('docs/reference/orientation.md', 'utf8');
+  const start = reference.indexOf('<summary>Every word pnpm and yarn run');
+  const block = reference.slice(start, reference.indexOf('</details>', start));
   const ticked = (text: string): string[] => [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
   const row = (tool: string): string[] => ticked(block.split('\n').find((line) => line.startsWith(`| \`${tool}\``))!.split('|')[2]!);
   const sentence = block.slice(block.indexOf('build `x` from:'));
@@ -26,7 +26,7 @@ function documented(): { pnpm: string[]; yarn: string[]; sources: string[] } {
 describe('the words a tool runs as its own command', () => {
   const { pnpm, yarn } = documented();
 
-  it('are read from the README, a row for each tool', () => {
+  it('are read from the reference, a row for each tool', () => {
     // A block that failed to parse would pass every test below vacuously.
     expect([pnpm.length, yarn.length]).toEqual([56, 50]);
   });
@@ -56,7 +56,7 @@ describe('the files make has a target from without a rule', () => {
       manifestFor,
     }).diagnostics.map((d) => d.target ?? '');
 
-  it('are read from the README, the target itself and each source', () => {
+  it('are read from the reference, the target itself and each source', () => {
     expect(sources.length).toBe(14);
   });
 

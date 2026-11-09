@@ -246,6 +246,7 @@ describe('the commands this repository writes', () => {
         'CHANGELOG.md',
         'CONTRIBUTING.md',
         'SECURITY.md',
+        'docs/reference/ci.md',
         'docs/adr/0020-a-diff-names-what-it-can-tell-apart.md',
         '.github/workflows/ci.yml',
         '.github/workflows/release.yml',
@@ -255,8 +256,12 @@ describe('the commands this repository writes', () => {
         'src/cli.ts',
       ]),
     );
-    // The README is where the commands are: the quick start, the two forms under Names, and the CI jobs.
-    expect(readme.match(/npx --no-install @spec-family\/spec-graph\b/g)?.length ?? 0).toBeGreaterThanOrEqual(13);
+    // The README and the reference are where the commands are: the quick start,
+    // the two forms under Names, the README's CI job and the reference's CI jobs.
+    const shown = (text: string): number => text.match(/npx --no-install @spec-family\/spec-graph\b/g)?.length ?? 0;
+    const reference = all.filter((file) => file.startsWith('docs/reference/'));
+    expect(shown(readme)).toBeGreaterThanOrEqual(4);
+    expect(shown(readme) + reference.reduce((sum, file) => sum + shown(read(file)), 0)).toBeGreaterThanOrEqual(13);
   });
 
   it("give a runner the package's full name, never the command's alone", () => {

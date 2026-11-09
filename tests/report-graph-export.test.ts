@@ -13,22 +13,23 @@ import { analyseSources, type Source } from '../src/runner.js';
  */
 
 /**
- * One document for each phase a document can be drawn in, as the README names
+ * One document for each phase a document can be drawn in, as the lifecycle
+ * reference names
  * them: a row of its lifecycle table each, with the first status word the row
  * lists; `archived`, which it says reads as a record; and a document with no
  * status, which it says becomes `unknown`.
  */
 function phases(): (readonly [string, string, string | null])[] {
-  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8').split('\n');
-  const header = readme.findIndex((line) => line.startsWith('| Phase | Recognised from |'));
+  const reference = readFileSync(new URL('../docs/reference/lifecycle.md', import.meta.url), 'utf8').split('\n');
+  const header = reference.findIndex((line) => line.startsWith('| Phase | Recognised from |'));
   const rows: [string, string | null][] = [];
-  for (const line of readme.slice(header + 2)) {
+  for (const line of reference.slice(header + 2)) {
     const match = /^\| `([a-z]+)` \| `([a-z-]+)`/.exec(line);
     if (match === null) break;
     rows.push([match[1] as string, match[2] as string]);
   }
   expect(rows.map(([phase]) => phase)).toEqual(['draft', 'active', 'frozen', 'retired']);
-  expect(readme.join('\n')).toContain('every spec-* tool reads it as a **record**');
+  expect(reference.join('\n')).toContain('every spec-* tool reads it as a **record**');
   rows.push(['record', 'archived'], ['unknown', null]);
   return rows.map(([phase, status], index) => [`ADR-00${11 + index}`, phase, status] as const);
 }

@@ -13,32 +13,36 @@ import { analyseSources, type Source } from '../src/runner.js';
 import type { EdgeKind } from '../src/types.js';
 
 /**
- * Extraction's vocabularies, held to what the README says they mean.
+ * Extraction's vocabularies, held to what the reference says they mean.
  *
- * Every expectation below is read out of the README rather than out of
+ * Every expectation below is read out of docs/reference/ rather than out of
  * `extract.ts`: a front-matter key means what the relation table says, a
- * heading holds obligations or bookkeeping because the README lists it there,
- * and a prefix is never a citation because the README says so. Where the code
- * exports its table, it is checked in both directions: each documented word
- * does what the README claims, and each word the code knows is documented.
+ * heading holds obligations or bookkeeping because the reference lists it
+ * there, and a prefix is never a citation because the reference says so.
+ * Where the code exports its table, it is checked in both directions: each
+ * documented word does what the reference claims, and each word the code
+ * knows is documented.
  */
 
-const README = readFileSync('README.md', 'utf8');
+/** A page of the reference. */
+const reference = (page: string): string => readFileSync(`docs/reference/${page}`, 'utf8');
 
-/** The backticked terms of the README list that opens with `**label:**`. */
-function documented(label: string): string[] {
-  const at = README.indexOf(`**${label}:**`);
-  if (at === -1) throw new Error(`the README has no "${label}" list`);
-  const list = README.slice(at, README.indexOf('`.', at) + 1);
+/** The backticked terms of the list on `page` that opens with `**label:**`. */
+function documented(page: string, label: string): string[] {
+  const text = reference(page);
+  const at = text.indexOf(`**${label}:**`);
+  if (at === -1) throw new Error(`docs/reference/${page} has no "${label}" list`);
+  const list = text.slice(at, text.indexOf('`.', at) + 1);
   return [...list.matchAll(/`([^`]+)`/g)].map((match) => match[1] as string);
 }
 
-/** The rows of the README's front-matter relation table. */
+/** The rows of the relations reference's front-matter relation table. */
 function relationTable(): { kind: EdgeKind; forward: string[]; inverse: string[] }[] {
   const header = '| Relation | ADR-0001 → ADR-0002 | ADR-0002 → ADR-0001 |';
-  const at = README.indexOf(header);
-  if (at === -1) throw new Error('the README has no relation table');
-  const rows = README.slice(at, README.indexOf('\n\n', at)).split('\n').slice(2);
+  const text = reference('relations.md');
+  const at = text.indexOf(header);
+  if (at === -1) throw new Error('the relations reference has no relation table');
+  const rows = text.slice(at, text.indexOf('\n\n', at)).split('\n').slice(2);
   const terms = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1] as string);
   return rows.map((row) => {
     const [, kind = '', forward = '', inverse = ''] = row.split('|').map((cell) => cell.trim());
@@ -71,7 +75,7 @@ function relationFrom(frontMatter: string): string[] {
     .map((edge) => `${edge.from} -${edge.kind}-> ${edge.to}`);
 }
 
-describe('the README relation table', () => {
+describe('the reference relation table', () => {
   it('documents every front-matter key there is, and none that is not', () => {
     const keys = [...FORWARD, ...INVERSE].map(([key]) => key).sort();
     expect(keys).toEqual(Object.keys(RELATION_KEYS).sort());
@@ -115,8 +119,8 @@ describe('prose reads both directions', () => {
   });
 });
 
-describe('the README bookkeeping headings', () => {
-  const HEADINGS = documented('Bookkeeping headings');
+describe('the reference bookkeeping headings', () => {
+  const HEADINGS = documented('relations.md', 'Bookkeeping headings');
 
   it('lists every heading that files a link as bookkeeping', () => {
     expect(HEADINGS.map((heading) => heading.toLowerCase()).sort()).toEqual([...WEAK_SECTIONS].sort());
@@ -151,8 +155,8 @@ function obligationsUnder(heading: string): string[] {
   return items.map((item) => item.text);
 }
 
-describe('the README obligation headings', () => {
-  const HEADINGS = documented('Headings that hold obligations');
+describe('the reference obligation headings', () => {
+  const HEADINGS = documented('obligations.md', 'Headings that hold obligations');
 
   it('lists every heading that holds obligations', () => {
     expect(HEADINGS.map((heading) => heading.toLowerCase()).sort()).toEqual([...OBLIGATION_SECTIONS].sort());
@@ -182,8 +186,8 @@ function citationsIn(line: string): string[] {
   return references.filter((reference) => reference.origin === 'text').map((reference) => reference.target);
 }
 
-describe('the README prefixes that are never a citation', () => {
-  const NEVER = documented('Never a citation');
+describe('the reference prefixes that are never a citation', () => {
+  const NEVER = documented('references.md', 'Never a citation');
 
   it.each(NEVER)('reads "%s" as prose', (phrase) => {
     expect(citationsIn(`The service speaks ${phrase} and nothing else.`)).toEqual([]);

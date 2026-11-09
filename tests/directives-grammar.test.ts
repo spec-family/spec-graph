@@ -7,9 +7,9 @@ import { scanMarkdown } from '../src/markdown.js';
 import { analyseSources } from '../src/runner.js';
 
 /**
- * How a directive is written, held to the README's Directives section.
+ * How a directive is written, held to the directives reference.
  *
- * The README's table names the attributes each directive takes, and every
+ * Its table names the attributes each directive takes, and every
  * other one is a parse problem; that is checked in both directions, for every
  * attribute the table names on every directive. The rest - where a directive
  * sits in its comment, how a value is quoted, where a value is said to be, how
@@ -25,13 +25,13 @@ function only(text: string): Directive {
   return directive;
 }
 
-/** The README's table of directives, each with the attributes its row lists. */
+/** The reference's table of directives, each with the attributes its row lists. */
 function documented(): Map<string, string[]> {
-  const readme = readFileSync('README.md', 'utf8');
+  const reference = readFileSync('docs/reference/directives.md', 'utf8');
   const header = '| directive | attributes |';
-  const at = readme.indexOf(header);
-  if (at === -1) throw new Error('the README has no table of directive attributes');
-  const rows = readme.slice(at, readme.indexOf('\n\n', at)).split('\n').slice(2);
+  const at = reference.indexOf(header);
+  if (at === -1) throw new Error('the reference has no table of directive attributes');
+  const rows = reference.slice(at, reference.indexOf('\n\n', at)).split('\n').slice(2);
   const ticked = (cell: string): string[] => [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1] as string);
   return new Map(
     rows.map((row) => {
@@ -42,7 +42,7 @@ function documented(): Map<string, string[]> {
 }
 
 describe('the attributes of each directive', () => {
-  it('are read from the README, one row for each of the eight directives', () => {
+  it('are read from the reference, one row for each of the eight directives', () => {
     const table = documented();
     expect([...table.keys()]).toEqual(['spec-node', 'spec-item', 'spec-edge', 'spec-ignore', 'spec-history', 'spec-figure', 'spec-path', 'spec-command']);
     // A table that failed to parse would pass the test below vacuously.

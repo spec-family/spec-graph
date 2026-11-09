@@ -7,9 +7,9 @@ import { analyseSources, type Source } from '../src/runner.js';
 import type { Phase } from '../src/types.js';
 
 /**
- * The lifecycle vocabulary, held to the README rather than to `lifecycle.ts`.
+ * The lifecycle vocabulary, held to its reference rather than to `lifecycle.ts`.
  *
- * The README's "Every status word" table is the promise a user reads; each
+ * The reference's "Every status word" table is the promise a user reads; each
  * word in it must read as the phase its row names, through a document that
  * declares it. A word the table drops, or one that stops meaning what the
  * table says, fails here. See ADR-0002 and ADR-0011.
@@ -23,15 +23,15 @@ interface Vocabulary {
   readonly directories: readonly string[];
 }
 
-/** Reads the tables under the README's "Every status word" summary. */
+/** Reads the tables under the reference's "Every status word" summary. */
 function documented(): Vocabulary {
-  const readme = readFileSync('README.md', 'utf8');
-  const start = readme.indexOf('<summary>Every status word');
-  const block = readme.slice(start, readme.indexOf('</details>', start));
+  const reference = readFileSync('docs/reference/lifecycle.md', 'utf8');
+  const start = reference.indexOf('<summary>Every status word');
+  const block = reference.slice(start, reference.indexOf('</details>', start));
   const ticked = (cell: string): string[] => [...cell.matchAll(/`([^`]+)`/g)].map((m) => m[1] as string);
   const row = (label: string): string[] => {
     const line = block.split('\n').find((candidate) => candidate.startsWith(`| ${label}`));
-    if (!line) throw new Error(`README has no "${label}" row`);
+    if (!line) throw new Error(`the reference has no "${label}" row`);
     return ticked(line.split('|')[2] as string);
   };
 
@@ -53,7 +53,7 @@ const corpus = (files: Record<string, string>): Source[] => Object.entries(files
 const number = (index: number): string => String(index + 1).padStart(4, '0');
 
 describe('the documented status words', () => {
-  it('are read from the README, all five rows of them', () => {
+  it('are read from the reference, all five rows of them', () => {
     const { words } = documented();
     expect(new Set(words.map(([phase]) => phase))).toEqual(new Set(['retired', 'record', 'frozen', 'active', 'draft']));
     // A table that failed to parse would pass every test below vacuously.

@@ -12,12 +12,21 @@ import { DISPOSITIONS, EDGE_KINDS, OPENNESS_OF, type Disposition, type DocumentN
  * The documentation is held to the same standard as the graph.
  *
  * A tool whose whole premise is that prose drifts away from the thing it
- * describes has no business shipping a README that has drifted away from its
- * own code. These tests are the vertical check spec-graph cannot perform on
+ * describes has no business shipping a README, or a reference, that has
+ * drifted away from its own code. These tests are the vertical check spec-graph cannot perform on
  * itself: they compare what the documents claim against what the code exports.
  */
 
 const README = readFileSync('README.md', 'utf8');
+
+/** A page of the reference, which the package ships beside the README. */
+const reference = (page: string): string => readFileSync(`docs/reference/${page}`, 'utf8');
+
+/** Every page of the reference. */
+const REFERENCE = readdirSync('docs/reference')
+  .filter((name) => name.endsWith('.md'))
+  .map((name) => `docs/reference/${name}`)
+  .sort();
 
 describe('the source tree', () => {
   function* walk(directory: string): Generator<string> {
@@ -41,6 +50,7 @@ describe('the source tree', () => {
     'stryker.config.mjs',
     'stryker.shard.config.mjs',
     'README.md',
+    ...walk('docs/reference'),
     'CONTRIBUTING.md',
     'SECURITY.md',
   ];
@@ -137,7 +147,7 @@ describe('the documents the package ships', () => {
   // told to ship. `/README.md` is the root's alone.
   const entries = files.map((entry) => entry.replace(/^\//, ''));
   const ships = (path: string): boolean => entries.some((entry) => path === entry || path.startsWith(`${entry}/`));
-  const documents = ['README.md', 'CHANGELOG.md'];
+  const documents = ['README.md', 'CHANGELOG.md', ...REFERENCE];
   // Read as a renderer reads them: a link written out in a code span, as the
   // changelog does to show one, is text there and never followed.
   const linksOf = (document: string) => scanMarkdown(readFileSync(document, 'utf8')).links;
@@ -146,6 +156,19 @@ describe('the documents the package ships', () => {
     expect(entries.filter((entry) => entry.endsWith('.md')).filter((entry) => !documents.includes(entry))).toEqual([]);
     expect(files).toContain('/README.md');
     expect(ships('src/vendor/spec-core/README.md')).toBe(false);
+  });
+
+  it('include the reference, every page of it linked from its index and from the README', () => {
+    // The reference left the README to ship beside it (round 27, D11), so a
+    // page nothing links is a page no reader of the package finds.
+    expect(files).toContain('docs/reference');
+    expect(REFERENCE.length).toBeGreaterThan(10);
+    expect(REFERENCE.filter((page) => !ships(page))).toEqual([]);
+    const reached = (document: string): string[] =>
+      linksOf(document).map(({ target }) => posix.join(posix.dirname(document), target.split('#')[0] as string));
+    const pages = REFERENCE.filter((page) => page !== 'docs/reference/README.md');
+    expect(pages.filter((page) => !reached('docs/reference/README.md').includes(page))).toEqual([]);
+    expect([...pages, 'docs/reference/README.md'].filter((page) => !reached('README.md').includes(page))).toEqual([]);
   });
 
   it('link only to files it ships, or by absolute URL, so that a link works in node_modules and on npmjs.com', () => {
@@ -179,8 +202,8 @@ describe('the documents the package ships', () => {
   });
 });
 
-describe('the README rule table', () => {
-  const rows = [...README.matchAll(/^\|\s*`([a-z-]+)`\s*\|\s*(error|warn|info)\s*\|/gm)].map((row) => ({
+describe.each(['README.md', 'docs/reference/rules.md'])('the rule table of %s', (document) => {
+  const rows = [...readFileSync(document, 'utf8').matchAll(/^\|\s*`([a-z-]+)`\s*\|\s*(error|warn|info)\s*\|/gm)].map((row) => ({
     id: row[1] as string,
     severity: row[2] as string,
   }));
@@ -201,6 +224,17 @@ describe('the README rule table', () => {
 });
 
 describe('the ADR behind each rule', () => {
+  it('is the one the rules reference links beside the rule', () => {
+    // The reference's table gives each rule its decision, as `rules --explain`
+    // does, so the two are one list.
+    const rows = [...reference('rules.md').matchAll(/^\| `([a-z-]+)` \|.* \[ADR-(\d{4})\]\(([^)]+)\) \|$/gm)];
+    expect(rows.map((row) => row[1]).sort()).toEqual([...RULE_IDS].sort());
+    for (const [, id, number, link] of rows) {
+      const decision = RULE_DECISIONS[id as (typeof RULE_IDS)[number]];
+      expect([number, link], id).toEqual([decision.slice('docs/adr/'.length, 'docs/adr/'.length + 4), `https://github.com/spec-family/spec-graph/blob/main/${decision}`]);
+    }
+  });
+
   it('names a document that exists', () => {
     // `rules --explain` prints these, and a pointer into nothing is worse than
     // no pointer: the reader goes looking and concludes the reasoning is lost.
@@ -216,8 +250,8 @@ describe('the ADR behind each rule', () => {
   });
 });
 
-describe('the README disposition table', () => {
-  const rows = [...README.matchAll(/^\|\s*`([a-z-]+)`\s*\|\s*(open|partial|closed)\s*\|/gm)].map((row) => ({
+describe('the disposition table of the obligations reference', () => {
+  const rows = [...reference('obligations.md').matchAll(/^\|\s*`([a-z-]+)`\s*\|\s*(open|partial|closed)\s*\|/gm)].map((row) => ({
     disposition: row[1] as Disposition,
     openness: row[2] as string,
   }));
@@ -285,8 +319,9 @@ describe('the documented selector vocabulary', () => {
     expect(HELP).toContain('fm.<front-matter-key>');
   });
 
-  it('is listed in the README', () => {
-    for (const key of SUPPORTED) expect(README, key).toContain(key);
+  it('is listed in the query language reference', () => {
+    const listed = reference('query-language.md');
+    for (const key of SUPPORTED) expect(listed, key).toContain(key);
   });
 
   it('is answered by the engine on one node kind or the other', () => {
@@ -329,14 +364,15 @@ describe('the documented selector vocabulary', () => {
 });
 
 describe('the documented relation vocabulary', () => {
-  it('names every edge kind in the CLI help or the README', () => {
+  it('names every edge kind in the CLI help or the relations reference', () => {
     for (const kind of EDGE_KINDS) {
-      expect(`${HELP}\n${README}`, kind).toContain(kind);
+      expect(`${HELP}\n${reference('relations.md')}`, kind).toContain(kind);
     }
   });
 });
 
-describe('the CLI help and the README agree on the interface', () => {
+describe('the CLI help and the CLI reference agree on the interface', () => {
+  const CLI = reference('cli.md');
   const flags = [
     '--root',
     '--ignore',
@@ -363,14 +399,14 @@ describe('the CLI help and the README agree on the interface', () => {
   it('documents the same flags in both places', () => {
     for (const flag of flags) {
       expect(HELP, flag).toContain(flag);
-      expect(README, flag).toContain(flag);
+      expect(CLI, flag).toContain(flag);
     }
   });
 
   it('names the variable that asks for ASCII beside the flag, in both places', () => {
     // It was read and written down nowhere, so nobody could know that setting
     // it to 0 turned it on.
-    for (const text of [HELP, README]) expect(text).toMatch(/--ascii[^\n]*SPEC_GRAPH_ASCII/);
+    for (const text of [HELP, CLI]) expect(text).toMatch(/--ascii[^\n]*SPEC_GRAPH_ASCII/);
   });
 
   it('documents the same commands in both places', () => {
@@ -378,12 +414,13 @@ describe('the CLI help and the README agree on the interface', () => {
     for (const command of ['check', 'query', 'graph', 'rules']) {
       const usage = new RegExp(`spec-graph \\[?${command}\\]?\\b`);
       expect(HELP, command).toMatch(usage);
-      expect(README, command).toMatch(usage);
+      expect(CLI, command).toMatch(usage);
     }
   });
 
   it('documents the same exit codes', () => {
     expect(HELP).toContain('0  clean');
-    expect(README).toContain('`0` clean');
+    // And the README's CI section, where a pipeline's author reads them.
+    for (const text of [CLI, README]) expect(text).toContain('`0` clean, `1` findings, `2` the tool could not');
   });
 });

@@ -8,8 +8,8 @@ import type { AnyRuleId, Diagnostic } from '../src/types.js';
 /**
  * Each built-in rule's finding, as the person who has to fix it reads it: the
  * sentence, the line it points at, the places it names beside that, and the
- * next action. Where the README prints a finding, the expectation is the
- * README's; elsewhere it is the decision the finding carries - which document,
+ * next action. Where the README or the reference prints a finding, the
+ * expectation is the one printed there; elsewhere it is the decision the finding carries - which document,
  * how many, retired or frozen, one or several.
  *
  * The pipeline is imported inside each test rather than at the top of the file.
@@ -416,7 +416,7 @@ describe('supersession', () => {
     });
   });
 
-  it('reads an unreciprocated supersession as the README prints it', async () => {
+  it('reads an unreciprocated supersession as the rules reference prints it', async () => {
     const [found] = await findings(
       {
         'docs/adr/0001-single-writer.md': doc('retired', '# ADR-0001: Single writer'),
@@ -594,9 +594,9 @@ describe('the selector a rule is', () => {
     );
   });
 
-  it('is printed for orphaned-obligation as the README asks the question', async () => {
-    const readme = readFileSync('README.md', 'utf8');
-    const selector = /# What open work is stranded in documents nobody reads\?\nspec-graph query '([^']+)'/.exec(readme)?.[1];
+  it('is printed for orphaned-obligation as the query language reference asks the question', async () => {
+    const reference = readFileSync('docs/reference/query-language.md', 'utf8');
+    const selector = /# What open work is stranded in documents nobody reads\?\nspec-graph query '([^']+)'/.exec(reference)?.[1];
     expect(selector).toBeDefined();
     expect(await explain('orphaned-obligation')).toContain(selector as string);
   });

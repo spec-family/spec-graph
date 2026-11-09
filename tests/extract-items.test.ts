@@ -67,7 +67,8 @@ describe('an obligation section', () => {
   ].join('\n');
 
   it('holds the bullets of its subsections, and ends at the next heading of its level', () => {
-    // "The section ends at the next heading of its level" (README).
+    // "The section ends at the next heading of its level"
+    // (docs/reference/obligations.md).
     expect(items(TEXT).map((item) => item.text)).toEqual(['Which shard key?', 'Which disk class?']);
   });
 

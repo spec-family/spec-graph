@@ -11,6 +11,23 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Changed
+
+- **The README is a front page, and the reference ships beside it.** The
+  README says what spec-graph is, gives a quickstart with what a run prints,
+  the rules at a glance, the least configuration, a CI job and the test and
+  mutation figures, and links the rest. Every rule, status word, marker,
+  relation, directive, selector, configuration key, option and output format,
+  with the reasoning beside each, moved to the
+  [reference](docs/reference/README.md) in `docs/reference/`, a topic to a
+  page, which the package now ships and the README links relatively. The text
+  moved as it was; only the README's quickstart and the sections that point
+  at the reference are new. Nothing spec-graph checks or reports changed.
+  Upgrading: nothing to do; a link to a heading of the README that moved
+  reaches the README's top, and the same heading is on its reference page.
+
 ## 0.24.0
 
 Every agent's instructions are held as `CLAUDE.md` is, and a command one

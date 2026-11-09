@@ -315,8 +315,8 @@ describe('a relation cell', () => {
     expect(dependencies('NA')).toEqual({ to: [], findings: [] });
   });
 
-  it('declares nothing when it holds a placeholder the README lists', () => {
-    const sentence = /holds only a placeholder([^.]*)says nothing/.exec(readFileSync('README.md', 'utf8'))?.[1] ?? '';
+  it('declares nothing when it holds a placeholder the reference lists', () => {
+    const sentence = /holds only a placeholder([^.]*)says nothing/.exec(readFileSync('docs/reference/registers.md', 'utf8'))?.[1] ?? '';
     const placeholders = [...sentence.matchAll(/`([^`]+)`/g)].map(([, placeholder]) => placeholder as string);
     expect(placeholders.length).toBeGreaterThan(4);
     for (const placeholder of placeholders) expect(dependencies(placeholder)).toEqual({ to: [], findings: [] });

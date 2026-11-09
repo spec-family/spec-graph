@@ -89,13 +89,14 @@ describe('a graph built from some documents and not others', () => {
   });
 });
 
-describe('the relation properties the README names', () => {
+describe('the relation properties the reference names', () => {
   // "`loadBearing` relations (...) make the source's validity depend on the
   // target", and "`transfersObligation` relations (...) move work". The
-  // exported lists are those, read out of the README rather than restated.
-  const README = (): string => readFileSync('README.md', 'utf8');
+  // exported lists are those, read out of the relations reference rather than
+  // restated.
+  const reference = (): string => readFileSync('docs/reference/relations.md', 'utf8');
   const named = (property: string): string[] => {
-    const listed = new RegExp(`\`${property}\` relations \\(([^)]*)\\)`).exec(README())?.[1];
+    const listed = new RegExp(`\`${property}\` relations \\(([^)]*)\\)`).exec(reference())?.[1];
     expect(listed, property).toBeDefined();
     return [...(listed as string).matchAll(/`([a-z-]+)`/g)].map((match) => match[1] as string).sort();
   };

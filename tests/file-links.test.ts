@@ -6,7 +6,7 @@ import { analyseSources, type Source } from '../src/runner.js';
  * Which links are citations of a specification and which are links to a file.
  *
  * "Some things are not references at all. A link to source code, an image, or
- * a directory is ordinary in a design document" (ADR-0006), and the README says
+ * a directory is ordinary in a design document" (ADR-0006), and the reference says
  * source links are not spec links. A link to a file that is not a document is
  * never reported as a document that does not resolve.
  */

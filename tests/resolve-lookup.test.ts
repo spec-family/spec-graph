@@ -6,7 +6,7 @@ import { analyseSources, type AnalyseSourcesOptions, type Source } from '../src/
 /**
  * How a reference finds its document, and what is said when it does not.
  *
- * Each case is a promise the README or ADR-0004 makes: every spelling of a
+ * Each case is a promise docs/reference/references.md or ADR-0004 makes: every spelling of a
  * document reaches it, a bare number stays inside its family, a suggestion is
  * close in the name and never in the number, and two candidates is worse than
  * none.

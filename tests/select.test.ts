@@ -193,7 +193,8 @@ describe('attributes', () => {
   });
 
   it('lets an item answer to its document\'s status and to every spelling of its name', () => {
-    // The README: items inherit their document's lifecycle, path and aliases.
+    // The query language reference: items inherit their document's lifecycle,
+    // path and aliases.
     const items = ['ADR-0004#open-questions.1', 'ADR-0004#open-questions.2', 'ADR-0004#open-questions.3'];
     expect(ids('item[status=accepted]').sort()).toEqual(items);
     expect(ids('item[alias=adr4]').sort()).toEqual(items);
@@ -400,7 +401,7 @@ describe('traversal', () => {
 
   it('renders every node a transitive path passed through, and each edge the way it points', () => {
     // `spec-graph query 'document[id=ADR-0009] =supersedes=> document'` is in
-    // the README. Reading the middle of a transitive path off its end printed
+    // the query language reference. Reading the middle of a transitive path off its end printed
     // `ADR-0004 -supersedes-> ADR-0002 -supersedes-> ADR-0002`, and a backward
     // step printed as if the relation pointed the other way.
     const graph = corpus();

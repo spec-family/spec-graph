@@ -1,8 +1,8 @@
 /**
  * The workflow a guide shows is held to the workflows this repository runs.
  *
- * The README pins the actions of its SARIF example by commit, as the workflows
- * here are pinned, and a pin copied by hand stays where it was copied:
+ * The README pins the actions of its CI job by commit, and the CI reference
+ * those of its SARIF example, as the workflows here are pinned, and a pin copied by hand stays where it was copied:
  * Dependabot moves .github/workflows and reads no Markdown. A week after the
  * example was pinned the workflows had moved a major past it. So each action
  * a guide shows must carry the major version a workflow here runs, and never
@@ -10,7 +10,7 @@
  *
  * The major and no closer (the maintainer's choice, 2026-11-02): held to the
  * commit, every patch Dependabot proposed for an action failed here until
- * someone copied it into the README by hand, and an example a patch behind
+ * someone copied it into the guide by hand, and an example a patch behind
  * shows a reader nothing wrong. A pin at the version the workflows run must
  * still carry their commit, since one version has one commit; a pin behind
  * them carries a commit this test cannot check without the network. A major
@@ -139,7 +139,7 @@ describe('the workflows the guides show', () => {
   it('are found, and so are the workflows they are held to', () => {
     // A guide that moved, or a line this file no longer reads, would leave
     // the checks below nothing to fail on.
-    expect(shown.map((use) => use.where.split(':')[0])).toContain('README.md');
+    expect([...new Set(shown.map((use) => use.where.split(':')[0]))]).toEqual(expect.arrayContaining(['README.md', 'docs/reference/ci.md']));
     expect([...pinned.keys()]).toEqual(expect.arrayContaining(['actions/checkout', 'actions/setup-node']));
   });
 

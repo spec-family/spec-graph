@@ -17,11 +17,11 @@ import { parseQuery, QueryError, type StepSpec } from '../src/select.js';
  * grammar is asked. Keep the static imports to `select.ts`; `rules.ts` is
  * imported inside a test, where failing to load fails that test.
  *
- * Expectations come from the README's grammar and the parser's own usage
+ * Expectations come from the query language reference's grammar and the parser's own usage
  * errors, which the CLI prints with a caret under `offset`.
  */
 
-const readme = (): string => readFileSync('README.md', 'utf8');
+const reference = (): string => readFileSync('docs/reference/query-language.md', 'utf8');
 
 /** The usage error a selector is refused with. */
 const failure = (selector: string): QueryError => {
@@ -37,10 +37,10 @@ const failure = (selector: string): QueryError => {
 const step = (selector: string, index = 0): StepSpec | undefined => parseQuery(selector).steps[index];
 
 describe('the built-in rules', () => {
-  it('load, which parses the selectors they are, as the README prints them', async () => {
+  it('load, which parses the selectors they are, as the reference prints them', async () => {
     // ADR-0005: the rules are selectors, parsed when rules.ts loads.
     const { RULE_QUERIES } = await import('../src/rules.js');
-    const printed = [...readme().matchAll(/^(ghost-handover|stale-premise) +(\S.*)$/gm)].map(([, rule, selector]) => [
+    const printed = [...reference().matchAll(/^(ghost-handover|stale-premise) +(\S.*)$/gm)].map(([, rule, selector]) => [
       rule,
       selector,
     ]);
@@ -53,7 +53,7 @@ describe('the built-in rules', () => {
 });
 
 describe('node types', () => {
-  // The README names `document · item · *` and the other spellings of each.
+  // The reference names `document · item · *` and the other spellings of each.
   const KINDS: readonly (readonly [string, 'document' | 'item' | null])[] = [
     ['document', 'document'],
     ['documents', 'document'],
@@ -67,8 +67,8 @@ describe('node types', () => {
     ['*', null],
   ];
 
-  it('are the ones the README lists', () => {
-    const line = /^Node types +(.+)$/m.exec(readme())?.[1] ?? '';
+  it('are the ones the reference lists', () => {
+    const line = /^Node types +(.+)$/m.exec(reference())?.[1] ?? '';
     const words = line.replace(/[()·]|\balso\b/g, ' ').split(/\s+/).filter(Boolean);
     expect(words.sort()).toEqual(KINDS.map(([word]) => word).sort());
   });

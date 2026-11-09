@@ -6,7 +6,7 @@ import { analyseSources, type Source } from '../src/runner.js';
  * What a register row's status cell says about other documents.
  *
  * "A register kept as a table works the same way" as one kept under headings
- * (README), and `Superseded by ADR-0002` is "the single most common way a
+ * (docs/reference/registers.md), and `Superseded by ADR-0002` is "the single most common way a
  * supersession is ever recorded" (lifecycle.ts). Written in a row's status
  * cell it names the row's successor exactly as it does on a status line under
  * a heading (ADR-0009).

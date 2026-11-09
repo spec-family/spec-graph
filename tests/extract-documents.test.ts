@@ -30,7 +30,7 @@ function citationsLand(target: string, files: Record<string, string>): string[] 
 }
 
 describe('a @spec-node written for the whole file', () => {
-  // "A directive always wins" (README, Directives).
+  // "A directive always wins" (docs/reference/directives.md).
   const TEXT = [
     '---',
     'status: proposed',
@@ -173,7 +173,8 @@ describe('a title', () => {
 
 describe('a status', () => {
   it('reads every entry of a list, so a retirement word among them retires the file', () => {
-    // "retirement is terminal, so a retirement word anywhere wins" (README).
+    // "retirement is terminal, so a retirement word anywhere wins"
+    // (docs/reference/lifecycle.md).
     const { document } = extract('docs/adr/0001-a.md', '---\nstatus: [accepted, superseded]\n---\n\n# A\n');
     expect([document.rawStatus, document.phase]).toEqual(['accepted, superseded', 'retired']);
   });

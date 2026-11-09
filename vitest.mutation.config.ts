@@ -1,4 +1,4 @@
-import { relative } from 'node:path';
+import { statSync } from 'node:fs';
 
 import { defineConfig } from 'vitest/config';
 import { BaseSequencer, type TestSpecification } from 'vitest/node';
@@ -28,18 +28,21 @@ import { BaseSequencer, type TestSpecification } from 'vitest/node';
  * late had 680 tests ahead of its killer, for 690 to 735 before.
  *
  * A file the worker has not run yet has no time to go by. It runs after
- * those that have, the smaller first, and has a time from then on. The time
- * is the file's last run in that worker, which for a mutant that is not
- * static is the tests that cover it and no others.
+ * those that have, the smaller first, and has a time from then on. Vitest 5
+ * asks its cache by a file's specification and keeps no sizes, reading them
+ * from the disk where a file has no time; so does this. Its cache takes the
+ * time of a run of the whole file, and the time of a run a test name pattern
+ * narrowed only where it has none: in a sweep, each file's from a run of all
+ * of it, as the dry run is, where vitest 4 took the last run's, the tests
+ * that cover a mutant that is not static and no others.
  */
 export class QuickestFirst extends BaseSequencer {
   override async sort(files: TestSpecification[]): Promise<TestSpecification[]> {
-    const { cache, config } = this.ctx;
+    const { cache } = this.ctx;
     const rank = (file: TestSpecification): [number, number] => {
-      // The key vitest's own sequencer reads its cache by; a test holds the two together.
-      const key = `${file.project.name}:${relative(config.root, file.moduleId).replaceAll('\\', '/')}`;
-      const last = cache.getFileTestResults(key);
-      if (last === undefined) return [2, cache.getFileStats(key)?.size ?? 0];
+      // What vitest's own sequencer asks its cache; a test holds the two together.
+      const last = cache.getTestSpecificationResult(file);
+      if (last === undefined) return [2, statSync(file.moduleId, { throwIfNoEntry: false })?.size ?? 0];
       return [last.failed ? 0 : 1, last.duration];
     };
     const ranked = files.map((file) => ({ file, rank: rank(file) }));

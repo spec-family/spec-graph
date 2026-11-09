@@ -11,7 +11,11 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.24.1
+
+The README is a front page, and the reference ships in the package, in
+`docs/reference/`, so the copy a project installs describes the release it
+runs. Nothing spec-graph checks or reports changed.
 
 ### Changed
 

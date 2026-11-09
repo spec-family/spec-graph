@@ -24,14 +24,14 @@ records.
   tests until a run of the whole file passes, so the sweep's order in
   `vitest.mutation.config.ts` keeps its own record of each file's verdict,
   by a reporter, `lastRun`, as spec-core's does (ADR-0007, 2026-11-09).
-  The full sweep of the change read 97.24% over 11,408 mutants, main's
+  Both full sweeps of the change read 97.24% over 11,408 mutants, main's
   score with main's survivors, and no survivor ran no test. Killed mutants
-  that are not static ran 14.96 tests to a kill, where main's last four
-  sweeps on vitest 4 ran 14.10 to 14.70: the rise is in those that more than
-  twenty test files cover, which after the file that failed last run in
-  the order of vitest 5's times, each whole file's. Development tooling
-  only: nothing spec-graph checks or reports changed, and the package still
-  installs nothing, so no release is needed for it.
+  that are not static ran 14.96 and 14.56 tests to a kill, where main's last
+  four sweeps on vitest 4 ran 14.10 to 14.70; the rise that holds in both
+  is in those that 21 to 40 test files cover, which after the file that
+  failed last run in the order of vitest 5's times, each whole file's.
+  Development tooling only: nothing spec-graph checks or reports changed,
+  and the package still installs nothing, so no release is needed for it.
   Upgrading: nothing to do.
 
 ## 0.24.1

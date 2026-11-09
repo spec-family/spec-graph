@@ -1348,22 +1348,25 @@ before the record goes.
 vitest, so the incremental file's key moves with it (the entry of
 2026-11-08): every shard found no file under
 `core-10.1.1+vitest-runner-10.1.1+vitest-5.0.5`, and Stryker tested every
-mutant. Its sweep, run 42609146069 at 2b9d5f1, beside main's newest, run
-42582559955 at 1308cf0, the commit the branch starts from:
+mutant. It swept twice, at 2b9d5f1 and again at e5f55e9, which adds this
+record's figures and nothing else; beside them, main's newest sweep, of
+1308cf0, the commit the branch starts from:
 
-| Vitest | Score | Mutants | Killed | Timed out | Survived | No coverage | Survived, covered, untested |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 4.1.12 | 97.24% | 11,408 | 11,021 | 72 | 299 | 16 | 0 |
-| 5.0.5 | 97.24% | 11,408 | 11,021 | 72 | 299 | 16 | 0 |
+| Sweep | Vitest | Score | Mutants | Killed | Timed out | Survived | No coverage | Survived, covered, untested |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| main 1308cf0, run 42582559955 | 4.1.12 | 97.24% | 11,408 | 11,021 | 72 | 299 | 16 | 0 |
+| 2b9d5f1, run 42609146069 | 5.0.5 | 97.24% | 11,408 | 11,021 | 72 | 299 | 16 | 0 |
+| e5f55e9, run 42614369911 | 5.0.5 | 97.24% | 11,408 | 11,020 | 73 | 299 | 16 | 0 |
 
-Both of the conditions of spec-core's ADR-0008 held: the same score, and no
-survivor ran no test. The 315 undetected mutants are main's, none new and
-none gone, matched by file, mutated text and replacement. Two mutants had
-another verdict, each a swap main's own sweeps make: `src/git.ts` 37,
-`reject(error)` emptied, timed out on main and was killed here, as in
-main's three sweeps before it; `src/graph.ts` 223, `stack.push(child)`
-emptied, was killed on main and timed out here, as in two of those three.
-No mutant was a RuntimeError or a CompileError. The sweep ran 2,739 tests to
+Both of the conditions of spec-core's ADR-0008 held, in both sweeps: the
+same score, and no survivor ran no test. The 315 undetected mutants are
+main's in each, none new and none gone, matched by file, mutated text and
+replacement. Each mutant with another verdict is a swap main's own sweeps
+make: `src/git.ts` 37, `reject(error)` emptied, timed out on main and was
+killed in the first sweep, as in main's three sweeps before 1308cf0, and
+timed out in the second; `src/graph.ts` 223, `stack.push(child)` emptied,
+was killed on main and timed out in both, as in two of those three. No
+mutant was a RuntimeError or a CompileError. The sweeps ran 2,739 tests to
 main's 2,742: the three that held vitest to 4.
 
 The third condition is the tests a killed mutant completed up to the one
@@ -1376,38 +1379,48 @@ that failed, beside main's last four sweeps on vitest 4:
 | main eeecb9a, run 42573064794 | 39.64 | 14.70 | 301,084 | 5,181 |
 | main 1308cf0, run 42582559955 | 39.43 | 14.10 | 304,302 | 5,136 |
 | vitest 5, run 42609146069 | 42.27 | 14.96 | 327,582 | 5,119 |
+| vitest 5, run 42614369911 | 42.82 | 14.56 | 337,321 | 5,154 |
 
-The mutants that are not static read 14.96, above vitest 4's 14.10 to
-14.70, and were read by how many test files cover each:
+The mutants that are not static read 14.96 in the first sweep, above
+vitest 4's 14.10 to 14.70, and 14.56 in the second, within it. Read by how
+many test files cover each:
 
-| Files covering the mutant | Killed | Vitest 5 | Main's four on vitest 4 |
+| Files covering the mutant | Killed in the first | Vitest 5, two sweeps | Main's four on vitest 4 |
 | --- | --- | --- | --- |
-| 1 to 5 | 4,574 | 2.50 | 2.39 to 2.41 |
-| 6 to 20 | 2,295 | 10.10 | 10.13 to 10.31 |
-| 21 to 40 | 606 | 15.59 | 12.65 to 13.39 |
-| 41 and more | 1,501 | 61.54 | 57.31 to 60.75 |
+| 1 to 5 | 4,574 | 2.50, 2.48 | 2.39 to 2.42 |
+| 6 to 20 | 2,295 | 10.10, 10.23 | 10.13 to 10.31 |
+| 21 to 40 | 606 | 15.59, 15.92 | 12.65 to 13.39 |
+| 41 and more | 1,501 | 61.54, 58.69 | 57.31 to 60.75 |
 
 The mutants that twenty files or fewer cover, where the file that failed
-last decides most, read within a tenth of a test of vitest 4's. The rise is
-in those that more than twenty files cover, the mutants of the modules
-nearly every test of a corpus reaches, `runner.ts`, `select.ts` and
-`lifecycle.ts` most. Most were killed by the file that killed them on main,
-and ran it later: after the file that failed last the order is the times',
-and vitest 5's are those of each whole file, where vitest 4 took each
-narrowed run's. A file that is long as a whole and quick in the tests that
-cover such a mutant now waits behind the others. `tests/completions.test.ts`
-is the longest file of the sweep's suite, 1.8 seconds on a laptop, nearly
-all of it its seven tests of git, and three mutants of `runner.ts` 303 that
-it kills ran 1,109 to 1,111 tests where main ran 487 to 621. spec-core's sweep of a record of each run's time as well read no
-better than the failure alone, where fewer files cover a mutant than here;
-whether it does here is a sweep of its own, and not this change. The static
-mutants ran 327,582 tests before their kills, against 301,084 to 308,471,
-above vitest 4 as spec-core's are, and as there not explained.
+last decides most, read within a tenth of a test of vitest 4's. Those that
+more than forty cover, the mutants of the modules nearly every test of a
+corpus reaches, `runner.ts`, `select.ts` and `lifecycle.ts` most, read
+above vitest 4 in the first sweep and within it in the second, which is most
+of the difference between the two means. The rise that holds in both
+is in the 606 that 21 to 40 files cover, two and a half tests each, about
+1,600 tests of a sweep's 130,000 to 138,000 before the kills of mutants that
+are not static. Most of the mutants that rose were killed by the file that
+killed them on main, and ran it later: after the file that failed last the
+order is the times', and vitest 5's are those of each whole file, where
+vitest 4 took each narrowed run's. A file that is long as a whole and quick
+in the tests that cover such a mutant now waits behind the others.
+`tests/completions.test.ts` is the longest file of the sweep's suite, 1.8
+seconds on a laptop, nearly all of it its seven tests of git, and three
+mutants of `runner.ts` 303 that it kills ran 1,109 to 1,111 tests in the
+first sweep where main ran 487 to 621. spec-core's sweep of a record of
+each run's time as well read no better than the failure alone, where fewer
+files cover a mutant than here; whether it does here is a sweep of its own,
+and not this change. The static mutants ran 327,582 and 337,321 tests
+before their kills, against 301,084 to 308,471, above vitest 4 as
+spec-core's are, and as there not explained.
 
-The four shard jobs took 21m49s, 14m15s, 23m14s and 27m57s, 87m15s in
-all, on runners whose first run of the suite took 22 to 28 seconds; main's
-at 1308cf0 took 73m16s on runners of 18 to 28 seconds, and its three before
-86m06s to 91m16s, the longest shard 27m30s to 28m04s.
+The shard jobs took 21m49s, 14m15s, 23m14s and 27m57s in the first sweep,
+87m15s in all, on runners whose first run of the suite took 22 to 28
+seconds, and 22m05s, 12m33s, 23m01s and 21m17s in the second, 78m56s, on
+runners of 19 to 28. Main's at 1308cf0 took 73m16s, on runners of 18 to 28
+seconds, and its three before 86m06s to 91m16s, the longest shard 27m30s
+to 28m04s.
 
 ## Open Questions
 

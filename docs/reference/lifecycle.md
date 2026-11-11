@@ -95,10 +95,9 @@ the same key with the same meaning:
 - **`true` names every document**, and a list the documents a pattern
   matches: a glob, or a file or a directory and what is beneath it, as the
   patterns to check are read. `false`, or no key, reads every status. An
-  empty list is refused, and so are `.` and a pattern that starts with `!`:
-  neither spec-graph nor spec-guard takes a negation in this key, or `.` for
-  every document, so every list one tool accepts names the same documents in
-  the other.
+  empty list is refused, and so are `.`, `./` and a pattern that starts with
+  `!`: neither spec-graph nor spec-guard takes one in this key, and each
+  refuses it, so every list both accept names the same documents.
 - **The rows and sections of a register it names keep their statuses.** Each
   is a specification of its own, whose status is written in its own cell or
   section ([Registers](registers.md)); the key names a file, and leaves

@@ -392,10 +392,10 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
 }
 
 /**
- * Whether a pattern of `ignoreStatus` starts with a `!`. Neither tool takes a
- * negation in this key, and each refuses one, as each refuses `.`: so every
- * list one tool accepts names the same documents in the other (spec-core
- * ADR-0005). Every other list here reads a `!` as taking back a match.
+ * Whether a pattern of `ignoreStatus` starts with a `!`. Neither spec-graph
+ * nor spec-guard takes one in this key, or `.`: each refuses it, so every
+ * list both accept names the same documents (spec-core ADR-0005). Every
+ * other list here reads a `!` as taking back a match.
  */
 export function isNegation(pattern: string): boolean {
   return pattern.trim().startsWith('!');
@@ -403,7 +403,7 @@ export function isNegation(pattern: string): boolean {
 
 /** What `ignoreStatus` is told about a pattern that starts with a `!`. */
 export function negationRefusal(pattern: string): string {
-  return `"ignoreStatus" takes no negation, and "${pattern}" starts with "!": neither spec-graph nor spec-guard reads one in this key, so name only the documents whose status is not read`;
+  return `"ignoreStatus" takes no pattern that starts with "!", and "${pattern}" does: neither spec-graph nor spec-guard takes one in this key, so name only the documents whose status is not read`;
 }
 
 const KNOWN_KEYS: ReadonlySet<string> = new Set([

@@ -75,12 +75,12 @@ describe('the documents it names', () => {
     ).toEqual([true, false, true, true, false]);
   });
 
-  it('take no pattern that starts with a !: neither tool takes a negation in this key', () => {
-    // Read as taking documents back here and as a file's name in spec-guard,
-    // the one list left `docs/legacy/kept.md` unread in one tool and read in
-    // the other; each refuses it, as each refuses `.` (spec-core ADR-0005).
+  it('take no pattern that starts with a !: neither tool takes one in this key', () => {
+    // Every other list here reads it as taking documents back. spec-guard
+    // refuses it in this key as this does, and `.` too, so every list both
+    // accept names the same documents (spec-core ADR-0005).
     const refusal = (pattern: string) =>
-      `"ignoreStatus" takes no negation, and "${pattern}" starts with "!": neither spec-graph nor spec-guard reads one in this key, so name only the documents whose status is not read`;
+      `"ignoreStatus" takes no pattern that starts with "!", and "${pattern}" does: neither spec-graph nor spec-guard takes one in this key, so name only the documents whose status is not read`;
     expect(() => createStatusFilter(['docs/legacy', '!docs/legacy/kept.md'])).toThrow(refusal('!docs/legacy/kept.md'));
     expect(() => createStatusFilter([' !docs/legacy/kept.md'])).toThrow(refusal(' !docs/legacy/kept.md'));
     // A `!` inside a pattern is a class's or a name's, and is no negation.
@@ -213,10 +213,12 @@ describe('a run with the key in its configuration', () => {
     expect(await findings('{ "ignoreStatus": ["specs"] }\n')).toEqual([0, []]);
     expect(await findings('{ "ignoreStatus": true }\n')).toEqual([0, []]);
     // A pattern that is no glob is refused as any other is, by the pattern,
-    // and so is `.`, which neither tool takes in this key: `true` names every document.
+    // and so are `.` and `./`, which neither tool takes in this key: `true`
+    // names every document.
     for (const [pattern, said] of [
       ['specs/[x', 'invalid glob "specs/[x"'],
       ['.', 'invalid glob ".": the pattern names no path'],
+      ['./', 'invalid glob "./": the pattern names the root itself, not a path under it'],
     ]) {
       const refused = await run(`{ "ignoreStatus": ["${pattern}"] }\n`);
       expect([refused.code, refused.out]).toEqual([2, '']);

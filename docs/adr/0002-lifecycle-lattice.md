@@ -203,13 +203,11 @@ that read a status agree on whose they read. The list is read as
 spec-graph reads every list of paths, `checklists` and `historyPatterns`
 among them: a glob, or a file or a directory and what is beneath it. A
 pattern that starts with `!` is refused, where every other list here reads
-it as taking back what an earlier pattern matched, and so is `.`, as every
-list here refuses it. Neither tool takes a negation in this key, or `.`, so
-every list one tool accepts names the same documents in the other: read as
-a negation here and as a file's name in spec-guard, `!docs/old/kept.md`
-left that document's status unread in one tool and read in the other. An
-empty list is refused, as spec-guard refuses it: it names no document and
-reads as applied.
+it as taking back what an earlier pattern matched, and so are `.` and `./`,
+as every list here refuses them. Neither spec-graph nor spec-guard takes a
+pattern that starts with `!`, or `.`, in this key: each refuses it, so
+every list both accept names the same documents. An empty list is refused,
+as spec-guard refuses it: it names no document and reads as applied.
 Without the key, or with `false`, every status is read as before, so it
 arrives in a minor release, with nothing to change on upgrade.
 

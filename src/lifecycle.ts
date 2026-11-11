@@ -77,8 +77,23 @@ const VOCABULARY: readonly (readonly [Phase, readonly string[]])[] = [
     ['final', 'finalised', 'finalized', 'frozen', 'locked', 'ratified', 'immutable', 'sealed', 'standard', 'published'],
   ],
   // Ahead of `active`, whose `accepted` it contains: read after it, as the
-  // rest of the draft row is, `provisionally accepted` would be active.
-  ['draft', ['provisionally-accepted']],
+  // rest of the draft row is, `provisionally accepted` would be active. So
+  // would `to be decided` and `not yet resolved`, the question still open.
+  [
+    'draft',
+    [
+      'provisionally-accepted',
+      'to-be-decided',
+      'not-decided',
+      'not-yet-decided',
+      'to-be-settled',
+      'not-settled',
+      'not-yet-settled',
+      'to-be-resolved',
+      'not-resolved',
+      'not-yet-resolved',
+    ],
+  ],
   [
     'active',
     [
@@ -104,6 +119,11 @@ const VOCABULARY: readonly (readonly [Phase, readonly string[]])[] = [
       'completed',
       'signed-off',
       'committed',
+      // What a register writes when its question is answered; spec-brief
+      // settles an awaited row on whatever word `registers.settled` names.
+      'decided',
+      'settled',
+      'resolved',
     ],
   ],
   [
@@ -126,6 +146,8 @@ const VOCABULARY: readonly (readonly [Phase, readonly string[]])[] = [
       'exploratory',
       'candidate',
       'open',
+      'undecided',
+      'unresolved',
       'new',
       'unreviewed',
       'rfc',

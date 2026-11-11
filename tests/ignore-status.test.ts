@@ -75,11 +75,12 @@ describe('the documents it names', () => {
     ).toEqual([true, false, true, true, false]);
   });
 
-  it('take no pattern that starts with a !, which spec-guard reads as a file of that name', () => {
-    // Read here as taking documents back, the one list would leave
-    // `docs/legacy/kept.md` unread in spec-graph and read in spec-guard.
+  it('take no pattern that starts with a !: neither tool takes a negation in this key', () => {
+    // Read as taking documents back here and as a file's name in spec-guard,
+    // the one list left `docs/legacy/kept.md` unread in one tool and read in
+    // the other; each refuses it, as each refuses `.` (spec-core ADR-0005).
     const refusal = (pattern: string) =>
-      `"ignoreStatus" takes no "!", and "${pattern}" starts with one: spec-guard reads the same list with no negation, so name only the documents whose status is not read`;
+      `"ignoreStatus" takes no negation, and "${pattern}" starts with "!": neither spec-graph nor spec-guard reads one in this key, so name only the documents whose status is not read`;
     expect(() => createStatusFilter(['docs/legacy', '!docs/legacy/kept.md'])).toThrow(refusal('!docs/legacy/kept.md'));
     expect(() => createStatusFilter([' !docs/legacy/kept.md'])).toThrow(refusal(' !docs/legacy/kept.md'));
     // A `!` inside a pattern is a class's or a name's, and is no negation.
@@ -211,9 +212,15 @@ describe('a run with the key in its configuration', () => {
     expect(await findings('{ "ignoreStatus": false }\n')).toEqual([1, ['live-supersession']]);
     expect(await findings('{ "ignoreStatus": ["specs"] }\n')).toEqual([0, []]);
     expect(await findings('{ "ignoreStatus": true }\n')).toEqual([0, []]);
-    // A pattern that is no glob is refused as any other is, by the pattern.
-    const refused = await run('{ "ignoreStatus": ["specs/[x"] }\n');
-    expect([refused.code, refused.out]).toEqual([2, '']);
-    expect(refused.err).toContain('invalid glob "specs/[x"');
+    // A pattern that is no glob is refused as any other is, by the pattern,
+    // and so is `.`, which neither tool takes in this key: `true` names every document.
+    for (const [pattern, said] of [
+      ['specs/[x', 'invalid glob "specs/[x"'],
+      ['.', 'invalid glob ".": the pattern names no path'],
+    ]) {
+      const refused = await run(`{ "ignoreStatus": ["${pattern}"] }\n`);
+      expect([refused.code, refused.out]).toEqual([2, '']);
+      expect(refused.err).toContain(said);
+    }
   });
 });

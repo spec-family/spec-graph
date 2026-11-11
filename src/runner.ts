@@ -261,7 +261,7 @@ export function createHistoryMatcher(patterns: readonly string[] | undefined): (
  * path for `true`, the paths a list matches, or nothing for `false`, an
  * empty list or no key, as the history matcher is nothing for no patterns.
  * Throws for a pattern that starts with a `!`, as the configuration refuses
- * one: spec-guard reads the same list with no negation.
+ * one: neither spec-graph nor spec-guard takes a negation in this key.
  */
 export function createStatusFilter(ignoreStatus: boolean | readonly string[] | undefined): ((path: string) => boolean) | undefined {
   if (ignoreStatus === true) return () => true;

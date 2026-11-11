@@ -161,6 +161,24 @@ document differently is the disagreement that contract exists to prevent.
   second is accepted. Run against spec-guard's reader over 1,428 generated
   lines, the two differ on those and on nothing else.
 
+*Amended 2026-11-11.* **A question decided is active.** A register writes
+`decided` when the question in its row is answered, and spec-brief settles
+a row a brief awaits on whatever word its `registers.settled` names, with
+`decided` the word its own reference shows. Here the word was in no row, so
+a row went from `draft` to `unknown` when it was settled, as `spec-graph
+diff` printed. `decided`, `settled` and `resolved` are in the active row,
+beside `agreed` and `done`; `undecided` and `unresolved` in the draft row,
+beside `open`. A status holding words from two rows takes the higher row,
+so `to be decided`, `not decided` and `not yet decided`, and the same of
+`settled` and `resolved`, are draft words read ahead of the active row, as
+`provisionally accepted` is: read the other way, a status saying the
+question is open would say it is answered. A status saying so in other
+words - `awaiting a decision`, `TBD` - holds no word of the table and is
+unknown, as before. The same is true of the active row's
+older words, `not accepted` among them: a negation before a word is not
+read, and only these phrases, new with the words they guard, are in the
+table.
+
 ## Open Questions
 
 - [ ] Should `frozen` and `retired` be distinguishable in the `receptivity`

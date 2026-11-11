@@ -38,15 +38,17 @@ A word counts whole and in any case, once emphasis, links, HTML, emoji and dates
 are stripped, so `Unapproved` is not `approved`. A hyphenated word matches
 spaced, or joined by an underscore, as well: `signed-off` reads `Signed off` and
 `signed_off`. A status holding words from two rows takes the higher row, except
-that `provisionally accepted` is a draft.
+that `provisionally accepted` is a draft, and so are `to be decided`,
+`not decided` and `not yet decided`, and the same of `settled` and `resolved`:
+the question is still open.
 
 | Phase | Status words |
 | --- | --- |
 | `retired` | `superseded`, `superceded`, `supersedes-by`, `replaced`, `replaced-by`, `deprecated`, `obsolete`, `obsoleted`, `retired`, `rejected`, `declined`, `withdrawn`, `abandoned`, `cancelled`, `canceled`, `dropped`, `revoked`, `reverted`, `moved`, `historical`, `defunct`, `inactive`, `dead`, `void`, `closed`, `postponed`, `deferred`, `not-planned`, `not_planned`, `wontfix` |
 | `record` | `archived`, `archive` |
 | `frozen` | `final`, `finalised`, `finalized`, `frozen`, `locked`, `ratified`, `immutable`, `sealed`, `standard`, `published` |
-| `active` | `accepted`, `active`, `approved`, `adopted`, `agreed`, `implementable`, `implemented`, `implementing`, `current`, `effective`, `in-effect`, `enforced`, `stable`, `merged`, `released`, `shipped`, `live`, `done`, `complete`, `completed`, `signed-off`, `committed` |
-| `draft` | `draft`, `drafting`, `proposed`, `proposal`, `provisional`, `provisionally-accepted`, `prospective`, `wip`, `work-in-progress`, `in-progress`, `in_progress`, `review`, `in-review`, `under-review`, `reviewing`, `discussion`, `discussing`, `pending`, `idea`, `exploratory`, `candidate`, `open`, `new`, `unreviewed`, `rfc`, `experimental`, `alpha`, `beta`, `incubating` |
+| `active` | `accepted`, `active`, `approved`, `adopted`, `agreed`, `implementable`, `implemented`, `implementing`, `current`, `effective`, `in-effect`, `enforced`, `stable`, `merged`, `released`, `shipped`, `live`, `done`, `complete`, `completed`, `signed-off`, `committed`, `decided`, `settled`, `resolved` |
+| `draft` | `draft`, `drafting`, `proposed`, `proposal`, `provisional`, `provisionally-accepted`, `to-be-decided`, `not-decided`, `not-yet-decided`, `to-be-settled`, `not-settled`, `not-yet-settled`, `to-be-resolved`, `not-resolved`, `not-yet-resolved`, `prospective`, `wip`, `work-in-progress`, `in-progress`, `in_progress`, `review`, `in-review`, `under-review`, `reviewing`, `discussion`, `discussing`, `pending`, `idea`, `exploratory`, `candidate`, `open`, `undecided`, `unresolved`, `new`, `unreviewed`, `rfc`, `experimental`, `alpha`, `beta`, `incubating` |
 
 | Where | Read from |
 | --- | --- |

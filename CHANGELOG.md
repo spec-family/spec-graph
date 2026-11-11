@@ -34,6 +34,18 @@ records.
 
 ### Changed
 
+- **A question decided is active.** `decided`, `settled` and `resolved` are
+  status words of the active phase, and `undecided` and `unresolved` of the
+  draft phase. A register row written `decided`, the word spec-brief's
+  `registers.settled` shows, read as `unknown`, and `spec-graph diff` showed
+  a settled row going from `draft` to `unknown`. `to be decided`, `not
+  decided` and `not yet decided`, and the same of `settled` and `resolved`,
+  are draft, read ahead of the active row as `provisionally accepted` is
+  (ADR-0002, 2026-11-11). A document with one of these words takes the
+  rules of its phase where it took none: one superseded while it reads
+  `decided` is a `live-supersession`. Upgrading: a status that was `unknown`
+  for one of these words is read now; mark a superseded one `superseded`.
+
 - **The suite runs on vitest 5, and the mutation sweep keeps its own record
   of the test file that failed last.** `vitest` and `@vitest/coverage-v8`
   are at 5.0.5, the version spec-core runs, now that Stryker 10.1's vitest

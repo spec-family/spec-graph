@@ -110,6 +110,37 @@ describe('the documented status words', () => {
     expect(phaseOf('archived')).toBe('record');
   });
 
+  it('read a question decided as active, and one still to be decided as a draft', () => {
+    // A register writes `decided` when its question is answered, and spec-brief
+    // settles a row it awaits on that word; read as unknown, a row went from
+    // draft to unknown when it was settled.
+    expect(phaseOf('decided: the refund rules (commit "abc1234")')).toBe('active');
+    expect(phaseOf('Settled')).toBe('active');
+    expect(phaseOf('**Resolved** (2026-11-11)')).toBe('active');
+    expect(phaseOf('Undecided')).toBe('draft');
+    expect(phaseOf('unresolved')).toBe('draft');
+    expect(phaseOf('Draft, to be decided at the review')).toBe('draft');
+    expect(phaseOf('Yet to be settled')).toBe('draft');
+    expect(phaseOf('Not yet resolved')).toBe('draft');
+    expect(phaseOf('not_decided')).toBe('draft');
+    // Retirement still wins over a decision.
+    expect(phaseOf('Decided, later superseded by D-9')).toBe('retired');
+    const { graph } = analyseSources(
+      corpus({
+        'docs/decisions.md': [
+          '# Decisions',
+          '',
+          '| ID | Question | Status |',
+          '| --- | --- | --- |',
+          '| D-1 | Fees | decided |',
+          '| D-2 | Refunds | to be decided |',
+          '| D-3 | Taxes | open |',
+        ].join('\n'),
+      }),
+    );
+    expect(['D-1', 'D-2', 'D-3'].map((id) => graph.document(id)?.phase)).toEqual(['active', 'draft', 'draft']);
+  });
+
   it('read provisionally accepted as a draft, though it holds accepted', () => {
     expect(phaseOf('Provisionally accepted')).toBe('draft');
     expect(phaseOf('provisionally-accepted (2026-03-01)')).toBe('draft');

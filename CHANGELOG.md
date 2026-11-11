@@ -13,6 +13,24 @@ records.
 
 ## Unreleased
 
+### Added
+
+- **`ignoreStatus`: documents whose own status is not read.** Spec Kit
+  writes `**Status**: Draft` under the title of every specification and
+  never changes it, so each read as a draft for as long as it existed. The
+  configuration key takes `true` for every document, or a list of patterns
+  for the documents they match, `["specs/**/spec.md"]`; a document it names
+  declares no status, from its directive, front matter, section, table or
+  label, nor a successor written there, and takes its phase from its
+  directory, as a document that writes none does. A register's rows and
+  sections keep their own statuses. An empty list, or anything but `true`,
+  `false` or patterns, is a configuration problem, exit `2`. spec-guard
+  reads the same key with the same meaning, and spec-core's ADR-0005 records
+  it (ADR-0002, 2026-11-11). `analyse()` takes `ignoreStatus`, and
+  `analyseSources()` an `isStatusUnread` predicate, which
+  `createStatusFilter()` builds. Upgrading: nothing to do; without the key
+  every status is read as before.
+
 ### Fixed
 
 - **A link to a file with no extension is no reference.** `[MIT](LICENSE)`,

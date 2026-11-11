@@ -75,6 +75,38 @@ See [ADR-0002](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002
 
 </details>
 
+## A status nobody maintains
+
+Spec Kit writes `**Status**: Draft` under the title of every specification
+its `specify` command makes, and nothing changes the line again, so each
+reads as a draft for as long as it exists. A repository whose format writes
+a status nobody maintains says so in its configuration, and spec-guard reads
+the same key with the same meaning:
+
+```json
+{ "ignoreStatus": ["specs/**/spec.md"] }
+```
+
+- **A document it names declares no status.** Its directive, front matter,
+  status section, table and label are not read for one, nor is a successor
+  named there, and it takes its phase from its directory as a document that
+  writes none does: unknown, or retired under `archive/`. A record stays a
+  record.
+- **`true` names every document**, and a list the documents a pattern
+  matches: a glob, or a file or a directory and what is beneath it, with `!`
+  taking back what an earlier pattern matched, as the patterns to check are
+  read. `false`, or no key, reads every status, and an empty list is
+  refused.
+- **The rows and sections of a register it names keep their statuses.** Each
+  is a specification of its own, whose status is written in its own cell or
+  section ([Registers](registers.md)); the key names a file, and leaves
+  unread where the file wrote its own.
+
+See [ADR-0002](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0002-lifecycle-lattice.md), amended 2026-11-11, and
+spec-core's
+[ADR-0005](https://github.com/spec-family/spec-core/blob/main/docs/adr/0005-the-family-contract.md),
+where a status is read.
+
 `archived` is none of the four. It is what spec-brief writes on a round of work
 it has closed, and every spec-* tool reads it as a **record**:
 

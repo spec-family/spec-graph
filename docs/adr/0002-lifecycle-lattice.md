@@ -179,6 +179,34 @@ older words, `not accepted` among them: a negation before a word is not
 read, and only these phrases, new with the words they guard, are in the
 table.
 
+*Amended 2026-11-11.* **A repository can say whose status is not read.**
+Spec Kit's specification template writes `**Status**: Draft` under the
+title of every specification, and none of its commands writes the line
+again, so each reads as a draft for as long as it exists. Reading `Draft`
+there as anything else would be a guess at what a team meant, and no
+longer reading the label would leave unread every team that keeps one up
+to date. The configuration key `ignoreStatus` says it instead: `true` for
+every document, or a list of patterns for the documents they match. A
+document it names declares no status: its directive, front matter, status
+section, table and label are not read, nor a successor written in them, and
+its phase comes from its directory as for any document that writes none,
+unknown or retired under `archive/`. A record stays a record: that is said
+from outside the file, by `historyPatterns` or `@spec-history`, and is not
+a status the file writes. The rows and sections of a register the key
+names keep their statuses, each written in its own cell or section, and
+`registers` holds them to those; the key names a file, and leaves unread
+where the file wrote its own.
+
+spec-guard reads the same key with the same meaning, and spec-core's
+ADR-0005 records it among the places a status is read, so the two tools
+that read a status agree on whose they read. The list is read as
+spec-graph reads every list of paths, `checklists` and `historyPatterns`
+among them: a glob, or a file or a directory and what is beneath it, with
+`!` taking back what an earlier pattern matched. An empty list is refused,
+as spec-guard refuses it: it names no document and reads as applied.
+Without the key, or with `false`, every status is read as before, so it
+arrives in a minor release, with nothing to change on upgrade.
+
 ## Open Questions
 
 - [ ] Should `frozen` and `retired` be distinguishable in the `receptivity`

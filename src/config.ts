@@ -56,6 +56,12 @@ export interface SpecGraphConfig {
    * obligations and lifecycle are not. See ADR-0011.
    */
   readonly historyPatterns?: readonly string[] | undefined;
+  /**
+   * Documents whose own status is not read: `true` for every one, or the
+   * patterns of those it is not read for, such as Spec Kit's specifications,
+   * every one written `Draft` and never changed. See ADR-0002.
+   */
+  readonly ignoreStatus?: boolean | readonly string[] | undefined;
   /** Path to the accepted-debt baseline, relative to the root. See ADR-0012. */
   readonly baseline?: string | undefined;
   /** Fail when a baseline entry no longer occurs. See ADR-0012. */
@@ -263,6 +269,15 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
   }
   config.historyPatterns = strings('historyPatterns');
 
+  if (raw['ignoreStatus'] !== undefined) {
+    const value = raw['ignoreStatus'];
+    // An empty list names no document and reads as applied, so it is refused
+    // as spec-guard refuses it: `false` is how to say none.
+    if (typeof value === 'boolean') config.ignoreStatus = value;
+    else if (Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === 'string' && entry.trim().length > 0)) config.ignoreStatus = value as string[];
+    else problems.push(`${source}: "ignoreStatus" must be true, false or a non-empty array of patterns of the documents whose status is not read, such as ["specs/**/spec.md"]`);
+  }
+
   if (raw['baseline'] !== undefined) {
     if (typeof raw['baseline'] !== 'string' || raw['baseline'].trim().length === 0) {
       problems.push(`${source}: "baseline" must be a path`);
@@ -379,6 +394,7 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'families',
   'ignoreFamilies',
   'historyPatterns',
+  'ignoreStatus',
   'baseline',
   'ratchet',
   'rules',

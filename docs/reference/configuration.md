@@ -10,6 +10,7 @@ command. spec-graph reads the first of `.spec-graph.json`,
   "ignoreReferences": ["trap *"],
   "ignoreFamilies": ["RFC"],
   "historyPatterns": ["**/JOURNAL_*.md"],
+  "ignoreStatus": ["specs/**/spec.md"],
   "baseline": ".spec-graph-baseline.json",
   "ratchet": true,
   "severities": { "self-reference": "off" },
@@ -71,6 +72,15 @@ their commits are looked for in, are the repository's
 [figures](claims-and-evidence.md#figures-resting-on-a-record),
 [orientation documents](orientation.md),
 [commits](claims-and-evidence.md#commits-looked-for-in-git)).
+
+`ignoreStatus` has no flag: it names the documents whose own status is not
+read, `true` for every one or a list of patterns for those they match, such
+as Spec Kit's specifications, each written `**Status**: Draft` and never
+changed. A document it names reads as one that declares no status, so its
+phase comes from its directory, or is unknown; `false`, or no key, reads
+every status. An empty list is refused, as spec-guard refuses it, and so is
+anything but `true`, `false` or patterns. spec-guard reads the same key with
+the same meaning ([lifecycle](lifecycle.md#a-status-nobody-maintains)).
 
 `maxRelated` has no flag. It caps how many related locations one finding lists
 — the lines under it in the terminal, `related` in JSON, `relatedLocations` in

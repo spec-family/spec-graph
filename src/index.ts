@@ -44,6 +44,7 @@ export {
   createClaimReader,
   createFamilyFilter,
   createHistoryMatcher,
+  createStatusFilter,
   withDiagnostics,
   DEFAULT_CONCURRENCY,
   DEFAULT_PATTERNS,

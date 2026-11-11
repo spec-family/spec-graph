@@ -1211,6 +1211,7 @@ async function run(io: CliIO, err: (text: string) => void): Promise<number> {
     families,
     ignoreFamilies,
     historyPatterns: [...(file.historyPatterns ?? []), ...typed.history],
+    ignoreStatus: file.ignoreStatus,
     severities,
     projectRules,
     claims: file.claims,

@@ -93,10 +93,12 @@ the same key with the same meaning:
   writes none does: unknown, or retired under `archive/`. A record stays a
   record.
 - **`true` names every document**, and a list the documents a pattern
-  matches: a glob, or a file or a directory and what is beneath it, with `!`
-  taking back what an earlier pattern matched, as the patterns to check are
-  read. `false`, or no key, reads every status, and an empty list is
-  refused.
+  matches: a glob, or a file or a directory and what is beneath it, as the
+  patterns to check are read. `false`, or no key, reads every status. An
+  empty list is refused, and so is a pattern that starts with `!`: spec-guard
+  reads the same list with no negation, where `!docs/old/kept.md` names a
+  file of that name, so the one list would name other documents in each
+  tool.
 - **The rows and sections of a register it names keep their statuses.** Each
   is a specification of its own, whose status is written in its own cell or
   section ([Registers](registers.md)); the key names a file, and leaves

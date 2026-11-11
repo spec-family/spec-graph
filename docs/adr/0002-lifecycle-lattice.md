@@ -201,9 +201,13 @@ spec-guard reads the same key with the same meaning, and spec-core's
 ADR-0005 records it among the places a status is read, so the two tools
 that read a status agree on whose they read. The list is read as
 spec-graph reads every list of paths, `checklists` and `historyPatterns`
-among them: a glob, or a file or a directory and what is beneath it, with
-`!` taking back what an earlier pattern matched. An empty list is refused,
-as spec-guard refuses it: it names no document and reads as applied.
+among them: a glob, or a file or a directory and what is beneath it. A
+pattern that starts with `!` is refused, where every other list here reads
+it as taking back what an earlier pattern matched: spec-guard reads this
+list as it reads its `specs`, with no negation, so `!docs/old/kept.md` names
+a file of that name there, and the one list would leave that document's
+status unread here and read there. An empty list is refused, as spec-guard
+refuses it: it names no document and reads as applied.
 Without the key, or with `false`, every status is read as before, so it
 arrives in a minor release, with nothing to change on upgrade.
 

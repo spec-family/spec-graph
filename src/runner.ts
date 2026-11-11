@@ -15,6 +15,7 @@ import { extractSpecifications, type ExtractedDocument } from './extract.js';
 import { createGlobMatcher, createReferenceFilter, walkFiles, type WalkedFile } from './glob.js';
 import { buildGraph, type SpecGraph } from './graph.js';
 import { isFamilyName } from './identity.js';
+import { isNegation, negationRefusal } from './config.js';
 import { dirnamePosix, toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
@@ -259,10 +260,15 @@ export function createHistoryMatcher(patterns: readonly string[] | undefined): (
  * Builds the predicate of whose status is not read, from `ignoreStatus`: every
  * path for `true`, the paths a list matches, or nothing for `false`, an
  * empty list or no key, as the history matcher is nothing for no patterns.
+ * Throws for a pattern that starts with a `!`, as the configuration refuses
+ * one: spec-guard reads the same list with no negation.
  */
 export function createStatusFilter(ignoreStatus: boolean | readonly string[] | undefined): ((path: string) => boolean) | undefined {
   if (ignoreStatus === true) return () => true;
-  return createPathMatcher(ignoreStatus === false ? undefined : ignoreStatus);
+  if (ignoreStatus === false || ignoreStatus === undefined) return undefined;
+  const negation = ignoreStatus.find(isNegation);
+  if (negation !== undefined) throw new Error(negationRefusal(negation));
+  return createPathMatcher(ignoreStatus);
 }
 
 /**

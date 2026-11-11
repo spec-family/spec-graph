@@ -23,7 +23,8 @@ records.
   declares no status, from its directive, front matter, section, table or
   label, nor a successor written there, and takes its phase from its
   directory, as a document that writes none does. A register's rows and
-  sections keep their own statuses. An empty list, or anything but `true`,
+  sections keep their own statuses. An empty list, a pattern that starts
+  with `!`, which spec-guard reads as no negation, or anything but `true`,
   `false` or patterns, is a configuration problem, exit `2`. spec-guard
   reads the same key with the same meaning, and spec-core's ADR-0005 records
   it (ADR-0002, 2026-11-11). `analyse()` takes `ignoreStatus`, and

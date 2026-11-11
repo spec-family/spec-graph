@@ -68,13 +68,27 @@ describe('the documents it names', () => {
     expect([createStatusFilter(false), createStatusFilter([]), createStatusFilter(undefined)]).toEqual([undefined, undefined, undefined]);
   });
 
-  it('are those a pattern matches: a glob, or a directory and what is beneath it, less what a ! takes back', () => {
-    const named = createStatusFilter(['specs/**/spec.md', 'docs/legacy', '!docs/legacy/kept.md']);
+  it('are those a pattern matches: a glob, or a directory and what is beneath it', () => {
+    const named = createStatusFilter(['specs/**/spec.md', 'docs/legacy']);
     expect(
-      [SPEC, 'specs/001-login/plan.md', 'docs/legacy/a.md', 'docs/legacy/old/b.md', 'docs/legacy/kept.md', 'docs/adr/0001-a.md'].map(
-        (path) => named?.(path),
-      ),
-    ).toEqual([true, false, true, true, false, false]);
+      [SPEC, 'specs/001-login/plan.md', 'docs/legacy/a.md', 'docs/legacy/old/b.md', 'docs/adr/0001-a.md'].map((path) => named?.(path)),
+    ).toEqual([true, false, true, true, false]);
+  });
+
+  it('take no pattern that starts with a !, which spec-guard reads as a file of that name', () => {
+    // Read here as taking documents back, the one list would leave
+    // `docs/legacy/kept.md` unread in spec-graph and read in spec-guard.
+    const refusal = (pattern: string) =>
+      `"ignoreStatus" takes no "!", and "${pattern}" starts with one: spec-guard reads the same list with no negation, so name only the documents whose status is not read`;
+    expect(() => createStatusFilter(['docs/legacy', '!docs/legacy/kept.md'])).toThrow(refusal('!docs/legacy/kept.md'));
+    expect(() => createStatusFilter([' !docs/legacy/kept.md'])).toThrow(refusal(' !docs/legacy/kept.md'));
+    // A `!` inside a pattern is a class's or a name's, and is no negation.
+    expect(createStatusFilter(['adr/[!0-9]*.md', 'docs/why!.md'])?.('docs/why!.md')).toBe(true);
+    expect(parseConfig(JSON.stringify({ ignoreStatus: ['docs/legacy', '!docs/legacy/kept.md', '! docs/a.md'] }), '.spec-graph.json')).toEqual({
+      config: {},
+      source: '.spec-graph.json',
+      problems: [`.spec-graph.json: ${refusal('!docs/legacy/kept.md')}`, `.spec-graph.json: ${refusal('! docs/a.md')}`],
+    });
   });
 });
 

@@ -79,6 +79,7 @@ as Spec Kit's specifications, each written `**Status**: Draft` and never
 changed. A document it names reads as one that declares no status, so its
 phase comes from its directory, or is unknown; `false`, or no key, reads
 every status. An empty list is refused, as spec-guard refuses it, and so is
+a pattern that starts with `!`, which spec-guard reads as no negation, and
 anything but `true`, `false` or patterns. spec-guard reads the same key with
 the same meaning ([lifecycle](lifecycle.md#a-status-nobody-maintains)).
 

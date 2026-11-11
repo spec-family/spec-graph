@@ -274,8 +274,12 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
     // An empty list names no document and reads as applied, so it is refused
     // as spec-guard refuses it: `false` is how to say none.
     if (typeof value === 'boolean') config.ignoreStatus = value;
-    else if (Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === 'string' && entry.trim().length > 0)) config.ignoreStatus = value as string[];
-    else problems.push(`${source}: "ignoreStatus" must be true, false or a non-empty array of patterns of the documents whose status is not read, such as ["specs/**/spec.md"]`);
+    else if (Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === 'string' && entry.trim().length > 0)) {
+      const patterns = value as string[];
+      const negations = patterns.filter(isNegation);
+      for (const pattern of negations) problems.push(`${source}: ${negationRefusal(pattern)}`);
+      if (negations.length === 0) config.ignoreStatus = patterns;
+    } else problems.push(`${source}: "ignoreStatus" must be true, false or a non-empty array of patterns of the documents whose status is not read, such as ["specs/**/spec.md"]`);
   }
 
   if (raw['baseline'] !== undefined) {
@@ -385,6 +389,21 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
   }
 
   return { config, source, problems };
+}
+
+/**
+ * Whether a pattern of `ignoreStatus` starts with a `!`. spec-guard reads the
+ * same list as it reads its `specs`, which take no negation, so there the
+ * pattern names a file of that name: read here as one taking documents back,
+ * one list would name other documents in each tool (spec-core ADR-0005).
+ */
+export function isNegation(pattern: string): boolean {
+  return pattern.trim().startsWith('!');
+}
+
+/** What `ignoreStatus` is told about a pattern that starts with a `!`. */
+export function negationRefusal(pattern: string): string {
+  return `"ignoreStatus" takes no "!", and "${pattern}" starts with one: spec-guard reads the same list with no negation, so name only the documents whose status is not read`;
 }
 
 const KNOWN_KEYS: ReadonlySet<string> = new Set([

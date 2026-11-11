@@ -480,6 +480,33 @@ in a minor release. Four checks, measured on both builds:
 | An open question in a superseded document, `Owner: nobody, for now, deferred to` a live one | exit `0` | exit `1`, `orphaned-obligation` |
 | An accepted document that `has not, in the end, been superseded by` another | exit `1`, `live-supersession` | exit `0` |
 
+*Amended 2026-11-11.* **A link to a file with no extension was a broken
+reference.** `[MIT](LICENSE)` in a README, with the file beside it, was an
+error, "does not resolve to any document": a link with no slash was read as
+an identifier, and an identifier that names nothing is the finding. Written
+`./LICENSE`, it was a reference outside the corpus, with a hint to include
+`**/*.md`, which can never reach it. The reference said a link to a file
+that is not a document is no reference, and a file with no extension -
+`LICENSE`, `Makefile`, `Dockerfile` - fell between the two tests.
+
+A link's destination is a URL a renderer reads against the document's own
+directory, so the disk is now asked about it with a slash or without one: a
+directory, or a file whose name does not end in a document's extension, is
+no reference, `guides` as `../guides` already was. That reverses a line the
+directory amendment above left standing, that a name with no slash at all
+is an identifier whatever the disk holds: it could be a document's id, but
+the disk is asked only once the link has resolved to no document, so
+`[the decision](ADR-0007)` still binds to ADR-0007, and a name the disk does
+not have is still a broken reference. A wiki link carries a name and no
+path ([ADR-0008](0008-wiki-links-carry-no-path.md)), and a front-matter
+value or a directive without a slash is an identifier, so neither is asked.
+A file with a document's extension that the patterns did not reach is still
+a reference outside the corpus, and its hint names the file's own
+extension, `**/*.txt` for `NOTES.txt`, where it named `**/*.md`.
+
+It reports less: an error and a warning that were false go, and nothing
+that was quiet is reported, so it arrives in a patch.
+
 ## Open Questions
 
 - [ ] Should the default include patterns be widened, or is naming the fix in

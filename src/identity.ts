@@ -320,6 +320,17 @@ export function looksLikePath(target: string): boolean {
 const DOCUMENT_EXTENSION = /\.(md|markdown|mdx|txt|rst|adoc|asciidoc)$/i;
 
 /**
+ * True when a target's name ends in a document's extension.
+ *
+ * Asked of a file the disk has and the corpus does not: `LICENSE`, `Makefile`
+ * and `docs/Dockerfile` are files, and no include pattern of documents can
+ * reach one, so a link to one is no reference at all.
+ */
+export function hasDocumentExtension(target: string): boolean {
+  return DOCUMENT_EXTENSION.test(target);
+}
+
+/**
  * True when a path-like target could name a specification.
  *
  * A specification linking to `../../src/rules.ts` is citing source code, which

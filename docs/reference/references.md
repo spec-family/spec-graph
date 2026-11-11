@@ -41,12 +41,23 @@ trusts:
   broken reference. That is [spec-guard](../../README.md#relationship-to-spec-guard)'s job.
   Nor is a link to:
   - any other file that is not a document: an image, a dotfile such as
-    `../.nvmrc`, or a drawing such as `arch.excalidraw`, however long its
-    extension. A dot followed by a digit, as in `ADR-0007.1`, is part of an
-    identifier and is still resolved.
+    `../.nvmrc`, a drawing such as `arch.excalidraw`, however long its
+    extension, or a file with none, such as `LICENSE`, `Makefile` or
+    `docker/Dockerfile`. A dot followed by a digit, as in `ADR-0007.1`, is
+    part of an identifier and is still resolved.
   - a directory, `../guides/` or `../guides` alike - without the slash the disk
-    says which it is, and a name with no slash at all, `guides`, is an
-    identifier.
+    says which it is.
+
+  A link's destination is read against the document's own directory with a
+  slash or without one, so `[MIT](LICENSE)` names the file beside the
+  document as `./LICENSE` does. The disk is asked only once the link has
+  resolved to no document, so `[the decision](ADR-0007)` still cites
+  ADR-0007, and a name the disk does not have either is still a broken
+  reference. A wiki link carries a name and no path, and a front-matter value
+  or a directive is an identifier unless it is spelled as a path: neither is
+  asked of the disk. A document the include patterns did not reach is a
+  reference outside the corpus, and the hint names a pattern with the file's
+  own extension, `**/*.txt` for `NOTES.txt`.
 
 A document is named by an explicit `id:` (or `adr:`, `adr-id:`, `rfc:`,
 `rfc-id:`, `kep-number:`, `number:` or `slug:`), then by its file name, then by

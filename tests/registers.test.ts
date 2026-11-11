@@ -480,9 +480,12 @@ describe('a register contains the specifications written inside it', () => {
 });
 
 describe('a link in a typed relation column', () => {
+  // The first row has an id of its own: written ADR-0001, it shared the id of
+  // `adr/0001-first.md`, which was then left out of the graph, and a link to
+  // that file is no reference to the row.
   const table = (cell: string): string =>
     ['# Register', '', '| ID       | Status   | Depends on |', '| :------- | :------- | :--------- |',
-     '| ADR-0001 | accepted | -          |', `| ADR-0002 | accepted | ${cell} |`].join('\n');
+     '| ADR-0005 | accepted | -          |', `| ADR-0002 | accepted | ${cell} |`].join('\n');
 
   const target = (cell: string): string[] => {
     const { graph } = analyse({

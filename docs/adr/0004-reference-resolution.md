@@ -119,6 +119,24 @@ name ([ADR-0030](0030-a-templates-file-name-names-nothing.md)). An id is never
 decided by which other files the corpus holds
 ([ADR-0031](0031-sdd-layouts-are-read-as-written.md)).
 
+*Amended 2026-11-11.* **A file left out of the graph is reached by no
+reference.** A file whose id another file already has is left out, all of
+it, with a warning that says so. It was still indexed under the id it
+shares, so it answered for the file that kept the id. A link to it by its
+path reached the kept file, by the stem the two share, and was a relation
+to a document the link does not name. Its headings replaced the kept
+file's, so `[kept](../a/notes.md#kept-heading)` was an anchor that does not
+exist, an error, and a link to a heading only the left-out file has was
+not. And the commands it names were still held to their manifests, where
+its paths, commits, figures and protocols were not. The graph's index now
+holds the files it kept, and the left-out files have one of their own: a
+reference that names a left-out file by its path, or by a name only a
+left-out file answers to, is no reference and no finding, since the
+warning names the fix, an id of its own. A spelling the kept file answers
+to is still that file's: `docs/a` is `docs/a.md` with its extension
+dropped, where `docs/a/README.md` was left out. It reports less, and
+binds no relation it did not, so it arrives in a patch.
+
 Link constructs are blanked before prose is scanned for bare identifiers, so a
 citation written as `[ADR-7](https://example.com/adr-7)` yields one reference
 rather than three. This relies on the masking guarantee in

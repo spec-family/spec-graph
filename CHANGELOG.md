@@ -46,6 +46,14 @@ records.
   `decided` is a `live-supersession`. Upgrading: a status that was `unknown`
   for one of these words is read now; mark a superseded one `superseded`.
 
+- **spec-core's copy is at 92e46d4.** `links.ts` and `scan.ts` in
+  `markdown` and `lines.ts` in `text` are copied again by spec-core's
+  `scripts/vendor.mjs`. spec-core wrote again, without changing what they
+  answer, the lines whose mutants a sweep told apart only by its clock, and
+  marked the ones every way of writing leaves equivalent (spec-core #63).
+  The copy is left out of the sweep here, as before. Nothing spec-graph
+  reads or reports changed. Upgrading: nothing to do.
+
 - **The suite runs on vitest 5, and the mutation sweep keeps its own record
   of the test file that failed last.** `vitest` and `@vitest/coverage-v8`
   are at 5.0.5, the version spec-core runs, now that Stryker 10.1's vitest

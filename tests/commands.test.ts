@@ -242,7 +242,7 @@ describe('a command an orientation document names', () => {
       severity: 'error',
       target: 'lnt',
       nodes: ['CLAUDE'],
-      hint: 'run one package.json declares, build, lint and test, or mark it in the document: <!-- @spec-command created="lnt" --> for one this work creates',
+      hint: 'run one package.json declares, build, lint and test, or mark it in the document: <!-- @spec-command created="lnt" --> for one this work creates, absent="lnt" for one it names as not there',
     });
   });
 
@@ -264,15 +264,15 @@ describe('a command an orientation document names', () => {
 
   it('says to add the name where the manifest declares none, and lists eight names and how many more', () => {
     expect(findings({ 'CLAUDE.md': doc('# Claude', '', '`npm test`') }, { 'package.json': '{}' })[0]?.hint).toBe(
-      'add it to package.json, which declares none, or mark it in the document: <!-- @spec-command created="test" --> for one this work creates',
+      'add it to package.json, which declares none, or mark it in the document: <!-- @spec-command created="test" --> for one this work creates, absent="test" for one it names as not there',
     );
     const many = JSON.stringify({ scripts: Object.fromEntries('abcdefghij'.split('').map((name) => [name, 'x'])) });
     expect(findings({ 'CLAUDE.md': doc('# Claude', '', '`npm run z`') }, { 'package.json': many })[0]?.hint).toBe(
-      'run one package.json declares, a, b, c, d, e, f, g, h and 2 more, or mark it in the document: <!-- @spec-command created="z" --> for one this work creates',
+      'run one package.json declares, a, b, c, d, e, f, g, h and 2 more, or mark it in the document: <!-- @spec-command created="z" --> for one this work creates, absent="z" for one it names as not there',
     );
     const eight = JSON.stringify({ scripts: Object.fromEntries('abcdefgh'.split('').map((name) => [name, 'x'])) });
     expect(findings({ 'CLAUDE.md': doc('# Claude', '', '`npm run z`') }, { 'package.json': eight })[0]?.hint).toBe(
-      'run one package.json declares, a, b, c, d, e, f, g and h, or mark it in the document: <!-- @spec-command created="z" --> for one this work creates',
+      'run one package.json declares, a, b, c, d, e, f, g and h, or mark it in the document: <!-- @spec-command created="z" --> for one this work creates, absent="z" for one it names as not there',
     );
   });
 
@@ -285,6 +285,18 @@ describe('a command an orientation document names', () => {
   it('is not looked for where the document marks the name as one its work creates', () => {
     const text = doc('# Claude', '', '<!-- @spec-command created="bench, profile" -->', '', 'Then `npm run bench` and `npm run profile`, not `npm run lnt`.');
     expect(findings({ 'CLAUDE.md': text }).map((d) => d.target)).toEqual(['lnt']);
+  });
+
+  it('is not looked for where the document marks the name as one it names as not there', () => {
+    // `created` says the work adds the name, which a document saying the
+    // script does not exist does not mean.
+    const text = doc('# Claude', '', '<!-- @spec-command absent="mutation" -->', '', 'There is no `npm run mutation`; and `make mutation`, `npm run lnt`.');
+    expect(findings({ 'CLAUDE.md': text }, { 'package.json': PACKAGE, Makefile: 'build:\n' }).map((d) => d.target)).toEqual(['lnt']);
+    // Each word of the mark, in a list, and in no other document.
+    const both = doc('# Claude', '', '<!-- @spec-command absent="mutation, sweep" created="bench" -->', '', '`npm run sweep`, `npm run bench`, `npm run lnt`.');
+    expect(
+      findings({ 'CLAUDE.md': both, 'docs/ops-brief.md': doc('# Brief', '', '`npm run sweep`') }).map((d) => `${d.at.file} ${d.target}`),
+    ).toEqual(['CLAUDE.md lnt', 'docs/ops-brief.md sweep']);
   });
 
   it('is no make target missing where a file of its name, or one a built-in rule makes it from, is beside the Makefile', () => {

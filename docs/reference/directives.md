@@ -26,7 +26,7 @@ Each takes these attributes. Any other is a parse problem, listed by
 | `@spec-history` | none |
 | `@spec-figure` | `record`, `reason` |
 | `@spec-path` | `created`, `external`, `reason` |
-| `@spec-command` | `created`, `reason` |
+| `@spec-command` | `created`, `absent`, `reason` |
 
 - `reason`, `note`, `owner` and a node's `kind` are for whoever reads the
   source; spec-graph reads nothing from them.

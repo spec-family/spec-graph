@@ -33,6 +33,16 @@ records.
   `createStatusFilter()` builds. Upgrading: nothing to do; without the key
   every status is read as before.
 
+- **`@spec-command absent="..."` marks a command an orientation document
+  names as not there.** "There is no `npm run mutation`" was
+  `missing-command` unless marked `created`, which says the work adds the
+  name. `absent` says the document names it as not there on purpose, and
+  the command is not looked for; it takes a list, as `created` does, and
+  `@spec-path` has `external` beside `created` the same way. The hint of
+  `missing-command` names both marks (ADR-0029, 2026-11-11). Upgrading:
+  nothing to do; a `created` mark written for a name that is not there can
+  read `absent` instead.
+
 ### Fixed
 
 - **A link to a file with no extension is no reference.** `[MIT](LICENSE)`,

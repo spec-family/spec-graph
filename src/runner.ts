@@ -15,6 +15,7 @@ import { extractSpecifications, type ExtractedDocument } from './extract.js';
 import { createGlobMatcher, createReferenceFilter, walkFiles, type WalkedFile } from './glob.js';
 import { buildGraph, type SpecGraph } from './graph.js';
 import { isFamilyName } from './identity.js';
+import { isNegation, negationRefusal } from './config.js';
 import { dirnamePosix, toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
 import type { ProjectRule } from './project-rules.js';
@@ -64,6 +65,12 @@ export interface AnalyseOptions {
    * are still checked; their obligations and lifecycle are not. See ADR-0011.
    */
   readonly historyPatterns?: readonly string[] | undefined;
+  /**
+   * Documents whose own status is not read: `true` for every one, or the
+   * patterns of those it is not read for. Each reads as a document that
+   * declares no status, for a format whose status nobody maintains (ADR-0002).
+   */
+  readonly ignoreStatus?: boolean | readonly string[] | undefined;
   readonly severities?: Partial<Record<AnyRuleId, Severity>> | undefined;
   /** Conventions the repository wrote for itself. See ADR-0016. */
   readonly projectRules?: readonly ProjectRule[] | undefined;
@@ -127,7 +134,11 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     protocols: createProtocolCheck(options.protocols),
     orientation: createOrientationCheck(options.orientation),
   };
-  const extracted = extractSources(sources, { ...checks, isRecord: createHistoryMatcher(options.historyPatterns) });
+  const extracted = extractSources(sources, {
+    ...checks,
+    isRecord: createHistoryMatcher(options.historyPatterns),
+    isStatusUnread: createStatusFilter(options.ignoreStatus),
+  });
   // git is run only where a checked document names a commit (ADR-0025).
   const history = commitsToCheck(extracted, checks).length > 0 ? await readHistory(root, options.gitRef ?? 'HEAD') : undefined;
 
@@ -170,6 +181,8 @@ export interface AnalyseSourcesOptions extends RuleOptions {
   readonly isIgnoredFamily?: ((family: string) => boolean) | undefined;
   /** Whether a path holds a historical record rather than a specification. */
   readonly isRecord?: ((path: string) => boolean) | undefined;
+  /** Whether a path's own status is not read, by `ignoreStatus` (ADR-0002). */
+  readonly isStatusUnread?: ((path: string) => boolean) | undefined;
   /** The labels of the claims a path holds, with what each means, or nothing where it holds none. */
   readonly claimsIn?: ((path: string) => ReadonlyMap<string, Disposition> | undefined) | undefined;
 }
@@ -244,6 +257,21 @@ export function createHistoryMatcher(patterns: readonly string[] | undefined): (
 }
 
 /**
+ * Builds the predicate of whose status is not read, from `ignoreStatus`: every
+ * path for `true`, the paths a list matches, or nothing for `false`, an
+ * empty list or no key, as the history matcher is nothing for no patterns.
+ * Throws for a pattern that starts with a `!`, as the configuration refuses
+ * one: neither spec-graph nor spec-guard takes one in this key.
+ */
+export function createStatusFilter(ignoreStatus: boolean | readonly string[] | undefined): ((path: string) => boolean) | undefined {
+  if (ignoreStatus === true) return () => true;
+  if (ignoreStatus === false || ignoreStatus === undefined) return undefined;
+  const negation = ignoreStatus.find(isNegation);
+  if (negation !== undefined) throw new Error(negationRefusal(negation));
+  return createPathMatcher(ignoreStatus);
+}
+
+/**
  * Builds the family predicate from an allowlist and a denylist.
  *
  * An allowlist is the stronger statement - "these are the families this
@@ -299,6 +327,7 @@ function extractSources(sources: readonly Source[], options: AnalyseSourcesOptio
         path: source.path,
         text: source.text,
         record: options.isRecord?.(source.path) === true,
+        statusUnread: options.isStatusUnread?.(source.path) === true,
         claims: options.claimsIn?.(source.path),
         ledger: options.isLedger?.(source.path) === true,
         protocols: options.protocols?.holds(source.path) === true ? { heading: options.protocols.heading, result: options.protocols.result } : undefined,

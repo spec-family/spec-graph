@@ -722,6 +722,13 @@ export interface ExtractInput {
    */
   readonly record?: boolean | undefined;
   /**
+   * The file's own status is not read: it declares none, wherever it wrote
+   * one, and takes its phase from its directory as a file that writes none
+   * does. Matched against `ignoreStatus`, for a format whose status nobody
+   * maintains, such as Spec Kit's `**Status**: Draft` (ADR-0002).
+   */
+  readonly statusUnread?: boolean | undefined;
+  /**
    * The labels of the claims this file holds, each with what it means for
    * work, where `claims.files` names the file; `undefined` everywhere else,
    * where no item is read as a claim (ADR-0024).
@@ -877,7 +884,10 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
   const regions =
     identity.id === provisional.id ? provisionalRegions : findSpecificationRegions(scanned, directives, identity.id);
 
-  const status = readStatus(scanned, byKey, nodeDirective, index, file, regions);
+  // A register's rows and sections each write a status of their own, in a
+  // cell or a section, and are read as before: what `ignoreStatus` names is
+  // the file, and what it leaves unread is where the file wrote its own.
+  const status = input.statusUnread === true ? NO_STATUS : readStatus(scanned, byKey, nodeDirective, index, file, regions);
   const pathPhase = phaseFromPath(input.path);
   // A record is a categorical statement about what the file *is*, made by
   // configuration or by an explicit directive, so it outranks a status word
@@ -1215,8 +1225,11 @@ function readStatus(
     };
   }
 
-  return { raw: null, at: null, phase: 'unknown' };
+  return NO_STATUS;
 }
+
+/** What a file that declares no status reads as. */
+const NO_STATUS: StatusReading = { raw: null, at: null, phase: 'unknown' };
 
 /** The left cells that make a two-column table's row the document's status. */
 const STATUS_TABLE_KEYS: ReadonlySet<string> = new Set(['status', 'state']);

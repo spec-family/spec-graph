@@ -589,13 +589,17 @@ function suggestReferenceGlob(target: string): string {
  *
  * Built from the *resolved* repository-relative path, not the link as written:
  * `../notes.md` cited from `docs/adr/` needs `docs/**\/*.md`, and suggesting
- * `../**\/*.md` would be worse than saying nothing.
+ * `../**\/*.md` would be worse than saying nothing. The extension is the
+ * file's own, as written: `**\/*.md` never reaches `NOTES.txt`. Resolution
+ * hands over only a file whose name ends in a document's extension, so the
+ * last dot is where it starts.
  */
 function suggestPattern(ref: DanglingRef): string {
   const withoutAnchor = (ref.target.split('#')[0] ?? ref.target).trim();
   const resolved = resolveFrom(ref.declaredAt.file, withoutAnchor);
   const directory = dirnamePosix(resolved);
-  return directory.length > 0 ? `${directory}/**/*.md` : '**/*.md';
+  const files = `**/*${resolved.slice(resolved.lastIndexOf('.'))}`;
+  return directory.length > 0 ? `${directory}/${files}` : files;
 }
 
 /* -------------------------------------------------------------------------- */

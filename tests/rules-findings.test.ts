@@ -246,6 +246,27 @@ describe('references', () => {
     expect(read(found).hint).toBe('include it, for example: spec-graph "**/*.md"');
   });
 
+  it('includes a file by its own extension, as written', async () => {
+    // `**/*.md` never reaches `NOTES.txt`, and a pattern that cannot include
+    // the file is no fix.
+    const hints: string[] = [];
+    for (const [target, file] of [
+      ['../../NOTES.txt', 'NOTES.txt'],
+      ['../notes/plan.RST', 'docs/notes/plan.RST'],
+      ['v1.2/guide.adoc', 'docs/adr/v1.2/guide.adoc'],
+    ] as const) {
+      const [found] = await findings({ 'docs/adr/0001-a.md': `# A\n\nSee [notes](${target}).\n` }, 'reference-outside-corpus', {
+        fileExists: (path) => path === file,
+      });
+      hints.push(read(found).hint ?? '');
+    }
+    expect(hints).toEqual([
+      'include it, for example: spec-graph "**/*.txt"',
+      'include it, for example: spec-graph "docs/notes/**/*.RST"',
+      'include it, for example: spec-graph "docs/adr/v1.2/**/*.adoc"',
+    ]);
+  });
+
   it('names a key that declares no relation, and how to spell it', async () => {
     const [found] = await findings(
       {

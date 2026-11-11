@@ -20,6 +20,7 @@
 
 import type { ExtractedDocument, ReferenceCandidate } from './extract.js';
 import {
+  hasDocumentExtension,
   isDocumentTarget,
   isExternal,
   looksLikePath,
@@ -444,9 +445,9 @@ function resolveOne(
     // document. Resolution is still attempted first, so a directory-style
     // document written as `0007-sharding/` continues to resolve. Without the
     // slash, the disk says whether the path is a directory.
-    if (bare.endsWith('/') || isDirectoryPath(bare, entry, options)) return null;
-    const reason = pathMissingReason(bare, entry, options);
-    return dangle(candidate, reason, found.near);
+    if (bare.endsWith('/')) return null;
+    const reason = pathMissingReason(candidate, bare, entry, options);
+    return reason === null ? null : dangle(candidate, reason, found.near);
   }
 
   if (found.ids.length > 1) {
@@ -674,20 +675,36 @@ function worthReporting(target: string, index: Index): boolean {
   return prefixed !== null && index.families.has(prefixed.family);
 }
 
-/** True when a path-like target names a directory, as `../guides` can. */
-function isDirectoryPath(target: string, entry: ExtractedDocument, options: ResolveOptions): boolean {
-  if (!looksLikePath(target) || !options.isDirectory) return false;
-  return options.isDirectory(resolveFrom(entry.document.path, target));
-}
-
+/**
+ * Why a target that resolved to nothing did not, or `null` when the disk says
+ * it is no reference: a directory, as `../guides` can be, or a file that is
+ * not a document, as `LICENSE`, `Makefile` and `docs/Dockerfile` are. A file
+ * with a document's extension is one the include patterns did not reach.
+ */
 function pathMissingReason(
+  candidate: ReferenceCandidate,
   target: string,
   entry: ExtractedDocument,
   options: ResolveOptions,
-): DanglingRef['reason'] {
-  if (!looksLikePath(target) || !options.fileExists) return 'unknown-target';
+): DanglingRef['reason'] | null {
+  if (!addressesDisk(candidate, target)) return 'unknown-target';
   const resolved = resolveFrom(entry.document.path, target);
-  return options.fileExists(resolved) ? 'not-a-spec' : 'unknown-target';
+  if (options.isDirectory?.(resolved) === true) return null;
+  if (options.fileExists?.(resolved) !== true) return 'unknown-target';
+  return hasDocumentExtension(resolved) ? 'not-a-spec' : null;
+}
+
+/**
+ * Whether the disk is asked what a target names.
+ *
+ * A path is, however it is written. So is a Markdown link's destination with
+ * no slash: it is a URL, read against the document's own directory, so
+ * `[MIT](LICENSE)` names the file beside the document as `./LICENSE` does. A
+ * wiki link carries a name and no path (ADR-0008), and a front-matter value
+ * or a directive spelled without a slash is an identifier.
+ */
+function addressesDisk(candidate: ReferenceCandidate, target: string): boolean {
+  return looksLikePath(target) || (candidate.origin === 'link' && !candidate.raw.startsWith('[['));
 }
 
 /**

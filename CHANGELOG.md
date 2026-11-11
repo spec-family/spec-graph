@@ -13,6 +13,25 @@ records.
 
 ## Unreleased
 
+### Fixed
+
+- **A link to a file with no extension is no reference.** `[MIT](LICENSE)`,
+  with the file beside the document, was a `broken-reference` error, read as
+  an identifier that names nothing, and `[MIT](./LICENSE)` was a
+  `reference-outside-corpus` warning whose hint, `spec-graph "**/*.md"`,
+  could never include it. A link's destination is read against the
+  document's directory with a slash or without one, and a directory or a
+  file whose name does not end in a document's extension - `LICENSE`,
+  `Makefile`, `docker/Dockerfile` - is no reference, as the reference says
+  of a link to a file that is not a document. The disk is asked only once
+  the link has resolved to no document, so `[the decision](ADR-0007)` still
+  cites ADR-0007, and a name the disk does not have is still a broken
+  reference; a wiki link, a front-matter value and a directive without a
+  slash are identifiers and are not asked. The hint for a document outside
+  the corpus names the file's own extension, `**/*.txt` for `NOTES.txt`
+  (ADR-0006, 2026-11-11). Upgrading: nothing to do; a finding that was
+  false goes.
+
 ### Changed
 
 - **The suite runs on vitest 5, and the mutation sweep keeps its own record

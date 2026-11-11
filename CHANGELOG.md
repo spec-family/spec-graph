@@ -11,7 +11,15 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.25.0
+
+`ignoreStatus` names the documents whose own status is not read, as
+spec-guard reads the same key; `decided`, `settled` and `resolved` are
+active; `@spec-command absent` marks a command named as not there; and a
+link to a file with no extension, or to a file left out of the graph for
+its id, is no reference. The copy of spec-core is at 92e46d4, and the
+package's homepage on npm is the family's site,
+https://spec-family.github.io. No exit code and no JSON field changes.
 
 ### Added
 

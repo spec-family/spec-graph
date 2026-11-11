@@ -1141,7 +1141,7 @@ export interface Manifest {
  * the manifest nearest the document does not declare (ADR-0029, amended
  * 2026-11-08). Nothing is said where no manifest is there, where one may
  * declare more than it says, where `@spec-command` marks the name as one the
- * work creates, or, for make, where a file of the target's name, or one its
+ * work creates or one the document names as not there, or, for make, where a file of the target's name, or one its
  * built-in rules make it from, is beside the Makefile.
  */
 function missingCommands(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit): void {
@@ -1154,7 +1154,7 @@ function missingCommands(corpus: ResolvedCorpus, options: RuleOptions, emit: Emi
     if (manifest === undefined || manifest.names === null || manifest.names.has(mention.name)) continue;
     if (mention.kind === 'target' && madeWithoutRule(mention.name, dirnamePosix(manifest.file), pathExists)) continue;
     const declared = [...manifest.names].sort();
-    const mark = `or mark it in the document: <!-- @spec-command created="${mention.name}" --> for one this work creates`;
+    const mark = `or mark it in the document: <!-- @spec-command created="${mention.name}" --> for one this work creates, absent="${mention.name}" for one it names as not there`;
     const shown = listed(declared.length > 8 ? [...declared.slice(0, 8), `${declared.length - 8} more`] : declared);
     emit('missing-command', () => ({
       message: `\`${mention.command}\` runs the ${mention.kind} "${mention.name}", which ${manifest.file} does not declare`,

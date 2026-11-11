@@ -30,7 +30,9 @@ exist. Name those documents, and what they name is held to the repository:
   operator, a placeholder or a variable, and a manifest that includes
   another, or names a target by a pattern or a variable, are left alone,
   and so is a make target a file beside the Makefile can stand for.
-  `<!-- @spec-command created="bench" -->` marks a name the work adds.
+  `<!-- @spec-command created="bench" -->` marks a name the work adds, and
+  `absent="mutation"` one the document names as not there: "there is no
+  `npm run mutation`".
 - A document `files` names is read whether or not the patterns reach it.
 
 <details>

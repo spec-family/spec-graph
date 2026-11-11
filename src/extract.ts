@@ -142,7 +142,7 @@ export interface ExtractedDocument {
   readonly pathsAllowed: readonly string[];
   /** The commands the file names, where it orients a reader, one per name each runs (ADR-0029). */
   readonly commands: readonly CommandMention[];
-  /** The names `@spec-command` says the file may run that no manifest declares yet. */
+  /** The names `@spec-command` says the file may name that no manifest declares: its work adds them, or they are not there. */
   readonly commandsAllowed: readonly string[];
   readonly identity: DocumentIdentity;
   readonly scanned: ScannedDocument;
@@ -999,7 +999,7 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
     paths: input.orientation === undefined ? [] : pathsOf(scanned, input.orientation.extensions, allItems, ownerAt, at),
     pathsAllowed: directives.filter((directive) => directive.name === 'spec-path').flatMap((directive) => [...attrList(directive, 'created'), ...attrList(directive, 'external')]),
     commands: input.orientation === undefined ? [] : commandsOf(scanned, allItems, ownerAt, at),
-    commandsAllowed: directives.filter((directive) => directive.name === 'spec-command').flatMap((directive) => attrList(directive, 'created')),
+    commandsAllowed: directives.filter((directive) => directive.name === 'spec-command').flatMap((directive) => [...attrList(directive, 'created'), ...attrList(directive, 'absent')]),
     identity,
     scanned,
     subSpecifications: filled,

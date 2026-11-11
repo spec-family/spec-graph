@@ -124,6 +124,20 @@ is told it is missing, or worse, guesses which was meant.
   make's built-in rules build it from, `hello.c` for `hello`.
 - **Marked, never guessed**: `<!-- @spec-command created="bench" -->` says
   the work adds the name; it takes a list.
+
+  *Amended 2026-11-11.* **A command named as not there has a mark of its
+  own.** A switchboard says what not to run as well as what to run: "there
+  is no `npm run mutation`; the sweep runs in Actions". The name is not
+  there on purpose, and the only mark was `created`, which says the work
+  adds it, the opposite of what the document means, and what a reader, or a
+  tool that held a round to what it said it would create, would take as a
+  promise. `<!-- @spec-command absent="mutation" -->` says the document
+  names it as not there, and the command is not looked for, as
+  `@spec-path` has `external` beside `created` for a path that is
+  another repository's. It takes a list, and the hint of `missing-command`
+  names both marks. Whether the name has since been added is not looked
+  for: the mark is written in the document that names it, and goes when the
+  document is next rewritten, as `created` does.
 - **Read where the repository is.** `analyse` reads the manifests;
   `analyseSources` holds a command to a manifest only where it is given
   `manifestFor`. It does not refuse to run without one, as it refuses for a

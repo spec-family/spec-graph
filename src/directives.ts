@@ -67,8 +67,9 @@ const SCHEMA: Readonly<Record<DirectiveName, readonly string[]>> = {
   'spec-figure': ['record', 'reason'],
   // Paths a document may name that the repository does not hold (ADR-0029).
   'spec-path': ['created', 'external', 'reason'],
-  // Scripts, targets and recipes a document may name that no manifest declares yet (ADR-0029).
-  'spec-command': ['created', 'reason'],
+  // Scripts, targets and recipes a document may name that no manifest declares:
+  // one its work adds, or one it names as not there (ADR-0029).
+  'spec-command': ['created', 'absent', 'reason'],
 };
 
 /**

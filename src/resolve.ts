@@ -153,7 +153,6 @@ export function resolveCorpus(
   extracted: readonly ExtractedDocument[],
   options: ResolveOptions = {},
 ): ResolvedCorpus {
-  const index = buildIndex(extracted);
   const nodes = new Map<string, SpecNode>();
   const documents: DocumentNode[] = [];
   const items: ItemNode[] = [];
@@ -166,6 +165,7 @@ export function resolveCorpus(
   // were the first document's, and a link from one to the other was that
   // document depending on itself.
   const kept: ExtractedDocument[] = [];
+  const leftOut: ExtractedDocument[] = [];
 
   for (const entry of extracted) {
     const existing = nodes.get(entry.document.id);
@@ -175,6 +175,7 @@ export function resolveCorpus(
         at: entry.document.at,
       });
       duplicates.push({ id: entry.document.id, at: entry.document.at, first: existing.at });
+      leftOut.push(entry);
       continue;
     }
     kept.push(entry);
@@ -204,6 +205,13 @@ export function resolveCorpus(
   const dangling: DanglingRef[] = [];
   const suppressed: SuppressedRef[] = [];
   const byKey = new Map<string, number>();
+  // Indexed under the id it shares, a file left out answered for the one that
+  // kept it: its anchors, family and regions replaced that file's, so a link
+  // to a heading the kept file has was a broken reference, and its path
+  // reached the kept file by its stem. It has an index of its own, which a
+  // reference that reaches nothing else is asked of.
+  const index = buildIndex(kept);
+  const outside = buildIndex(leftOut);
 
   // Structural edges: a register contains the specifications written inside it.
   // A duplicate id leaves another file's document under that id, so the edge is
@@ -243,7 +251,7 @@ export function resolveCorpus(
   for (const entry of kept) {
     for (const candidate of entry.references) {
       if (!nodes.has(candidate.from)) continue;
-      const outcome = resolveOne(candidate, entry, index, nodes, options);
+      const outcome = resolveOne(candidate, entry, index, outside, nodes, options);
       if (outcome === null) continue;
       if ('by' in outcome) {
         suppressed.push(outcome);
@@ -287,7 +295,7 @@ export function resolveCorpus(
     figures: kept.flatMap((entry) => entry.figures),
     paths: kept.flatMap((entry) => entry.paths),
     pathsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.pathsAllowed)])),
-    commands: extracted.flatMap((entry) => entry.commands),
+    commands: kept.flatMap((entry) => entry.commands),
     commandsAllowed: new Map(extracted.map((entry) => [entry.document.at.file, new Set(entry.commandsAllowed)])),
   };
 }
@@ -416,6 +424,7 @@ function resolveOne(
   candidate: ReferenceCandidate,
   entry: ExtractedDocument,
   index: Index,
+  outside: Index,
   nodes: ReadonlyMap<string, SpecNode>,
   options: ResolveOptions,
 ): Edge | DanglingRef | SuppressedRef | null {
@@ -433,10 +442,16 @@ function resolveOne(
   // reference. Validating it would report an error on the most ordinary thing a
   // design document does.
   if (!isDocumentTarget(bare)) return null;
+  // A file the graph left out, for an id another file already has, is no
+  // document a reference reaches, and the warning that left it out names the
+  // fix. Asked before the stem, by which its path reached the file that kept
+  // the id; a spelling a kept file answers to is that file's.
+  if (namesLeftOutFile(bare, entry, index, outside)) return null;
 
   const found = lookup(bare, entry, index);
 
   if (found.ids.length === 0) {
+    if (lookupExact(bare, entry, outside).length > 0) return null;
     if (candidate.opportunistic && !worthReporting(bare, index)) return null;
     const silenced = filteredBy(candidate.target, bare, options);
     if (silenced !== null) return suppression(candidate, silenced);
@@ -494,6 +509,14 @@ function percentDecoded(target: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Whether a path names a file the graph left out, and no file it kept answers to that spelling. */
+function namesLeftOutFile(target: string, entry: ExtractedDocument, index: Index, outside: Index): boolean {
+  if (!looksLikePath(target)) return false;
+  const resolved = resolveFrom(entry.document.path, target).toLowerCase();
+  // No two files share a path, so a left-out file's own is never a kept one's.
+  return (outside.byPath.has(resolved) || outside.byPathAlias.has(resolved)) && !index.byPathAlias.has(resolved);
 }
 
 /** `near` is read only when nothing resolved, so what the early returns put there is never read. */

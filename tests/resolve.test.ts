@@ -276,6 +276,64 @@ describe('corpus integrity', () => {
     expect(rules({ 'a/notes.md': '# A\n', 'b/notes.md': later })).toEqual([]);
   });
 
+  it('holds none of the later file to the commands it names', async () => {
+    const { analyseSources, createOrientationCheck } = await import('../src/runner.js');
+    const later = '# B\n\nRun `npm run nothing-here`.\n';
+    const rules = (files: Record<string, string>): string[] =>
+      analyseSources(Object.entries(files).map(([path, text]) => ({ path, text })), {
+        orientation: createOrientationCheck({ files: ['**/*.md'] }),
+        manifestFor: () => ({ file: 'package.json', names: new Set(['test']) }),
+      }).diagnostics.map((d) => `${d.rule} ${d.at.file}`);
+    expect(rules({ 'b/notes.md': later })).toEqual(['missing-command b/notes.md']);
+    expect(rules({ 'a/notes.md': '# A\n', 'b/notes.md': later })).toEqual([]);
+  });
+
+  it('reaches no later file by its path, and holds the kept file to its own headings', () => {
+    // Indexed under the id it shared, the later file answered for the first:
+    // its path reached the first by its stem, and its headings replaced the
+    // first's, so a link to a heading the first has was a broken reference
+    // and one to a heading only the later has was not.
+    const { edges, dangling } = resolve({
+      'a/notes.md': '---\nstatus: accepted\n---\n\n# Notes\n\n## Kept heading\n',
+      'b/notes.md': '---\nstatus: superseded\n---\n\n# Notes\n\n## Other heading\n',
+      'docs/c.md': [
+        '# C',
+        '',
+        'This depends on [b](../b/notes.md), [its heading](../b/notes.md#other-heading) and [b again](../b/notes).',
+        '',
+        'See [kept](../a/notes.md#kept-heading) and [not kept](../a/notes.md#other-heading).',
+        '',
+      ].join('\n'),
+    });
+    expect(edges.filter((edge) => edge.origin !== 'structural').map((edge) => `${edge.kind} ${edge.from} -> ${edge.to}`)).toEqual([
+      'references c -> notes',
+    ]);
+    expect(dangling.map((ref) => `${ref.reason} ${ref.target}`)).toEqual(['unknown-anchor ../a/notes.md#other-heading']);
+  });
+
+  it('reaches the kept file by a spelling both answer to, and the later by a name only it has, as nothing', () => {
+    // `docs/a` is `docs/a.md` with its extension dropped and `docs/a/README.md`
+    // standing for its directory: the kept file answers to it, so it is that file's.
+    const { edges, dangling } = resolve({
+      'docs/a.md': '---\nstatus: accepted\n---\n\n# A\n',
+      'docs/a/README.md': '---\nstatus: accepted\naliases: [beta]\n---\n\n# A again\n',
+      'docs/c.md': '# C\n\nSee [a](./a), [the readme](./a/README.md) and [[beta]].\n',
+    });
+    expect(edges.filter((edge) => edge.origin !== 'structural').map((edge) => `${edge.from} -> ${edge.to} ${edge.raw}`)).toEqual([
+      'c -> a [a](./a)',
+    ]);
+    expect(dangling).toEqual([]);
+  });
+
+  it('reads a name with no slash as a name, though a later file at the root answers to it as a path', () => {
+    const { edges } = resolve({
+      'a/notes.md': '# Notes\n',
+      'notes.md': '# Notes again\n',
+      'README.md': '# Readme\n\nSee [the notes](notes).\n',
+    });
+    expect(edges.filter((edge) => edge.origin !== 'structural').map((edge) => `${edge.from} -> ${edge.to}`)).toEqual(['README -> notes']);
+  });
+
   it('gives a declared id to one obligation, and numbers the one after it', () => {
     for (const gap of ['', '\n']) {
       const { items, nodes } = resolve({

@@ -52,6 +52,19 @@ records.
   (ADR-0006, 2026-11-11). Upgrading: nothing to do; a finding that was
   false goes.
 
+- **A file left out of the graph answers for nothing.** A file whose id
+  another already has is left out, with a warning that says nothing in it
+  is checked, but it was still indexed under that id. A link to it by its
+  path reached the file that kept the id, by the stem the two share; its
+  headings replaced the kept file's, so a link to a heading the kept file
+  has was a `broken-reference` error, "points at an anchor that does not
+  exist"; and the commands it names were `missing-command` findings. A
+  reference that names a left-out file by its path, or by a name only that
+  file answers to, is now no reference and no finding, the kept file's
+  anchors are its own, and a left-out file's commands are not looked for
+  (ADR-0004, 2026-11-11). Upgrading: nothing to do; give the left-out file
+  an id of its own and every link to it is read.
+
 ### Changed
 
 - **A question decided is active.** `decided`, `settled` and `resolved` are

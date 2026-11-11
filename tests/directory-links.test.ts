@@ -28,6 +28,8 @@ beforeAll(async () => {
   await rm(ROOT, { recursive: true, force: true });
   await mkdir(`${ROOT}/docs/adr`, { recursive: true });
   await mkdir(`${ROOT}/guides`, { recursive: true });
+  // A directory named as a document is: only the disk tells it from a file.
+  await mkdir(`${ROOT}/manual.txt`, { recursive: true });
   await writeFile(`${ROOT}/guides/setup.txt`, 'x\n');
   await writeFile(`${ROOT}/CHANGES`, 'x\n');
   await writeFile(`${ROOT}/docs/adr/LICENSE`, 'x\n');
@@ -40,7 +42,7 @@ beforeAll(async () => {
       '',
       '# A',
       '',
-      'See [the guides](../../guides), [the changes](../../CHANGES), [MIT](LICENSE), [the gone](../../gone) and [nothing](NOTHING).',
+      'See [the guides](../../guides), [the manual](../../manual.txt), [the changes](../../CHANGES), [MIT](LICENSE), [the gone](../../gone) and [nothing](NOTHING).',
       '',
     ].join('\n'),
   );

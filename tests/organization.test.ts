@@ -218,7 +218,7 @@ describe('the package', () => {
     expect(pkg.name).toBe('@spec-family/spec-graph');
     expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/spec-family/spec-graph.git' });
     expect(pkg.bugs.url).toBe('https://github.com/spec-family/spec-graph/issues');
-    expect(pkg.homepage).toBe('https://github.com/spec-family/spec-graph#readme');
+    expect(pkg.homepage).toBe('https://spec-family.github.io');
   });
 });
 

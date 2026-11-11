@@ -473,11 +473,13 @@ describe('SARIF', () => {
   it('names the schema it follows and the tool, with a link a reader can open', () => {
     const { graph } = analyseSources(GHOST);
     const run = sarif(formatSarif(result(GHOST), graph));
-    const { homepage } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { homepage: string };
+    // The repository, where the rules are documented: the package's homepage
+    // is the family's site, which names no rule.
+    const { repository } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { repository: { url: string } };
     expect(run.file.$schema).toBe('https://json.schemastore.org/sarif-2.1.0.json');
     expect(run.file.version).toBe('2.1.0');
     expect(run.tool.driver.name).toBe('spec-graph');
-    expect(run.tool.driver.informationUri).toBe(homepage.replace(/#.*$/, ''));
+    expect(run.tool.driver.informationUri).toBe(repository.url.replace(/^git\+/, '').replace(/\.git$/, ''));
   });
 
   it('carries the version of spec-graph when it is given one, and no version at all when it is not', () => {

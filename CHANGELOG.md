@@ -52,6 +52,16 @@ records.
   generated document that was quietly left out is now checked, and can
   report findings it did not.
 
+- **A worker of the mutation sweep that Stryker starts after a timeout
+  begins with the order's record the others left, as on vitest 4.** The
+  record of each test file's last verdict was kept in each worker's memory,
+  so a worker started in place of one that timed out began with none.
+  Static mutants run last, mostly on such workers. The workers of one shard
+  now share the record through a file in Stryker's sandbox, read once when
+  a worker starts and written whole after each run, as spec-core's do
+  (ADR-0007, 2026-11-12). Development tooling only: nothing spec-graph
+  reports changed. Upgrading: nothing to do.
+
 ### Fixed
 
 - **An orientation document is held to the paths of this repository, and no

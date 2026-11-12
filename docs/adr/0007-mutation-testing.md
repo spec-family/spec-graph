@@ -1422,6 +1422,40 @@ runners of 19 to 28. Main's at 1308cf0 took 73m16s, on runners of 18 to 28
 seconds, and its three before 86m06s to 91m16s, the longest shard 27m30s
 to 28m04s.
 
+### 2026-11-12: the order's record, shared between a sweep's workers
+
+The record of the entry before was kept in the worker's memory, so a worker
+Stryker starts in place of one that timed out began with none, where on
+vitest 4 it read the cache file every worker rewrote after each run. Static
+mutants run last in each shard, after the timeouts, so mostly on such
+workers: that is why they stayed above vitest 4 here and in spec-core.
+spec-core found it in an experiment and took the fix first (its
+[ADR-0007](https://github.com/spec-family/spec-core/blob/main/docs/adr/0007-verification.md),
+the entry of 2026-11-12, and
+[ADR-0008](https://github.com/spec-family/spec-core/blob/main/docs/adr/0008-toolchain.md),
+amended 2026-11-12): its static mutants' tests before their kills came to
+23,734 to 29,259 in main's seven sweeps with the record in memory alone,
+against 11,731 to 17,936 on vitest 4, and with the record shared 17,664 in
+its experiment and 17,621 in the sweep of its pull request, spec-core#77.
+
+**What changed.** `vitest.mutation.config.ts` shares the record as
+spec-core's does: where the process is one of Stryker's workers
+(`STRYKER_MUTATOR_WORKER`), through `.vitest-order-record.json` in the
+folder it runs in, the shard's sandbox, read once when the worker loads
+the configuration and written whole after each run, through a file of the
+process's own renamed over it. A process that is not a worker reads and
+writes none. No workflow changes. `tests/mutation-shards.test.ts` holds it
+as spec-core's test does: vitest made as Stryker's runner makes it, in
+processes of their own in a sandbox of two files, and the functions that
+name, read and write the file as a library.
+
+**What it measured.** Main's last two full sweeps, of bd9b3cd and 1fb6cf3
+(runs 43173007444 and 43147546039), read 97.21% over 11,616 and 97.23%
+over 11,586, 324 and 321 undetected, and 336,617 and 351,006 tests before
+the kills of 1,810 and 1,809 static mutants, 254 and 277 of them after more
+than 200 tests. The pull request's full sweep, dispatched on its branch, is
+set beside them below.
+
 ## Open Questions
 
 - [x] Should the `Regex` mutator be scoped? At 57.9% it was among the weakest.

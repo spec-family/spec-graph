@@ -76,7 +76,10 @@ describe('a file a template did not name', () => {
     expect(identify(file('docs/adr/0007-plan.md')).id).toBe('ADR-0007');
     expect(identify(file('keps/sig-auth/1234-token-rotation/README.md')).id).toBe('KEP-1234');
     expect(identify(file('specs/001-login/spec.md', { declaredId: 'LOGIN' })).id).toBe('LOGIN');
-    expect(identify(file('specs/001-login/spec.md', { heading: 'SPEC-0001: Login' })).id).toBe('SPEC-0001');
+  });
+
+  it('takes no name from its title, which the template wrote too (amended 2026-11-12)', () => {
+    expect(identify(file('specs/001-login/spec.md', { heading: 'SPEC-0001: Login' })).id).toBe('specs/001-login/spec');
   });
 
   it('is a README, named by its directory, even one a template name spells', () => {

@@ -477,6 +477,13 @@ export interface DanglingRef {
   readonly raw: string;
   /** Candidate ids when `reason` is `ambiguous`, or near-misses otherwise. */
   readonly candidates: readonly string[];
+  /**
+   * For an identifier read out of prose: its family, and the file whose
+   * identifier made that a family here, the first in the order read. A
+   * citation in prose is reported only in a family a document belongs to
+   * (ADR-0004), so the file is what to look at when the family is the mistake.
+   */
+  readonly family?: { readonly name: string; readonly startedBy: string } | undefined;
 }
 
 /**

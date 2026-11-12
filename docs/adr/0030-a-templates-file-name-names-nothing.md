@@ -50,9 +50,9 @@ them: such a file is named by its path, less the extension.**
   `specification`, `plan`, `tasks`, `design`, `proposal`, `requirements`,
   `research`, `data-model` and `quickstart`, in any case. They are the names
   Spec Kit, OpenSpec and Kiro write. A layout that adds one is a line there.
-- **Only where nothing else names the file.** A declared id, a number in the
-  file name or its directory, and an identifier a title opens with still name
-  it, as ADR-0004 ranks them. A README and an index keep their directory's
+- **Only where nothing else names the file.** A declared id and a number in
+  the file name or its directory still name it, as ADR-0004 ranks them. An
+  identifier a title opens with did too, until the amendment below. A README and an index keep their directory's
   name.
 - **Always, not only where two collide.** A path named only once a second
   feature arrived would rename the first feature's documents on that day, and
@@ -72,6 +72,14 @@ a table beside the names, `TEMPLATE_DIRECTORIES` in `src/identity.ts`:
 `checklists` and `contracts`, in any case, holding the file directly. A
 declaration, a number and a title's identifier still name such a file, as
 above.
+
+*Amended 2026-11-12.* **A title names no file a template named.** The
+template writes the title as well as the name: Spec Kit's `research.md`
+opens with `# Phase 0 Research` in every feature, so the identifier the
+title opened with was the same in each, PHASE-0, and every feature after
+the first left the graph, three of four `research.md` on one repository.
+A declared id and a number in the file name or its directory still name
+such a file; its title does not, whatever identifier it opens with.
 
 ## Consequences
 

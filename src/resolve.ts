@@ -129,6 +129,8 @@ interface Index {
   readonly byPathAlias: Map<string, Set<string>>;
   readonly byFamilyNumber: Map<string, Set<string>>;
   readonly families: Set<string>;
+  /** The file of the first document read in each family: the one that made it a family here. */
+  readonly startedBy: Map<string, string>;
   /** Every file by the directory holding it, for a basename that was mistyped. */
   readonly byDirectory: Map<string, { stem: string; id: string }[]>;
   /**
@@ -312,6 +314,7 @@ function buildIndex(extracted: readonly ExtractedDocument[]): Index {
     byPathAlias: new Map(),
     byFamilyNumber: new Map(),
     families: new Set(),
+    startedBy: new Map(),
     byDirectory: new Map(),
     aliasesByLength: new Map(),
     anchors: new Map(),
@@ -357,6 +360,7 @@ function buildIndex(extracted: readonly ExtractedDocument[]): Index {
 
     if (entry.identity.family !== null && entry.identity.number !== null) {
       index.families.add(entry.identity.family);
+      if (!index.startedBy.has(entry.identity.family)) index.startedBy.set(entry.identity.family, entry.document.path);
       const key = `${entry.identity.family}:${entry.identity.number}`;
       const set = index.byFamilyNumber.get(key) ?? new Set<string>();
       set.add(id);
@@ -462,7 +466,14 @@ function resolveOne(
     // slash, the disk says whether the path is a directory.
     if (bare.endsWith('/')) return null;
     const reason = pathMissingReason(candidate, bare, entry, options);
-    return reason === null ? null : dangle(candidate, reason, found.near);
+    if (reason === null) return null;
+    const missing = dangle(candidate, reason, found.near);
+    // Prose that reads as a citation is reported only in a family a document
+    // has, so where the family is the mistake - `Phase 2` read after a
+    // `# Phase 1` - the hint has to say which document that is.
+    const family = candidate.origin === 'text' ? parsePrefixedRef(bare)?.family : undefined;
+    const startedBy = family === undefined ? undefined : index.startedBy.get(family);
+    return family === undefined || startedBy === undefined ? missing : { ...missing, family: { name: family, startedBy } };
   }
 
   if (found.ids.length > 1) {

@@ -67,11 +67,25 @@ A file name a template gives every document of its kind - `spec.md`,
 `requirements.md`, `research.md`, `data-model.md` and `quickstart.md` -
 names none of them, so such a file is named by its path less the extension,
 `specs/001-login/spec`, and still answers to its name, and so is a file
-directly in `checklists/` or `contracts/`; a `README.md` is named by its
+directly in `checklists/` or `contracts/`; the template wrote its H1 too, so
+the H1 names none of them either; a `README.md` is named by its
 directory
 ([ADR-0030](https://github.com/spec-family/spec-graph/blob/main/docs/adr/0030-a-templates-file-name-names-nothing.md)).
 A row of a register is named by its ID column instead: see
 [Registers](registers.md).
+
+A word that numbers a part of a plan, a book or a release - `Phase`,
+`Stage`, `Sprint`, `Week`, `Part`, `Chapter` and `v` - names no family.
+`# Phase 1: Foundations` and `docs/releases/v1.2.0.md` are named by their
+stems, and "lands in Phase 2" is prose even where a document declares
+itself `PHASE-1`. A link to `PHASE-2` is still a reference. A citation in
+prose is reported only in a family a document belongs to, so where one
+resolves to nothing the hint names the flag that passes the family over and
+the file that made it a family:
+
+```text
+> fix the identifier, or add the document it names - or, if it is not a citation, --ignore-family ITERATION passes over the family docs/plans/iteration-1.md started
+```
 
 ## When `[[...]]` tags a concept
 

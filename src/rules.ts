@@ -562,7 +562,12 @@ function brokenHint(ref: DanglingRef): string {
       // the reader then has to translate, and this is the translation.
       return `include it, for example: spec-graph "${suggestPattern(ref)}"`;
     default:
-      return 'fix the identifier, or add the document it names';
+      // A word and a number in prose is a citation only in a family some
+      // document belongs to, so where it is a phrase the family is the
+      // mistake: the flag that passes it over, and the file that made it one.
+      return ref.family === undefined
+        ? 'fix the identifier, or add the document it names'
+        : `fix the identifier, or add the document it names - or, if it is not a citation, --ignore-family ${ref.family.name} passes over the family ${ref.family.startedBy} started`;
   }
 }
 

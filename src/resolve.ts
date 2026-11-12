@@ -765,17 +765,23 @@ function bindAnchor(
   under: IdsUnder,
   options: ResolveOptions,
 ): Edge | DanglingRef | SuppressedRef | null {
-  const itemId = `${documentId}#${anchor}`;
-  if (index.itemIds.has(itemId)) return makeEdge(candidate, itemId);
-
   // Every document, a file or a region of one, registered its anchors, and a
   // document id here is always one of theirs.
   const anchors = index.anchors.get(documentId) as ReadonlySet<string>;
-  if (anchors.has(anchor.toLowerCase())) return makeEdge(candidate, documentId);
+  // A renderer, an editor and GitHub's own "copy link" write a heading's
+  // anchor percent-encoded: `#%E6%A6%82%E8%A6%81` is `## 概要`, and was a
+  // broken reference. Read as written first, so an anchor that holds a `%`
+  // of its own still binds as it did.
+  const decoded = percentDecoded(anchor);
+  for (const spelling of decoded === null ? [anchor] : [anchor, decoded]) {
+    const itemId = `${documentId}#${spelling}`;
+    if (index.itemIds.has(itemId)) return makeEdge(candidate, itemId);
+    if (anchors.has(spelling.toLowerCase())) return makeEdge(candidate, documentId);
+  }
 
   // Some renderers slugify differently; try the loosest reasonable match before
   // calling it broken.
-  const loose = anchor.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
+  const loose = (decoded ?? anchor).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
   if (anchors.has(loose)) return makeEdge(candidate, documentId);
 
   // A specification declared inside the file, a register's row among them, is

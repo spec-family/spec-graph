@@ -74,6 +74,14 @@ directory
 A row of a register is named by its ID column instead: see
 [Registers](registers.md).
 
+An `#anchor` reaches a heading by its slug, or by the anchor GitHub gives a
+repeat of it (`-1`, `-2`); an item by its id; a register's row by its key;
+and a place the document marks for itself: an `{#id}` a heading ends with,
+as kramdown, Pandoc and Docusaurus write it, an `id` on any HTML element,
+and a `name` on an `<a>`. One in code or a comment marks nothing. An anchor
+written percent-encoded, `#%E6%A6%82%E8%A6%81` for `## 概要`, is read
+decoded where it does not bind as written.
+
 A word that numbers a part of a plan, a book or a release - `Phase`,
 `Stage`, `Sprint`, `Week`, `Part`, `Chapter` and `v` - names no family.
 `# Phase 1: Foundations` and `docs/releases/v1.2.0.md` are named by their

@@ -13,6 +13,32 @@ records.
 
 ## Unreleased
 
+### Added
+
+- **Every report says what the run read nothing in.** A file whose id
+  another file already has is left out of the graph, all of it, and the
+  warning that said so was printed under `--verbose` alone: 425 of
+  backstage's 761 files went that way with no word in the report, their own
+  broken links unreported. A Markdown file over the size limit was not
+  read, with no word anywhere. The human and Markdown reports now print
+  `N files left out for a duplicate id (--verbose names them)` and `N files
+  over 20 MiB not read: <paths>`; the JSON summary gains
+  `duplicateIdFiles`, and the JSON a `skipped` list, always there, naming
+  each file over the limit as spec-guard names a path it passes over:
+  `{ "path", "reason": "size", "bytes" }`. `walkFiles` takes
+  `onOversized`, `analyse` takes `maxFileSize`, and `AnalysisResult` has
+  `skipped` and `maxFileSize`.
+
+### Changed
+
+- **Markdown between 4 and 20 MiB is now read.** spec-graph read no file
+  over 4 MiB and spec-guard none over 20 MiB, so one file was checked by one
+  tool and passed over by the other. The family's limit is spec-guard's 20
+  MiB (`MAX_FILE_SIZE`), which spec-core's ADR-0005 records; the pipeline is
+  linear in what it reads, so the smaller limit spared nothing. A large
+  generated document that was quietly left out is now checked, and can
+  report findings it did not.
+
 ### Fixed
 
 - **A word that numbers a part names no family, and a template's title
@@ -45,6 +71,11 @@ records.
   linear, and a test holds four times the input to about four times the
   time. The findings, the JSON and the graph export are byte for byte as
   before on eight repositories.
+
+- **A link to a file over the size limit is no finding.** It was
+  `reference-outside-corpus`, with a hint to include a pattern the run
+  already used; the file was reached and not read for its size, which the
+  new line names. No exit code and no JSON field changes meaning.
 
 ## 0.25.0
 

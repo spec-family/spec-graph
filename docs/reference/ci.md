@@ -158,6 +158,23 @@ every finding, so a bot can annotate a diff:
 }
 ```
 
+Two fields say what the run read nothing in. `summary.duplicateIdFiles` is
+the files left out of the graph for an id another file already has, each
+named among `problems`. `skipped` is the files the patterns name that are
+over 20 MiB, the most a run reads from one file and the limit spec-guard
+has, each as spec-guard names a path it passes over:
+`{ "path": "docs/api/generated.md", "reason": "size", "bytes": 23068672 }`.
+It is always there, empty where nothing was skipped. The human and Markdown
+reports say both on every run:
+
+```text
+! 302 files left out for a duplicate id (--verbose names them)
+! 1 file over 20 MiB not read: docs/api/generated.md
+```
+
+A link to a file over the limit is no finding: the line names the file, and
+no pattern would bring it into reach.
+
 ## What a pull request changed
 
 A check says what is wrong. `spec-graph diff` says what a pull request changed:

@@ -51,6 +51,13 @@ export interface ResolveOptions {
    */
   readonly isDirectory?: ((path: string) => boolean) | undefined;
   /**
+   * Whether a repository-relative path is a file the run did not read for its
+   * size. A link to one names a document nobody checked, and the run's note
+   * names the file: told it was outside the corpus, the reader was handed a
+   * pattern the run already used.
+   */
+  readonly isOversized?: ((path: string) => boolean) | undefined;
+  /**
    * Targets whose failure to resolve should not be reported.
    *
    * This is a *suppression* filter, not a resolution one: it is consulted only
@@ -176,7 +183,7 @@ export function resolveCorpus(
         message: `duplicate document id "${entry.document.id}", already declared by ${existing.path}, so this file is left out of the graph: nothing in it is checked`,
         at: entry.document.at,
       });
-      duplicates.push({ id: entry.document.id, at: entry.document.at, first: existing.at });
+      duplicates.push({ id: entry.document.id, at: entry.document.at, first: existing.at, file: entry.containerId === null });
       leftOut.push(entry);
       continue;
     }
@@ -725,6 +732,7 @@ function pathMissingReason(
   if (!addressesDisk(candidate, target)) return 'unknown-target';
   const resolved = resolveFrom(entry.document.path, target);
   if (options.isDirectory?.(resolved) === true) return null;
+  if (options.isOversized?.(resolved) === true) return null;
   if (options.fileExists?.(resolved) !== true) return 'unknown-target';
   return hasDocumentExtension(resolved) ? 'not-a-spec' : null;
 }

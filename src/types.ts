@@ -414,6 +414,8 @@ export interface RegisterRow {
 export interface DuplicateId {
   readonly id: string;
   readonly at: SourceRef;
+  /** A whole file, rather than a region of one, was left out. */
+  readonly file?: boolean | undefined;
   /** Where the specification that kept the id was declared. */
   readonly first: SourceRef;
 }
@@ -638,4 +640,19 @@ export interface AnalysisSummary {
   readonly infos: number;
   /** Milliseconds, wall clock. */
   readonly durationMs: number;
+  /**
+   * Files left out of the graph for an id another file already has: nothing
+   * in them was checked. A run reading sources from disk always gives it.
+   */
+  readonly duplicateIdFiles?: number | undefined;
+}
+
+/**
+ * A file the patterns name that a run did not read, as spec-guard names one
+ * it passes over: its path, why, and its size in bytes.
+ */
+export interface SkippedFile {
+  readonly path: string;
+  readonly reason: 'size';
+  readonly bytes: number;
 }

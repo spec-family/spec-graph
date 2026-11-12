@@ -101,9 +101,11 @@ export class QuickestFirst extends BaseSequencer {
  * sweep cannot see, and reads src/ as text. bin.test.ts is the one test
  * that does spawn the launcher, for the exit code only a process has: it runs
  * what was compiled into dist/, which no mutant is. growth.test.ts holds a
- * stage to a cost in proportion to its input by timing it: it kills a mutant
- * only by its speed, which instrumented code is no measure of, and a ratio it
- * misread in the initial run stopped a shard of the sweep before it began.
+ * stage to a cost in proportion to its input by counting what it visits
+ * through built-ins it replaces for the stage: replacing an iterator's `next`
+ * ends the engine's fast path for every loop of its kind for the rest of the
+ * worker's life, and a worker of the sweep runs the suite once for each
+ * mutant.
  */
 export default defineConfig({
   test: {

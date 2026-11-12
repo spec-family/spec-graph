@@ -13,6 +13,20 @@ records.
 
 ## Unreleased
 
+### Added
+
+- **Every report says what the run read nothing in.** A file whose id
+  another file already has is left out of the graph, all of it, and the
+  warning that said so was printed under `--verbose` alone: 425 of
+  backstage's 761 files went that way with no word in the report, their own
+  broken links unreported. A Markdown file over 4 MiB was not read, with no
+  word anywhere. The human and Markdown reports now print `N files left out
+  for a duplicate id (--verbose names them)` and `N files over 4 MiB not
+  read: <paths>`, and the JSON summary gains `duplicateIdFiles` and
+  `oversizedFiles`, with the files and their sizes in a new `oversized`
+  list. `walkFiles` takes `onOversized`, and `AnalysisResult` has
+  `oversized`.
+
 ### Fixed
 
 - **A word that numbers a part names no family, and a template's title
@@ -45,6 +59,11 @@ records.
   linear, and a test holds four times the input to about four times the
   time. The findings, the JSON and the graph export are byte for byte as
   before on eight repositories.
+
+- **A link to a file over 4 MiB is no finding.** It was
+  `reference-outside-corpus`, with a hint to include a pattern the run
+  already used; the file was reached and not read for its size, which the
+  new line names. No exit code and no JSON field changes meaning.
 
 ## 0.25.0
 

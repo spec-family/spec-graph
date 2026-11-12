@@ -104,6 +104,8 @@ export interface AnalysisResult {
   readonly ok: boolean;
   /** Each configured register's rows by status, and the open ones; absent where none is configured (ADR-0027). */
   readonly registers?: readonly RegisterSummary[] | undefined;
+  /** Each file the patterns name that was not read for its size, by path, with its size in bytes. */
+  readonly oversized?: readonly { readonly file: string; readonly bytes: number }[] | undefined;
 }
 
 /** Reads, extracts, resolves, and checks a corpus of specifications. */
@@ -115,8 +117,15 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
   const root = toPosix(options.root).replace(/\/+$/, '');
   const patterns = options.patterns && options.patterns.length > 0 ? options.patterns : DEFAULT_PATTERNS;
 
+  const oversized = new Map<string, WalkedFile>();
   const walk = (reach: readonly string[]): Promise<WalkedFile[]> =>
-    walkFiles({ root, patterns: reach, ignore: options.ignore, followSymlinks: options.followSymlinks });
+    walkFiles({
+      root,
+      patterns: reach,
+      ignore: options.ignore,
+      followSymlinks: options.followSymlinks,
+      onOversized: (file) => oversized.set(file.path, file),
+    });
   // A document orientation names is read where the patterns do not reach it:
   // an agent's instructions live in .github/ and .cursor/rules/, where no
   // documentation pattern looks, and naming one there checked nothing
@@ -125,6 +134,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
 
   const sources = await readAll(walked, options.concurrency ?? DEFAULT_CONCURRENCY);
   const present = new Set(walked.map((file) => file.path.toLowerCase()));
+  const tooLarge = new Set([...oversized.keys()].map((path) => path.toLowerCase()));
 
   const checks = {
     claimsIn: createClaimReader(options.claims),
@@ -152,6 +162,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
       // include patterns did not reach it", which are different fixes.
       fileExists: (path) => present.has(path.toLowerCase()) || existsSync(`${root}/${path}`),
       isDirectory: (path) => statSync(`${root}/${path}`, { throwIfNoEntry: false })?.isDirectory() === true,
+      isOversized: (path) => tooLarge.has(path.toLowerCase()),
       // A stray entry in the empty fallback changes a run only for a reference
       // whose target it matches, so the mutant that plants one survives every
       // corpus but one written for it.
@@ -165,6 +176,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     walked.map((file) => file.path),
     started,
     checks.registers,
+    [...oversized.values()].sort((a, b) => (a.path < b.path ? -1 : 1)),
   );
 }
 
@@ -177,6 +189,8 @@ export interface Source {
 export interface AnalyseSourcesOptions extends RuleOptions {
   readonly fileExists?: ((path: string) => boolean) | undefined;
   readonly isDirectory?: ((path: string) => boolean) | undefined;
+  /** Whether a path is a file the run did not read for its size: a link to one is no finding. */
+  readonly isOversized?: ((path: string) => boolean) | undefined;
   readonly isIgnoredReference?: ((target: string) => boolean) | undefined;
   readonly isIgnoredFamily?: ((family: string) => boolean) | undefined;
   /** Whether a path holds a historical record rather than a specification. */
@@ -361,6 +375,7 @@ function analyseExtracted(extracted: readonly ExtractedDocument[], options: Anal
   const corpus = resolveCorpus(extracted, {
     fileExists: options.fileExists,
     isDirectory: options.isDirectory,
+    isOversized: options.isOversized,
     isIgnoredReference: options.isIgnoredReference,
     isIgnoredFamily: options.isIgnoredFamily,
   });
@@ -369,7 +384,13 @@ function analyseExtracted(extracted: readonly ExtractedDocument[], options: Anal
   return { graph, corpus, diagnostics };
 }
 
-function finish(analysed: Analysed, files: readonly string[], started: number, registers?: RegisterCheck): AnalysisResult {
+function finish(
+  analysed: Analysed,
+  files: readonly string[],
+  started: number,
+  registers: RegisterCheck | undefined,
+  oversized: readonly WalkedFile[],
+): AnalysisResult {
   const { graph, corpus, diagnostics } = analysed;
   const counts = { error: 0, warn: 0, info: 0 };
   for (const diagnostic of diagnostics) counts[diagnostic.severity] += 1;
@@ -386,6 +407,9 @@ function finish(analysed: Analysed, files: readonly string[], started: number, r
     warnings: counts.warn,
     infos: counts.info,
     durationMs: Math.round((performance.now() - started) * 100) / 100,
+    // A region whose id was taken leaves only itself out, and its file stays.
+    duplicateIdFiles: corpus.duplicates.filter((duplicate) => duplicate.file).length,
+    oversizedFiles: oversized.length,
   };
 
   return {
@@ -397,6 +421,7 @@ function finish(analysed: Analysed, files: readonly string[], started: number, r
     summary,
     ok: counts.error === 0,
     ...(registers === undefined ? {} : { registers: summariseRegisters(corpus, registers) }),
+    oversized: oversized.map((file) => ({ file: file.path, bytes: file.size })),
   };
 }
 

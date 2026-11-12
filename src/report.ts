@@ -16,6 +16,7 @@ import { createHash } from 'node:crypto';
 import { fingerprintOf, type StaleEntry } from './baseline.js';
 import type { SpecGraph } from './graph.js';
 import type { ProjectRule } from './project-rules.js';
+import { MAX_FILE_SIZE } from './glob.js';
 import { formatRef } from './source.js';
 import { DEFAULT_SEVERITIES, RULE_DESCRIPTIONS, RULE_IDS } from './rules.js';
 import { displayWidth } from './vendor/spec-core/text/index.js';
@@ -228,6 +229,7 @@ export function formatReport(result: AnalysisResult, options: ReporterOptions = 
   if (unread > 0) {
     lines.push(`${paint.warn(marks.warn)} ${unreadNotice(unread)}`, '');
   }
+  for (const notice of leftOutNotices(result, options.verbose === true)) lines.push(`${paint.warn(marks.warn)} ${notice}`, '');
 
   // What the repository told spec-graph to stop looking at. Only under
   // --verbose, and never as a finding: these are not defects, they are the one
@@ -369,6 +371,31 @@ function unreadNotice(count: number): string {
   return `${count} front-matter ${plural(count, 'value')} not read - see --verbose`;
 }
 
+/**
+ * The files a run read nothing in, said whether or not they are listed.
+ *
+ * A file whose id another has is left out of the graph, all of it, and a
+ * warning among the parse problems said so - under `--verbose` alone. 425 of
+ * backstage's 761 files went that way with no word in the report, their own
+ * broken links unreported. A file over the size the walk reads went with none
+ * anywhere, and a link to it was told to widen a pattern that already
+ * reached it. Under `--verbose` the problems above name the first kind.
+ */
+function leftOutNotices(result: AnalysisResult, verbose: boolean): string[] {
+  const notices: string[] = [];
+  const duplicates = result.summary.duplicateIdFiles ?? 0;
+  if (duplicates > 0) {
+    notices.push(`${duplicates} ${plural(duplicates, 'file')} left out for a duplicate id${verbose ? '' : ' (--verbose names them)'}`);
+  }
+  const oversized = result.oversized ?? [];
+  if (oversized.length > 0) {
+    notices.push(
+      `${oversized.length} ${plural(oversized.length, 'file')} over ${MAX_FILE_SIZE / (1024 * 1024)} MiB not read: ${oversized.map((entry) => entry.file).join(', ')}`,
+    );
+  }
+  return notices;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Markdown                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -470,6 +497,7 @@ export function formatMarkdown(result: AnalysisResult, options: ReporterOptions 
 
   const unread = options.verbose ? 0 : unreadFrontMatter(result);
   if (unread > 0) lines.push(`${unreadNotice(unread)}.`, '');
+  for (const notice of leftOutNotices(result, options.verbose === true)) lines.push(`${notice}.`, '');
 
   if (options.verbose && result.problems.length > 0) {
     lines.push('<details><summary>Problems with the input</summary>', '');

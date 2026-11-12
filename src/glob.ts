@@ -64,6 +64,11 @@ export interface WalkOptions {
   readonly ignore?: readonly string[] | undefined;
   readonly maxFileSize?: number | undefined;
   /**
+   * Told of each file the patterns match and the walk does not hand back for
+   * its size, so a run can say it read less than the patterns name.
+   */
+  readonly onOversized?: ((file: WalkedFile) => void) | undefined;
+  /**
    * Follow links. Off by default: a link can lead out of the repository. A
    * link back into a directory the walk is inside is never followed.
    */
@@ -510,6 +515,17 @@ export async function walkFiles(options: WalkOptions): Promise<WalkedFile[]> {
   // none: equivalent.
   let inside = new Set<string>();
 
+  // A file the walk reaches twice, through a link and by its path, is told of once.
+  const oversized = new Set<string>();
+  const take = (file: WalkedFile): void => {
+    if (file.size <= maxSize) {
+      out.set(file.path, file);
+      return;
+    }
+    if (oversized.has(file.path)) return;
+    oversized.add(file.path);
+    options.onOversized?.(file);
+  };
   const walk = async (relative: string): Promise<void> => {
     const absolute = relative.length === 0 ? root : `${root}/${relative}`;
     if (visited.has(absolute)) return;
@@ -549,8 +565,8 @@ export async function walkFiles(options: WalkOptions): Promise<WalkedFile[]> {
             if (!pruned(entry.name, child)) await walk(child);
             continue;
           }
-          if (!patterns.match(child) || excluded(child) || info.size > maxSize) continue;
-          out.set(child, { path: child, absolute: `${root}/${child}`, size: info.size });
+          if (!patterns.match(child) || excluded(child)) continue;
+          take({ path: child, absolute: `${root}/${child}`, size: info.size });
         } catch {
           // A link to nothing has nothing to read.
         }
@@ -562,8 +578,7 @@ export async function walkFiles(options: WalkOptions): Promise<WalkedFile[]> {
 
       try {
         const info = await stat(`${root}/${child}`);
-        if (info.size > maxSize) continue;
-        out.set(child, { path: child, absolute: `${root}/${child}`, size: info.size });
+        take({ path: child, absolute: `${root}/${child}`, size: info.size });
       } catch {
         // Gone between the listing and the look: there is nothing to read.
       }

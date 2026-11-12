@@ -414,6 +414,8 @@ export interface RegisterRow {
 export interface DuplicateId {
   readonly id: string;
   readonly at: SourceRef;
+  /** A whole file, rather than a region of one, was left out. */
+  readonly file?: boolean | undefined;
   /** Where the specification that kept the id was declared. */
   readonly first: SourceRef;
 }
@@ -638,4 +640,11 @@ export interface AnalysisSummary {
   readonly infos: number;
   /** Milliseconds, wall clock. */
   readonly durationMs: number;
+  /**
+   * Files left out of the graph for an id another file already has: nothing
+   * in them was checked. A run reading sources from disk always gives it.
+   */
+  readonly duplicateIdFiles?: number | undefined;
+  /** Files the patterns name that were not read for their size. A run reading from disk always gives it. */
+  readonly oversizedFiles?: number | undefined;
 }

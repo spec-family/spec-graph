@@ -256,6 +256,33 @@ waited up to 35 minutes for a runner, and the score job 21. On runners that
 take 20 seconds for the initial run, the slowest shard took 14m43s where it
 had taken 16m53s to 18m37s, and one that takes 15 would have it at 11.
 
+*Amended 2026-11-13.* `lifecycle.ts` has moved from the last shard to the
+second. Four sweeps of main on 2026-11-12, of 1402f08, 070285f, cff8b44 and
+e5c7b83 (runs 43212826092, 43247528347, 43257559843 and 43274246481), the
+last three after spec-graph#164 and spec-graph#167, on the 17-second runner:
+
+| shard | files | 1402f08 | 070285f | cff8b44 | e5c7b83 | with `lifecycle.ts` in the second |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 1 | `extract.ts` | 13.0 | 13.6 | 12.8 | 13.3 | 13.0, 13.6, 12.8, 13.3 |
+| 2 | `identity.ts`, `select.ts`, `state.ts`, `paths.ts`, `report.ts`, `baseline.ts` | 11.6 | 11.7 | 11.4 | 11.7 | 15.3, 15.1, 15.1, 15.1 |
+| 3 | `resolve.ts`, `rules.ts`, `sections.ts`, `graph.ts`, `yaml.ts` | 14.9 | 14.3 | 14.5 | 13.6 | as it is |
+| 4 | everything else | 19.6 | 18.0 | 18.8 | 17.4 | 15.9, 14.6, 15.1, 14.1 |
+
+The files hold 56.0 to 59.1 minutes on that runner, where the layout above
+was made on 44 to 45, and the last shard passed the third by 3.6 to 4.7, over
+the two the table allows. `lifecycle.ts` took 3.3 to 3.7 of those minutes;
+in the second shard the longest comes at most a minute over the next in each
+of the four, and `extract.ts`'s shard is the shortest. Still four: a fifth
+would stop at `extract.ts`'s 13, two or three minutes under what four give.
+
+The runners moved further than the files. Their initial runs took 18 to 32
+seconds, against 12 to 21 in the sweeps above, and the jobs 12.6 to 37.9
+minutes; the slowest, the last shard of 1402f08's sweep, ran on a runner
+whose initial run took 32. The minutes beside each shard in
+`scripts/mutation-shards.mjs` are on the 17-second scale, and this change's
+own sweep reads whether the layout comes out as the sums say: a file is
+slower in a shard that instruments more files.
+
 ### Not splitting `extract.ts`
 
 Stryker's `mutate` takes line ranges, and splitting `extract.ts` and

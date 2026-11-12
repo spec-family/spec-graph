@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { Source } from '../src/runner.js';
 
 /**
- * Twice the input takes about twice the time: no stage may take longer than
- * what it reads (CLAUDE.md).
+ * Four times the input takes about four times the time: no stage may take
+ * longer than what it reads (CLAUDE.md).
  *
  * Not a benchmark: a guard on the shape of the cost, which a bound in seconds
  * cannot hold where a runner's speed varies. Two stages grew with the square
@@ -14,46 +14,52 @@ import type { Source } from '../src/runner.js';
  * nothing asked every node of the graph which were under its document: two
  * in each of 8,000 documents took 42.5 seconds, and 3.2 without them.
  *
- * The larger input is four times the smaller, two doublings, each timed at
- * its best of three after one run that warms the engine, and the ratio is
- * held under six. A cost that grows with the input reads a little over four
- * here, and one that grows with its square read 14 and 8 on these corpora
- * before the fix: two doublings keep noise on a shared runner far from
- * either. The two cases take about a second together.
+ * Each case times the stage that grew, extraction or resolution, on inputs
+ * built and read beforehand, so the stages around it do not water the ratio
+ * down. The larger input is four times the smaller, two doublings, both are
+ * run once to warm the engine and then five times each, in turn, so a busy
+ * moment of a shared runner lands on both; the best of each is compared, and
+ * the ratio is held under eight. A cost that grows with the input reads about
+ * four here, and the two that grew with its square read 15 and 17 before the
+ * fix. Timed whole, the run read 6.4 on a hosted runner where it read 4.3
+ * here. The cases take about a second together.
+ *
+ * The sweep leaves this file out (vitest.mutation.config.ts): it kills a
+ * mutant only by its speed, and instrumented code is no measure of that.
  *
  * The pipeline is imported inside each test: a module that throws while it
- * loads fails no test, and a sweep reads that as a survived mutant.
+ * loads fails no test.
  */
 
-const best = (run: () => void): number => {
-  let least = Number.POSITIVE_INFINITY;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+/** A stage's best time on the larger input over its best time on the smaller. */
+function growth<T>(small: T, large: T, stage: (input: T) => unknown): number {
+  const time = (input: T): number => {
     const started = performance.now();
-    run();
-    least = Math.min(least, performance.now() - started);
+    stage(input);
+    return performance.now() - started;
+  };
+  stage(small);
+  stage(large);
+  let fast = Number.POSITIVE_INFINITY;
+  let slow = Number.POSITIVE_INFINITY;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    fast = Math.min(fast, time(small));
+    slow = Math.min(slow, time(large));
   }
-  return least;
-};
-
-async function growth(build: (size: number) => Source[], size: number): Promise<number> {
-  const { analyseSources } = await import('../src/runner.js');
-  const small = build(size);
-  const large = build(size * 4);
-  analyseSources(small);
-  return best(() => analyseSources(large)) / best(() => analyseSources(small));
+  return slow / fast;
 }
 
 /** One file of many lines, each with a link and several identifiers in prose. */
-const changelog = (lines: number): Source[] => {
+const changelog = (lines: number): Source => {
   const text = ['# Changelog', ''];
   for (let line = 0; line < lines; line += 1) {
     if (line % 20 === 0) text.push('', `## ${line / 20}.0.0`, '');
     text.push(`- Fixed the parser for RFC ${7000 + line} (see [notes](docs/n${line}.md), GHSA-${line}, ADR-${line % 50}).`);
   }
-  return [{ path: 'CHANGELOG.md', text: `${text.join('\n')}\n` }];
+  return { path: 'CHANGELOG.md', text: `${text.join('\n')}\n` };
 };
 
-/** Many documents with items, each linking to anchors no document has. */
+/** Documents with items, each linking to anchors no document has. */
 const anchors = (documents: number): Source[] =>
   Array.from({ length: documents }, (_, at) => ({
     path: `docs/d${at}.md`,
@@ -62,7 +68,7 @@ const anchors = (documents: number): Source[] =>
       '',
       '## Open Questions',
       '',
-      ...Array.from({ length: 6 }, (_, item) => `- [ ] Question ${item}?`),
+      ...Array.from({ length: 4 }, (_, item) => `- [ ] Question ${item}?`),
       '',
       ...Array.from({ length: 8 }, (_, link) => `See [${link}](d${(at + link + 1) % documents}.md#nowhere-${link}).`),
       '',
@@ -70,11 +76,15 @@ const anchors = (documents: number): Source[] =>
   }));
 
 describe('four times the input', () => {
-  it('takes about four times as long for the readings of one file', async () => {
-    expect(await growth(changelog, 250)).toBeLessThan(6);
+  it('takes about four times as long to read one file', async () => {
+    const { extractSpecifications } = await import('../src/extract.js');
+    expect(growth(changelog(250), changelog(1000), extractSpecifications)).toBeLessThan(8);
   });
 
-  it('takes about four times as long for anchors that address nothing', async () => {
-    expect(await growth(anchors, 150)).toBeLessThan(6);
+  it('takes about four times as long to resolve anchors that address nothing', async () => {
+    const { extractSpecifications } = await import('../src/extract.js');
+    const { resolveCorpus } = await import('../src/resolve.js');
+    const read = (sources: Source[]) => sources.flatMap((source) => extractSpecifications(source));
+    expect(growth(read(anchors(300)), read(anchors(1200)), resolveCorpus)).toBeLessThan(8);
   });
 });

@@ -144,6 +144,40 @@ is told it is missing, or worse, guesses which was meant.
   path, because every brief already names `npm run lint`, and a caller that
   ran yesterday would stop.
 
+*Amended 2026-11-12.* **Five things an orientation document names are no
+path of this repository, and one is a path in another place.** Run over
+gqlkit's switchboards with the configuration the SDD reference recommends,
+30 `missing-path` findings were none of them real, and spec-graph's own
+CLAUDE.md and CONTRIBUTING.md gave more than thirty.
+
+- **An absolute path is held to its first directory, whatever it ends in.**
+  `/etc/nginx/nginx.conf` and `/opt/app/license.txt` are the host's, and a
+  path with an extension was looked for regardless. Where the repository
+  holds no directory the path opens with, it is not looked for, as a path
+  with no extension already was not.
+- **`roots` holds a path of several segments too.** A switchboard about one
+  package of a monorepo writes `src/client.ts` for that package's, and
+  `roots` found only a bare name there. A path written from the document,
+  `./x` or `../x`, and an absolute one are where they say.
+- **A code span after "e.g." is an example**, with any spans after it in a
+  list: ``(e.g. `foo.ts` + `foo.test.ts`)`` names a kind of file and no
+  file of the repository. "i.e." names the thing itself, and is held.
+- **A path git ignores is not looked for.** `.claude/settings.local.json`
+  is in no clone but its writer's. `analyse` reads the `.gitignore` of the
+  root and of each directory above the path, only for a path about to be
+  reported, as git reads them; a line the path dialect refuses ignores
+  nothing. No process is started: git's own `check-ignore` would be a
+  second one beside the history ADR-0025 reads.
+- **A bare name the repository holds in one place is named there.**
+  `release.yml` for `.github/workflows/release.yml` is still a finding, and
+  its hint names the path and the directory to add to `roots`. Two places
+  or more, and which is meant is a guess, so the hint is the one it was.
+  `analyse` walks the repository once for this, the first time it is
+  asked, past the directories a walk skips by default.
+
+spec-graph configures `orientation` for its own CLAUDE.md and
+CONTRIBUTING.md, with `src` among its roots, and holds both to it.
+
 ## Not this round
 
 - **A mapping table held to fields in other documents**, such as a table of

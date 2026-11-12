@@ -41,6 +41,30 @@ records.
 
 ### Fixed
 
+- **An orientation document is held to the paths of this repository, and no
+  others.** Run over gqlkit's switchboards with the configuration the SDD
+  reference recommends, 30 `missing-path` findings were none of them real.
+  ADR-0029 amended (2026-11-12).
+  - An absolute path is held to its first directory whatever it ends in:
+    `/etc/nginx/nginx.conf` is the host's where the repository holds no
+    `etc`.
+  - `roots` holds a path of several segments as well as a bare name, so
+    `src/client.ts` in a monorepo package's switchboard is found under
+    `"roots": ["packages/web"]`; `./x`, `../x` and `/x` are where they say.
+  - A code span after "e.g.", and each after it in the same list, is an
+    example and names no file.
+  - A path the repository's `.gitignore` files ignore is not looked for,
+    such as `.claude/settings.local.json`.
+  - A bare name that one file or directory elsewhere has is still a
+    finding, and its hint names the path and the root that would find it:
+    `it is .github/workflows/release.yml: write that path, or add
+    ".github/workflows" to "orientation.roots"`.
+
+  On gqlkit the 30 findings are 26 with no `roots`, and 13 with
+  `"roots": ["packages/cli"]`, five of them with the new hint. spec-graph
+  now holds its own CLAUDE.md and CONTRIBUTING.md to `orientation`. No exit
+  code and no JSON field changes.
+
 - **A word that numbers a part names no family, and a template's title
   names no file.** Spec Kit with no configuration gave 34 errors on a real
   repository, 33 of them `"Phase 2" does not resolve to any document`: one

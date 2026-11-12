@@ -121,6 +121,7 @@ of vocabularies and boundary conditions, and either can be weakened by an
 ordinary-looking refactor without a single test going red. If you are adding a
 heuristic, check that a mutant of it dies.
 
+<!-- @spec-path external="scripts/vendor.mjs" -->
 `src/vendor/spec-core/` is the family's shared library, copied in by spec-core's
 `scripts/vendor.mjs` and held to the SHA-256 of every file by
 `tests/vendor.test.ts`. A change to it is made in spec-core and copied again,

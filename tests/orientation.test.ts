@@ -88,15 +88,17 @@ describe('an orientation document', () => {
     });
   });
 
-  it('looks for a bare name under a root only where it has no slash, and holds none that leaves the repository', () => {
+  it('looks for a name under a root, and holds none that leaves the repository', () => {
     const brief = doc('# Brief', '', '`refunds.md` is found; `x/refunds.md` is not, nor `../../README.md`, nor `/spec/refunds.md` from here.', '');
     expect(findings({ 'docs/ops-brief.md': brief })).toEqual([
       'missing-path docs/ops-brief.md:3 `x/refunds.md` names no file or directory the repository holds',
       'missing-path docs/ops-brief.md:3 `../../README.md` names no file or directory the repository holds',
     ]);
-    // A path with a slash is never looked for under a root, though one holds it.
-    expect(findings({ 'docs/ops-brief.md': doc('# B', '', '`sub/refunds.md`', '') }, { tree: new Set([...TREE, 'spec/sub', 'spec/sub/refunds.md']) })).toEqual([
-      'missing-path docs/ops-brief.md:3 `sub/refunds.md` names no file or directory the repository holds',
+    // A path of several segments is looked for under a root too (amended
+    // 2026-11-12), and one written from the document, or from the root, is not.
+    const deeper = new Set([...TREE, 'spec/sub', 'spec/sub/refunds.md']);
+    expect(findings({ 'docs/ops-brief.md': doc('# B', '', '`sub/refunds.md`, `./sub/refunds.md`, `/sub/refunds.md`', '') }, { tree: deeper })).toEqual([
+      'missing-path docs/ops-brief.md:3 `./sub/refunds.md` names no file or directory the repository holds',
     ]);
     // Outside the repository nothing holds, whatever the disk around it has.
     const around = new Set([...TREE, '..', '../README.md']);

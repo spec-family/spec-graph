@@ -9,7 +9,7 @@
  * enters, and how a reference target - which is not a path - is matched.
  */
 
-import type { Dirent } from 'node:fs';
+import { readdirSync, type Dirent } from 'node:fs';
 import { readdir, realpath, stat } from 'node:fs/promises';
 
 import { isAbsolutePath, joinPosix, toPosix } from './paths.js';
@@ -401,6 +401,37 @@ async function reachable(root: string, base: string, followSymlinks: boolean | u
     directory = `${directory}/${segment}`;
   }
   return above;
+}
+
+/**
+ * Every file and directory under the root by its name, each with its
+ * repository-relative paths in the order the walk met them: past the
+ * directories a walk skips by default, and past links, which can lead out
+ * of the repository. A directory that cannot be read holds nothing here.
+ */
+export function pathsByName(root: string): Map<string, string[]> {
+  const base = toPosix(root).replace(/\/+$/, '');
+  const byName = new Map<string, string[]>();
+  const pending = [''];
+  for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
+    let entries: Dirent[] = [];
+    try {
+      entries = readdirSync(directory === '' ? base : `${base}/${directory}`, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const path = directory === '' ? entry.name : `${directory}/${entry.name}`;
+      const directoryHere = entry.isDirectory();
+      if (directoryHere && DEFAULT_IGNORED_DIRECTORIES.includes(entry.name)) continue;
+      if (!directoryHere && !entry.isFile()) continue;
+      if (directoryHere) pending.push(path);
+      const paths = byName.get(entry.name);
+      if (paths === undefined) byName.set(entry.name, [path]);
+      else paths.push(path);
+    }
+  }
+  return byName;
 }
 
 /**

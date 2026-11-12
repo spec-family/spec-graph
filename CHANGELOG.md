@@ -106,8 +106,9 @@ records.
   every node of the graph which were under its document: two in each of
   8,000 documents took 42.5 seconds, and 3.2 without them. Both are now
   linear, and a test holds four times the input to about four times the
-  time. The findings, the JSON and the graph export are byte for byte as
-  before on eight repositories.
+  elements visited, counted and not timed, so no busy runner fails it. The
+  findings, the JSON and the graph export are byte for byte as before on
+  eight repositories.
 
 - **A link to a file over the size limit is no finding.** It was
   `reference-outside-corpus`, with a hint to include a pattern the run

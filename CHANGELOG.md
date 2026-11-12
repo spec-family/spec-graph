@@ -92,6 +92,13 @@ records.
   adds nothing in its place. Development only: nothing spec-graph reports
   changed. Upgrading: nothing to do.
 
+- **`lifecycle.ts` is mutated in the sweep's second shard.** The last
+  shard had come to 17.4 to 19.6 minutes on the 17-second runner in four
+  sweeps of main, 3.6 to 4.7 over the next, where the table allows two;
+  with `lifecycle.ts` beside `identity.ts` the longest comes at most a
+  minute over the next (ADR-0019, amended 2026-11-13). Development only: nothing
+  spec-graph reports changed. Upgrading: nothing to do.
+
 ### Fixed
 
 - **An orientation document is held to the paths of this repository, and no

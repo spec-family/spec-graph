@@ -33,50 +33,46 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { minimatch } from 'minimatch';
 import { calculateMutationTestMetrics } from 'mutation-testing-metrics';
 
-// Minutes each file took in the sweep of 0cddd48 (run 38111409073), the first
-// with a mutant's quickest test files run first (vitest.mutation.config.ts),
-// read shard by shard off its logs with scripts/mutation-timeline.mjs. A
-// shard's minutes follow its runner: the suite's initial run took 12 to 21
-// seconds across five sweeps of this source, and each shard's time went with
-// it. So these are minutes on a runner whose initial run takes 17 seconds, a
-// file's own minutes times 17 over its shard's initial run:
+// Minutes each file took in four sweeps of main on 2026-11-12, of 1402f08,
+// 070285f, cff8b44 and e5c7b83 (runs 43212826092, 43247528347, 43257559843
+// and 43274246481), the least and the most, read shard by shard off their
+// logs with scripts/mutation-timeline.mjs. A shard's minutes follow its
+// runner: the suite's initial run took 18 to 32 seconds in those sweeps, and
+// each shard's time went with it. So these are minutes on a runner whose
+// initial run takes 17 seconds, a file's own minutes times 17 over its
+// shard's initial run:
 //
-//   extract 10.1   rules 4.3   identity 3.6   cli 3.4   resolve 2.9   select 2.7
-//   sections 2.6   state 2.3   report 1.9   glob 1.9   lifecycle 1.6   graph 1.4
-//   runner 1.0   the other nine 5.2 between them
+//   extract 12.8-13.6   rules 5.6-5.9     identity 4.9-5.1   resolve 3.7-4.4
+//   cli 3.3-3.7         lifecycle 3.3-3.7 runner 2.6-2.9     sections 2.5-2.7
+//   select 2.4-2.5      state 1.9         glob 1.7-1.9       report 1.6-1.7
+//   config 1.3-1.4      graph 1.2-1.4     and the other 13, 6.4 to 7.3 together
 //
 // A file cannot be split, because a line range loses the mutants that cross
 // it (ADR-0019), and extract.ts has a shard to itself. It was the floor at 12
-// to 14 such minutes in vitest's order, and is under the others' share now:
-// the three shards beside it hold 35 minutes. A file is slower in a shard
-// that instruments more files, whose suite and overhead are slower: glob.ts,
+// to 14 such minutes in vitest's order, and is under the others' share in
+// the order of the quickest first. A file is slower in a shard that
+// instruments more files, whose suite and overhead are slower: glob.ts,
 // yaml.ts and paths.ts once took half as long again in the last shard as
 // beside state.ts.
 //
-// The order gave back a quarter of extract.ts, two fifths of identity.ts and
-// a fifth of state.ts and resolve.ts, and nothing of the last shard, whose
-// mutants cli.test.ts kills: the longest test file, which now runs after the
-// others. So the table that was level in vitest's order, 13 to 16 minutes a
-// shard, read 10.1, 9.0, 12.1 and 13.9, and report.ts and baseline.ts moved
-// from the last shard to the second. Still four: a fifth shard would stop at
-// extract.ts's 10, a minute or two under what four give, from one more job,
-// where CI's thirteen jobs already run beside these.
+// The files came to 56.0 to 59.1 minutes, where the table before this one was
+// made on 44 to 45 (ADR-0019, amended 2026-10-11), and the last shard to 17.4
+// to 19.6, 3.6 to 4.7 over the next; lifecycle.ts moved from it to the
+// second. Still four: a fifth shard would stop at extract.ts's 13, two or
+// three minutes under what four give, from one more job.
 //
 // The first shards are listed. The last mutates everything else the base
 // configuration mutates, so a file added later is still mutated without anyone
 // remembering to list it here; the price is that new files all land in one
 // shard. When a shard passes the next by more than two minutes on one
 // runner's scale, re-measure and move files or add a shard, and add it to the
-// workflow's matrix, which a test checks. Minutes on that 17-second runner,
-// file by file and summed; the sweep of this table (run 38114717761) had its
-// files at 9.9, 11.2, 12.1 and 11.1 of them, and its shards took 9m09s,
-// 13m48s, 14m43s and 13m41s on runners whose initial runs took 15, 20, 20 and
-// 20 seconds:
+// workflow's matrix, which a test checks. Beside each shard, what its files
+// took in the four sweeps on the 17-second runner, as listed here:
 export const ASSIGNED = [
-  ['src/extract.ts'], // 10.1
-  ['src/identity.ts', 'src/select.ts', 'src/state.ts', 'src/paths.ts', 'src/report.ts', 'src/baseline.ts'], // 11.3
-  ['src/resolve.ts', 'src/rules.ts', 'src/sections.ts', 'src/graph.ts', 'src/yaml.ts'], // 12.1
-]; // and the rest: 11.6
+  ['src/extract.ts'], // 13.0, 13.6, 12.8, 13.3
+  ['src/identity.ts', 'src/select.ts', 'src/state.ts', 'src/lifecycle.ts', 'src/paths.ts', 'src/report.ts', 'src/baseline.ts'], // 15.3, 15.1, 15.1, 15.1
+  ['src/resolve.ts', 'src/rules.ts', 'src/sections.ts', 'src/graph.ts', 'src/yaml.ts'], // 14.9, 14.3, 14.5, 13.6
+]; // and the rest: 15.9, 14.6, 15.1, 14.1
 
 export const SHARD_COUNT = ASSIGNED.length + 1;
 

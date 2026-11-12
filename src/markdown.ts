@@ -14,6 +14,8 @@
 
 import type { FrontMatterBlock, Heading, Link, MarkdownScan, ScannedLine } from './vendor/spec-core/markdown/index.js';
 
+import { slugify } from './vendor/spec-core/markdown/index.js';
+
 export { bindToItems, findClaims, findCommitReferences, scanMarkdown, slugify } from './vendor/spec-core/markdown/index.js';
 export type {
   Heading,
@@ -78,12 +80,42 @@ export function referenceLinks(scanned: ScannedDocument): Link[] {
  * `-1`, `-2` and so on for the second and later headings that slug alike. A
  * link written against the rendered page uses the anchor; one written by hand
  * uses the slug, and for any heading but a repeat the two are one.
+ *
+ * And the anchors a document declares for itself, which round 29's
+ * evaluation found reported as broken on real repositories: an `{#id}` a
+ * heading ends with, as kramdown, Pandoc and Docusaurus read it, with the
+ * slug of the heading's text before it; an `id` on any HTML element; and a
+ * `name` on an `<a>`, the two ways a README marks a place no heading is.
+ * `structure` is the text with code and comments blanked, so `<a id>` in a
+ * code sample declares nothing. In lower case, as a link is compared.
  */
-export function anchorsOf(headings: readonly Heading[]): Set<string> {
+export function anchorsOf(headings: readonly Heading[], structure = ''): Set<string> {
   const out = new Set<string>();
   for (const heading of headings) {
     out.add(heading.slug);
     out.add(heading.anchor);
+    const declared = HEADING_ID.exec(heading.text);
+    if (declared !== null) {
+      out.add(declared[1]!.toLowerCase());
+      out.add(slugify(heading.text.slice(0, declared.index)));
+    }
+  }
+  for (const tag of structure.matchAll(HTML_TAG)) {
+    const element = tag[1]!.toLowerCase();
+    for (const attribute of tag[2]!.matchAll(HTML_ANCHOR_ATTRIBUTE)) {
+      if (attribute[1]!.toLowerCase() === 'name' && element !== 'a') continue;
+      const value = (attribute[2] ?? attribute[3] ?? attribute[4]!).trim().toLowerCase();
+      if (value.length > 0) out.add(value);
+    }
   }
   return out;
 }
+
+/** `## Rationale {#why}`: an id the heading declares for itself, at its end. */
+const HEADING_ID = /\s*\{#([^\s{}]+)\}\s*$/;
+
+/** An opening HTML tag: its element and what follows the name. */
+const HTML_TAG = /<([A-Za-z][\w-]*)(\s[^<>]*)>/g;
+
+/** An `id` or `name` attribute of a tag, quoted either way or not at all. */
+const HTML_ANCHOR_ATTRIBUTE = /\s(id|name)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi;

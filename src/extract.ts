@@ -981,7 +981,7 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
   const ownItems = allItems.filter((item) => item.document === identity.id);
   const ownReferences = allReferences.filter((reference) => belongsTo(reference, identity.id, allItems));
   const misreadKeys = misreadRelationKeys(byKey, identity.id, at);
-  const anchors = anchorsOf(scanned.headings);
+  const anchors = anchorsOf(scanned.headings, scanned.masks.structure);
 
   const filled = subSpecifications.map((spec) => ({
     ...spec.extracted,
@@ -1095,7 +1095,10 @@ function buildRegion(context: RegionInput): BuiltRegion {
     frontMatter: inherited,
   };
 
-  const anchors = anchorsOf(scanned.headings.filter((h) => h.start >= region.start && h.start < region.end));
+  const anchors = anchorsOf(
+    scanned.headings.filter((h) => h.start >= region.start && h.start < region.end),
+    scanned.masks.structure.slice(region.start, region.end),
+  );
 
   // Relations a table declares by column, typed by the header the author wrote.
   const references: ReferenceCandidate[] = region.relations.map((relation) => ({

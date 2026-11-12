@@ -78,6 +78,17 @@ records.
   now holds its own CLAUDE.md and CONTRIBUTING.md to `orientation`. No exit
   code and no JSON field changes.
 
+- **An anchor a document marks for itself, or one written percent-encoded,
+  is no broken reference.** `<a id="setup">`, `<a name="install">`, an `id`
+  on any HTML element and a heading's `{#custom-id}` each mark a place a
+  link reaches, as GitHub and the documentation sites render them, and each
+  was reported as `points at an anchor that does not exist`. So was
+  `#%E6%A6%82%E8%A6%81`, which is `## 概要` as GitHub's "copy link" writes
+  it; an anchor is now read decoded where it does not bind as written.
+  Code and comments mark nothing. The slug GitHub gives a heading with an
+  underscore, `#snake_case_name`, waits for spec-core's slug. No exit code
+  and no JSON field changes.
+
 - **A word that numbers a part names no family, and a template's title
   names no file.** Spec Kit with no configuration gave 34 errors on a real
   repository, 33 of them `"Phase 2" does not resolve to any document`: one

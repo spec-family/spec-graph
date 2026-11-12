@@ -2395,11 +2395,10 @@ function bareReferencesIn(text: string): BareReference[] {
     if (NOT_A_FAMILY.has(family)) continue;
     if (family.length < 2) continue;
     const start = m.index;
-    // A token glued to a path separator or an extension is not a citation. At
-    // either end of the text the stand-in need only be neither `/` nor `.`.
-    const before = text[start - 1] ?? ' ';
-    const after = text[start + written.length] ?? ' ';
-    if (before === '/' || before === '.' || after === '/') continue;
+    // A token glued to a path separator or an extension is not a citation.
+    // Past either end of the text there is no character, so neither.
+    const before = text[start - 1];
+    if (before === '/' || before === '.' || text[start + written.length] === '/') continue;
     out.push({ text: written, start, end: start + written.length });
   }
   return out;

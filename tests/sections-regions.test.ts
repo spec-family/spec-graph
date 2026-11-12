@@ -403,6 +403,22 @@ describe('a relation cell written as prose', () => {
     for (const target of ['0099-missing', 'notes/plan', 'missing.md']) {
       expect(blocked(target).findings, target).toEqual([`broken-reference ${target}`]);
     }
+    // Space around a comma, a separator left at the end and a placeholder in
+    // a list leave it a list. Read as prose, `0099-missing` would cite nothing.
+    expect(blocked('ADR-0001, 0099-missing')).toEqual({ to: ['ADR-0001 front-matter'], findings: ['broken-reference 0099-missing'] });
+    for (const cell of ['0099-missing,', '0099-missing, TBD']) {
+      expect(blocked(cell).findings, cell).toEqual(['broken-reference 0099-missing']);
+    }
+    // An identifier written with a space is still one.
+    expect(blocked('ADR 1').to).toEqual(['ADR-0001 front-matter']);
+  });
+
+  it('records each clause as written, without the space after its semicolon', () => {
+    const { graph } = analyse({
+      ...register(...table('ID | Status | Blocked on', 'ADR-0001 | Accepted | -', 'ADR-0002 | Accepted | ADR-0001; sharding')),
+      'docs/sharding.md': '---\nstatus: accepted\n---\n\n# Sharding\n',
+    });
+    expect(graph.out('ADR-0002', ['blocked-by']).map((e) => e.raw)).toEqual(['Blocked on: ADR-0001', 'Blocked on: sharding']);
   });
 
   it('runs the way its column does', () => {

@@ -283,6 +283,22 @@ whose initial run took 32. The minutes beside each shard in
 own sweep reads whether the layout comes out as the sums say: a file is
 slower in a shard that instruments more files.
 
+That sweep, dispatched on the branch of spec-graph#170 (run 43305400432,
+of e5c7b83's source), read 96.72% over 12,234 with 401 undetected, as
+e5c7b83's did, and its static mutants ran 372,349 tests before their
+kills, within the four sweeps' 359,064 to 378,424. Seven undetected
+mutants of `identity.ts` survived there and in the three sweeps before
+e5c7b83's, which timed them out; four of `lifecycle.ts` and three static
+ones of `state.ts` timed out there and survived in all four, but for one
+that 1402f08's timed out too. Each stands at its timeout's edge, and a
+timeout counts as detected. Its runners took 25 to 33 seconds for the
+initial run, where the four's took 18 to 32, and its jobs 19.3 to 29.8
+minutes. On the 17-second runner its shards came to 12.0, 14.8, 13.3 and
+15.6: the first three 0.3 to 0.8 under their least in the four sweeps, the
+last within its range, and the longest 0.8 over the next. `lifecycle.ts`
+took 3.5 minutes beside `identity.ts`, where it took 3.3 to 3.7 among
+fifteen files: in a shard of seven it is no quicker.
+
 ### Not splitting `extract.ts`
 
 Stryker's `mutate` takes line ranges, and splitting `extract.ts` and

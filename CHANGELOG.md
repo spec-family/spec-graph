@@ -79,6 +79,19 @@ records.
   tooling only: nothing spec-graph reports changed. Upgrading: nothing to
   do.
 
+- **The suite holds the anchors a document declares to how they are
+  written.** The sweep of 1402f08 left seven mutants of `src/markdown.ts`
+  alive, four of them static, each of which runs the whole suite. Six now
+  fail a test, as applying each by hand showed: `## Rationale{#why}` with
+  no space before the id, an id the heading goes on past, `id = "x"` with
+  space around the `=`, an attribute whose name only starts with `id`, and
+  an empty `id` (two mutants). The seventh gave `anchorsOf`'s `structure` a
+  default with no tag in it, which changes nothing, so the argument has no
+  default now. One more, from GitHub's anchor, which came after that sweep,
+  fails too: a heading with no `githubAnchor`, `## See [the guide][g]`,
+  adds nothing in its place. Development only: nothing spec-graph reports
+  changed. Upgrading: nothing to do.
+
 ### Fixed
 
 - **An orientation document is held to the paths of this repository, and no

@@ -866,8 +866,15 @@ describe('what the shared scan reads differently', () => {
 describe('anchorsOf', () => {
   it('answers to each slug, and to GitHub\'s anchor for a repeat of one', () => {
     const doc = scanMarkdown(['# Notes', '## Notes', '## Notes', '## Other'].join('\n'));
-    expect([...anchorsOf(doc.headings)].sort()).toEqual(['notes', 'notes-1', 'notes-2', 'other']);
-    expect([...anchorsOf(doc.headings.slice(2))].sort()).toEqual(['notes', 'notes-2', 'other']);
+    expect([...anchorsOf(doc.headings, '')].sort()).toEqual(['notes', 'notes-1', 'notes-2', 'other']);
+    expect([...anchorsOf(doc.headings.slice(2), '')].sort()).toEqual(['notes', 'notes-2', 'other']);
+  });
+
+  it('answers to the slug alone where GitHub\'s anchor depends on more than the heading\'s line', () => {
+    // A reference link renders as the text its definition gives it, wherever
+    // that is, so the heading has no githubAnchor, and nothing stands in for one.
+    const doc = scanMarkdown('## See [the guide][g]\n\n[g]: guide.md\n');
+    expect([...anchorsOf(doc.headings, '')]).toEqual(['see-the-guideg']);
   });
 });
 

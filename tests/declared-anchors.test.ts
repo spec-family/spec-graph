@@ -9,9 +9,9 @@ import type { Source } from '../src/runner.js';
  * Round 29's evaluation found each reported as a broken reference on real
  * repositories: `<a id>` and `<a name>` marking a place no heading is,
  * kramdown's and Docusaurus's `{#custom-id}`, and `#%E6%A6%82%E8%A6%81`,
- * which is `## 概要` as GitHub's "copy link" writes it. The slug GitHub gives
- * a heading with an underscore in it, `#snake_case_name`, is spec-core's to
- * change, and is not here.
+ * which is `## 概要` as GitHub's "copy link" writes it. The anchor GitHub
+ * gives a heading, `#snake_case_name`, is spec-core's `githubAnchor`, held in
+ * github-anchors.test.ts.
  *
  * The pipeline is imported inside each test: a module that throws while it
  * loads fails no test, and a sweep reads that as a survived mutant.
@@ -29,15 +29,17 @@ const target = (body: string): Record<string, string> => ({
 });
 
 describe('an anchor an HTML element declares', () => {
-  it('is an id on any element and a name on an <a>, quoted either way or not at all', async () => {
+  it('is an id on any element and a name on an <a>, quoted either way or not at all, with space around its = or none', async () => {
     const files = {
-      ...target('<a id="setup"></a>\n\n<a name=\'install\'></a>\n\n<div id=Usage class="x">Text</div>\n\n<span title="t" id="  spaced  ">x</span>'),
-      'docs/a.md': '# A\n\nSee [1](target.md#setup), [2](target.md#install), [3](target.md#usage) and [4](target.md#SPACED).\n',
+      ...target('<a id="setup"></a>\n\n<a name=\'install\'></a>\n\n<div id=Usage class="x">Text</div>\n\n<span title="t" id="  spaced  ">x</span>\n\n<a id = "apart"></a>'),
+      'docs/a.md': '# A\n\nSee [1](target.md#setup), [2](target.md#install), [3](target.md#usage), [4](target.md#SPACED) and [5](target.md#apart).\n',
     };
     expect(await broken(files)).toEqual([]);
   });
 
-  it('is not a name on another element, an empty value, nor any attribute in code or a comment', async () => {
+  it('is not a name on another element, an attribute that only starts with id, an empty value, nor any attribute in code or a comment', async () => {
+    // `#-` is read loosely as nothing at all, so only the empty id could
+    // answer to it.
     const files = {
       ...target(
         [
@@ -49,11 +51,21 @@ describe('an anchor an HTML element declares', () => {
           '```',
           'Write `<a id="span"></a>` to mark it.',
           '<div data-id="data" aria-name="aria">x</div>',
+          '<div identity="entity">x</div>',
         ].join('\n\n'),
       ),
-      'docs/a.md': '# A\n\n[1](target.md#field) [2](target.md#hidden) [3](target.md#sample) [4](target.md#span) [5](target.md#data) [6](target.md#aria)\n',
+      'docs/a.md': '# A\n\n[1](target.md#field) [2](target.md#hidden) [3](target.md#sample) [4](target.md#span) [5](target.md#data) [6](target.md#aria) [7](target.md#entity) [8](target.md#-)\n',
     };
-    expect(await broken(files)).toEqual(['target.md#field', 'target.md#hidden', 'target.md#sample', 'target.md#span', 'target.md#data', 'target.md#aria']);
+    expect(await broken(files)).toEqual([
+      'target.md#field',
+      'target.md#hidden',
+      'target.md#sample',
+      'target.md#span',
+      'target.md#data',
+      'target.md#aria',
+      'target.md#entity',
+      'target.md#-',
+    ]);
   });
 
   it('is the region\'s that holds it, in a register', async () => {
@@ -74,12 +86,20 @@ describe('an id a heading declares', () => {
     expect(await broken(files)).toEqual([]);
   });
 
+  it('is one written against the text too, as Docusaurus reads it', async () => {
+    const files = {
+      ...target('## Rationale{#why}\n\nText.'),
+      'docs/a.md': '# A\n\n[1](target.md#why), [2](target.md#rationale).\n',
+    };
+    expect(await broken(files)).toEqual([]);
+  });
+
   it('is only one at the end of the heading', async () => {
     const files = {
-      ...target('## The {#braces} in it\n\nText.'),
-      'docs/a.md': '# A\n\n[1](target.md#braces).\n',
+      ...target('## The {#braces} in it\n\nText.\n\n## Notes {#jotted}s\n\nText.'),
+      'docs/a.md': '# A\n\n[1](target.md#braces), [2](target.md#jotted).\n',
     };
-    expect(await broken(files)).toEqual(['target.md#braces']);
+    expect(await broken(files)).toEqual(['target.md#braces', 'target.md#jotted']);
   });
 });
 

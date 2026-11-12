@@ -14,7 +14,7 @@ import { MANIFESTS, namesIn, type CommandKind } from './commands.js';
 import { extractSpecifications, type ExtractedDocument } from './extract.js';
 import { createGlobMatcher, createReferenceFilter, MAX_FILE_SIZE, pathsByName, walkFiles, type WalkedFile } from './glob.js';
 import { buildGraph, type SpecGraph } from './graph.js';
-import { isFamilyName } from './identity.js';
+import { isFamilyDirectory, isFamilyName } from './identity.js';
 import { isNegation, negationRefusal } from './config.js';
 import { dirnamePosix, toPosix } from './paths.js';
 import { resolveCorpus, type ResolvedCorpus } from './resolve.js';
@@ -506,6 +506,34 @@ export function createNameIndex(root: string): (name: string) => readonly string
     byName ??= pathsByName(root);
     return byName.get(name) ?? [];
   };
+}
+
+/**
+ * The directories at the root named as a family's documents are, `adrs` or
+ * `decisions`, that hold Markdown of which a run read none, sorted. The
+ * default patterns read `adr/`, `rfcs/` and `specs/` and none of the
+ * others, and said nothing of what they left.
+ */
+export async function unreadFamilyDirectories(root: string, read: readonly string[]): Promise<string[]> {
+  let names: string[];
+  try {
+    names = readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && isFamilyDirectory(entry.name))
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+  const unread: string[] = [];
+  for (const name of names.sort()) {
+    if (read.some((path) => path.startsWith(`${name}/`))) continue;
+    if ((await walkFiles({ root, patterns: [`${name}/**/*.md`] })).length > 0) unread.push(name);
+  }
+  return unread;
+}
+
+/** The agents' instructions at the root that `orientation` would hold to what they name. */
+export function orientationDocumentsAt(root: string): string[] {
+  return ['AGENTS.md', 'CLAUDE.md'].filter((name) => existsSync(`${root}/${name}`));
 }
 
 /**

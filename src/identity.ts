@@ -387,6 +387,11 @@ export function isExternal(target: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(target) && !/^[a-z]:[\\/]/i.test(target);
 }
 
+/** Whether a directory's name names a family of documents, in any case: `adrs`, `Decisions`. */
+export function isFamilyDirectory(name: string): boolean {
+  return FAMILY_DIRECTORIES.has(name.toLowerCase());
+}
+
 /** The family prefix implied by a document's directory, if any. */
 export function familyFromPath(posixPath: string): string | null {
   const segments = posixPath.toLowerCase().split('/');

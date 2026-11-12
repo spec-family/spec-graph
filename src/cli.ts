@@ -33,7 +33,7 @@ import {
 } from './diff.js';
 import { createGlobMatcher, isGlob, rebasePattern, underRoot, walkFiles } from './glob.js';
 import { isFamilyName } from './identity.js';
-import { analyse, DEFAULT_PATTERNS, withDiagnostics, type AnalyseOptions, type AnalysisResult } from './runner.js';
+import { analyse, DEFAULT_PATTERNS, orientationDocumentsAt, unreadFamilyDirectories, withDiagnostics, type AnalyseOptions, type AnalysisResult } from './runner.js';
 import {
   formatGithub,
   formatGitlab,
@@ -1378,6 +1378,8 @@ async function run(io: CliIO, err: (text: string) => void): Promise<number> {
         err(`${said}\n`);
       }
 
+      for (const note of await unreadNotes(root, result.files, patterns === DEFAULT_PATTERNS, file.orientation === undefined)) err(note);
+
       // Recording is not checking. It writes down what is wrong today so that
       // tomorrow can be compared against it, and says nothing about whether
       // today is acceptable - so it reports what it wrote and exits clean.
@@ -1497,6 +1499,36 @@ async function run(io: CliIO, err: (text: string) => void): Promise<number> {
  * directory the command was typed in, and this is a slice rather than path
  * arithmetic.
  */
+/**
+ * What a check read nothing of that it would have read if asked, said on
+ * stderr after it read: a run that reports a consistent graph says nothing
+ * of what it never opened.
+ *
+ * A directory at the root named as a family's documents are, `adrs/` or
+ * `decisions/`, that holds Markdown the default patterns do not reach;
+ * only where the run read the default patterns, since a list of its own
+ * says what it means to read. And `AGENTS.md` or `CLAUDE.md` at the root where `orientation` is not
+ * configured: the paths and commands an agent is told about are what
+ * orientation holds to the repository, and without it none is looked for.
+ */
+async function unreadNotes(root: string, read: readonly string[], defaultPatterns: boolean, noOrientation: boolean): Promise<string[]> {
+  const notes: string[] = [];
+  const directories = defaultPatterns ? await unreadFamilyDirectories(root, read) : [];
+  if (directories.length > 0) {
+    const named = directories.map((directory) => `${directory}/`);
+    notes.push(
+      `spec-graph: ${listed(named, 'and')} ${named.length === 1 ? 'holds' : 'hold'} Markdown the default patterns do not read\n  name ${named.length === 1 ? 'it' : 'them'} in "patterns" to check ${named.length === 1 ? 'it' : 'them'}: ${directories.map((directory) => `"${directory}/**/*.md"`).join(', ')}\n`,
+    );
+  }
+  const agents = noOrientation ? orientationDocumentsAt(root) : [];
+  if (agents.length > 0) {
+    notes.push(
+      `spec-graph: ${listed(agents, 'and')} ${agents.length === 1 ? 'is' : 'are'} here and "orientation" is not configured, so no path or command ${agents.length === 1 ? 'it names' : 'they name'} is looked for\n  add "orientation": { "files": [${agents.map((name) => `"${name}"`).join(', ')}] } to the configuration\n`,
+    );
+  }
+  return notes;
+}
+
 function below(root: string, from: string): string {
   // `from` is where the run starts as `path.resolve` gives it, which ends in
   // no separator but at a filesystem root, `/` or `C:\`, and there `below` is

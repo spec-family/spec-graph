@@ -97,7 +97,7 @@ export function referenceLinks(scanned: ScannedDocument): Link[] {
  * `structure` is the text with code and comments blanked, so `<a id>` in a
  * code sample declares nothing. In lower case, as a link is compared.
  */
-export function anchorsOf(headings: readonly Heading[], structure = ''): Set<string> {
+export function anchorsOf(headings: readonly Heading[], structure: string): Set<string> {
   const out = new Set<string>();
   for (const heading of headings) {
     out.add(heading.slug);

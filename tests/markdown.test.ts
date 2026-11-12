@@ -866,8 +866,8 @@ describe('what the shared scan reads differently', () => {
 describe('anchorsOf', () => {
   it('answers to each slug, and to GitHub\'s anchor for a repeat of one', () => {
     const doc = scanMarkdown(['# Notes', '## Notes', '## Notes', '## Other'].join('\n'));
-    expect([...anchorsOf(doc.headings)].sort()).toEqual(['notes', 'notes-1', 'notes-2', 'other']);
-    expect([...anchorsOf(doc.headings.slice(2))].sort()).toEqual(['notes', 'notes-2', 'other']);
+    expect([...anchorsOf(doc.headings, '')].sort()).toEqual(['notes', 'notes-1', 'notes-2', 'other']);
+    expect([...anchorsOf(doc.headings.slice(2), '')].sort()).toEqual(['notes', 'notes-2', 'other']);
   });
 });
 

@@ -1618,7 +1618,7 @@ describe('GitHub workflow commands', () => {
       .trimEnd()
       .split(/\r?\n/)
       .map((line) => {
-        const match = /^::(\w+) file=([^,]*),line=(\d+),title=([^:]*)::/.exec(line);
+        const match = /^::(\w+) file=([^,]*),line=(\d+),col=\d+,title=([^:]*)::/.exec(line);
         return match ? match.slice(1) : [line];
       });
 

@@ -49,6 +49,13 @@ records.
   `--format=json`, where that was an unknown option. Nothing is renamed: a
   report, and the JSON, still print `warn` and `info` (round 29's D8).
 
+- **A code scanning alert says where the reasoning is, and an annotation
+  where the citation is.** Each built-in rule in the SARIF driver carries
+  `helpUri` and `help`, the decision record behind it, which code scanning
+  shows on the alert; a project rule has neither. `--format github` writes
+  `col=` beside `line=`. Both add fields: no exit code and no JSON field
+  changes.
+
 ### Changed
 
 - **Markdown between 4 and 20 MiB is now read.** spec-graph read no file

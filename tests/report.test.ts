@@ -576,10 +576,10 @@ describe('github workflow commands', () => {
   };
   const reporting = (diagnostics: Diagnostic[]): AnalysisResult => ({ ...result(), diagnostics });
 
-  it('is one command per finding, on its file and line, titled by its rule, with the hint', () => {
+  it('is one command per finding, on its file, line and column, titled by its rule, with the hint', () => {
     const diagnostic = result().diagnostics[0] as Diagnostic;
     expect(formatGithub(result())).toBe(
-      `::error file=docs/adr/0004-cache.md,line=${diagnostic.at.span.start.line},title=ghost-handover::${diagnostic.message}. ${diagnostic.hint}\n`,
+      `::error file=docs/adr/0004-cache.md,line=${diagnostic.at.span.start.line},col=${diagnostic.at.span.start.column},title=ghost-handover::${diagnostic.message}. ${diagnostic.hint}\n`,
     );
   });
 
@@ -621,7 +621,7 @@ describe('github workflow commands', () => {
     ).split('\n');
     // GitHub's rules: `%`, CR and LF everywhere, and `:` and `,` in a property,
     // with `%` first so an escape is never escaped again.
-    expect(line).toBe('::error file=docs/a%2Cb%3Ac%25.md,line=2,title=project%3Aa%2Cb::100%25 of%0D%0Athe links. fix: one, then two');
+    expect(line).toBe('::error file=docs/a%2Cb%3Ac%25.md,line=2,col=1,title=project%3Aa%2Cb::100%25 of%0D%0Athe links. fix: one, then two');
   });
 });
 

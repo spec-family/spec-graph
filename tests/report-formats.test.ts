@@ -570,6 +570,31 @@ describe('SARIF', () => {
     expect(described['project:both-halves']).toEqual(['document[id=ADR-0002] | document[phase=draft]', 'warning']);
     expect(described['project:quiet-by-default']).toEqual(['document[phase=draft]', 'none']);
     expect(run.results.find((entry) => entry.ruleId === 'project:quiet-by-default')?.level).toBe('note');
+    // A project rule's reasoning is the repository's, and has no page here.
+    const raw = JSON.parse(formatSarif(report, report.graph, { projectRules: rules })) as { runs: { tool: { driver: { rules: Record<string, unknown>[] } } }[] };
+    const project = raw.runs[0]!.tool.driver.rules.filter((rule) => String(rule['id']).startsWith('project:'));
+    expect(project.map((rule) => ['helpUri' in rule, 'help' in rule])).toEqual([
+      [false, false],
+      [false, false],
+    ]);
+  });
+
+  it('sends a reader of a built-in rule to the decision behind it, as rules --explain does', async () => {
+    const { RULE_DECISIONS } = await import('../src/rules.js');
+    const report = result(MIXED);
+    const raw = JSON.parse(formatSarif(report, report.graph)) as {
+      runs: { tool: { driver: { rules: { id: keyof typeof RULE_DECISIONS; helpUri: string; help: { text: string; markdown: string } }[] } } }[];
+    };
+    const rules = raw.runs[0]!.tool.driver.rules;
+    expect(rules.length).toBeGreaterThan(2);
+    for (const rule of rules) {
+      const uri = `https://github.com/spec-family/spec-graph/blob/main/${RULE_DECISIONS[rule.id]}`;
+      expect([rule.helpUri, rule.help.text, rule.help.markdown]).toEqual([
+        uri,
+        `${RULE_DESCRIPTIONS[rule.id]}. The decision behind the rule: ${uri}`,
+        `${RULE_DESCRIPTIONS[rule.id]}. [The decision behind the rule](${uri}).`,
+      ]);
+    }
   });
 
   it('needs no options, and then marks nothing as raised by --strict', () => {

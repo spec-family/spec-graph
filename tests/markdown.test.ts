@@ -869,6 +869,13 @@ describe('anchorsOf', () => {
     expect([...anchorsOf(doc.headings, '')].sort()).toEqual(['notes', 'notes-1', 'notes-2', 'other']);
     expect([...anchorsOf(doc.headings.slice(2), '')].sort()).toEqual(['notes', 'notes-2', 'other']);
   });
+
+  it('answers to the slug alone where GitHub\'s anchor depends on more than the heading\'s line', () => {
+    // A reference link renders as the text its definition gives it, wherever
+    // that is, so the heading has no githubAnchor, and nothing stands in for one.
+    const doc = scanMarkdown('## See [the guide][g]\n\n[g]: guide.md\n');
+    expect([...anchorsOf(doc.headings, '')]).toEqual(['see-the-guideg']);
+  });
 });
 
 describe('slugify', () => {

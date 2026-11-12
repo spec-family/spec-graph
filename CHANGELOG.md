@@ -87,8 +87,10 @@ records.
   space around the `=`, an attribute whose name only starts with `id`, and
   an empty `id` (two mutants). The seventh gave `anchorsOf`'s `structure` a
   default with no tag in it, which changes nothing, so the argument has no
-  default now. Development only: nothing spec-graph reports changed.
-  Upgrading: nothing to do.
+  default now. One more, from GitHub's anchor, which came after that sweep,
+  fails too: a heading with no `githubAnchor`, `## See [the guide][g]`,
+  adds nothing in its place. Development only: nothing spec-graph reports
+  changed. Upgrading: nothing to do.
 
 ### Fixed
 

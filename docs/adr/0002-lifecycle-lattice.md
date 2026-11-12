@@ -211,6 +211,50 @@ as spec-guard refuses it: it names no document and reads as applied.
 Without the key, or with `false`, every status is read as before, so it
 arrives in a minor release, with nothing to change on upgrade.
 
+*Amended 2026-11-12.* **A status is read as a history writes it, a template
+offers it and a table written across holds it.** Each was read on round
+29's evaluation of real repositories, and each read wrong.
+
+- **A status section is read whole for its retirement.** adr-tools writes
+  `Accepted` under `## Status`, and `Superseded by [2. Second](...)` below
+  it when a later decision replaces the first; a list writes `- Proposed`,
+  `- Accepted`, `- Superseded by ADR-0002`. Read from the first line, each
+  was live, and the supersession the line below named was reported as one
+  its own section had not acknowledged. Retirement is terminal, so a later
+  paragraph or list entry that opens with a retirement word is the status,
+  and names the successor. Only one that opens with it: `The option
+  deprecated in ADR-0002 stays` mentions a retirement, and so does a line
+  of a paragraph that wraps to begin with the word. A first line that
+  retires the document is kept over any later one.
+- **A status word denied is none.** `Not Accepted` and `Not implemented`
+  were active, read from the word they deny. A word after `not`, or after
+  `not yet`, is not read; the phrases a row spells with the denial,
+  `not-planned` and `not-yet-decided`, still are. The denial is a table,
+  `NEGATIONS` in `src/lifecycle.ts`.
+- **A template's status is none.** MADR's template writes
+  `{proposed | rejected | accepted | deprecated | … | superseded by ADR-0123}`
+  and was retired, superseded by an `ADR-0123` nobody wrote. A value that
+  opens with a brace and offers a choice with a bar inside it is read as no
+  status and names no successor, closed or not, since MADR 4.0's template
+  never closes it. A file named a template, the word whole in its name, as
+  `adr-template.md` and `0000-template.md` are, declares no status: its
+  status is the placeholder.
+- **Struck text is what the status was.** `~~Proposed~~ Accepted` is
+  accepted, `~~Superseded by ADR-1~~ Accepted` names no successor, and a
+  label whose value opens with struck text is read from the word after it.
+- **A table written across holds the status in its one row.** `| Status |
+  Date |` over `| Accepted | 2026-03-01 |` was read down, and its status
+  was the word "Date". A table above the first section whose header names
+  a status key, whose other headers are names and no status, and which has
+  one row alone, holds the status in that row under the key, whatever its
+  number of columns. More rows are a list of other things.
+
+Each reports less or reads a status where an unknown one was, and none
+changes what a JSON field or an exit code means. The list form MADR 2
+writes, `* Status: accepted` under the title, is not read: spec-guard does
+not read it either, and spec-core's ADR-0005 says where a status is read
+for both.
+
 ## Open Questions
 
 - [ ] Should `frozen` and `retired` be distinguishable in the `receptivity`

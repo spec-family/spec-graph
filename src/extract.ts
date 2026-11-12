@@ -29,7 +29,7 @@ import {
   ID_KEYS,
   NOT_A_FAMILY_OF_DOCUMENTS,
 } from './identity.js';
-import { isStatusHeading, phaseFromPath, phaseOf, STATUS_KEYS, supersessionTargetsIn } from './lifecycle.js';
+import { isStatusHeading, isTemplateFile, opensRetired, phaseFromPath, phaseOf, STATUS_KEYS, supersessionTargetsIn } from './lifecycle.js';
 import {
   anchorsOf,
   findClaims,
@@ -891,8 +891,12 @@ export function extractDocument(input: ExtractInput): ExtractedDocument | null {
 
   // A register's rows and sections each write a status of their own, in a
   // cell or a section, and are read as before: what `ignoreStatus` names is
-  // the file, and what it leaves unread is where the file wrote its own.
-  const status = input.statusUnread === true ? NO_STATUS : readStatus(scanned, byKey, nodeDirective, index, file, regions);
+  // the file, and what it leaves unread is where the file wrote its own. A
+  // template's status is its placeholder: MADR's `adr-template.md` offers
+  // every status there is, and the supersession among them named an
+  // ADR-0123 nobody wrote.
+  const status =
+    input.statusUnread === true || isTemplateFile(input.path) ? NO_STATUS : readStatus(scanned, byKey, nodeDirective, index, file, regions);
   const pathPhase = phaseFromPath(input.path);
   // A record is a categorical statement about what the file *is*, made by
   // configuration or by an explicit directive, so it outranks a status word
@@ -1257,14 +1261,39 @@ function statusTableRows(scanned: ScannedDocument): (TableCell | undefined)[] {
     // Tables come in order, and none starts on a heading's line, so `>` would
     // stop at the same table.
     if (table.start >= body) break;
-    if (table.headers.length !== 2 || isRegisterTable(table)) continue;
+    if (isRegisterTable(table)) continue;
+    const across = statusAcross(table);
+    if (across !== null) {
+      found.push(across);
+      continue;
+    }
+    if (table.headers.length !== 2) continue;
     for (const cells of [table.headers, ...table.rows.map((row) => row.cells)]) {
       // A row always has a first cell: a line with no cell ends the table.
-      const key = cells[0]!;
-      if (STATUS_TABLE_KEYS.has(key.text.replace(/[*_]/g, '').toLowerCase())) found.push(cells[1]);
+      if (isStatusKey(cells[0]!)) found.push(cells[1]);
     }
   }
   return found;
+}
+
+const isStatusKey = (cell: TableCell): boolean => STATUS_TABLE_KEYS.has(cell.text.replace(/[*_]/g, '').toLowerCase());
+
+/**
+ * The status a table written across holds, and nothing for a row written
+ * short: `| Status | Date |` over the one row `| Accepted | 2026-03-01 |`.
+ * Read down, as a table of keys and values is, its status was the word
+ * "Date". `null` where the table is not one written across: it has one row
+ * alone, a status key heads a column, and every other header is a name of
+ * its own: not empty, as a header over keys and values can be, and no status,
+ * as `| Status | Accepted |` written as the header row is.
+ */
+function statusAcross(table: ScannedDocument['tables'][number]): TableCell | undefined | null {
+  if (table.rows.length !== 1) return null;
+  const column = table.headers.findIndex(isStatusKey);
+  if (column === -1) return null;
+  const named = (cell: TableCell): boolean => cell.text.length > 0 && phaseOf(cell.text) === 'unknown';
+  if (!table.headers.every((cell, at) => at === column || named(cell))) return null;
+  return table.rows[0]!.cells[column];
 }
 
 /**
@@ -1310,31 +1339,60 @@ function statusLabel(
     const written = scanned.text.slice(line.end - value.length, line.end);
     const raw = written.trim();
     const start = line.end - written.trimStart().length;
-    return { raw, text, readable: /^[*_]*[a-zA-Z]/.test(text), start, end: start + raw.length };
+    // Struck text is what the status was, and the word after it what it is:
+    // `~~Proposed~~ Accepted` opens with a word once the strike is read.
+    const readable = /^[*_]*[a-zA-Z]/.test(text.replace(/^(?:~~[^~\n]*~~\s*)+/, ''));
+    return { raw, text, readable, start, end: start + raw.length };
   }
   return null;
 }
 
-/** The first non-blank line under a `## Status` heading. */
+/**
+ * The status a `## Status` section declares: its first non-blank line, or
+ * the first line after it that opens with a word that retires a document.
+ *
+ * A status section is often a history. adr-tools writes `Accepted`, and
+ * `Superseded by [2. Second](0002-second.md)` below it when a later decision
+ * replaces this one; a list writes `- Proposed`, `- Accepted`, `- Superseded
+ * by ADR-0002`. Read from its first line, each was a live document that the
+ * line below it said was retired, and the supersession it named was reported
+ * as one its own section had not acknowledged. Retirement is terminal, so a
+ * paragraph or an entry that opens with it wins (ADR-0002, amended
+ * 2026-11-12). Only one that opens with it: a sentence that mentions an
+ * approach rejected elsewhere retires nothing, nor does a line of it that
+ * wraps to begin with the word.
+ */
 function statusSectionBody(
   scanned: ScannedDocument,
   headingLine: number,
 ): { text: string; start: number; end: number } | null {
+  let first: { text: string; start: number; end: number } | null = null;
+  let fresh = true;
   for (const line of scanned.lines) {
     if (line.line <= headingLine) continue;
+    if (line.blank) fresh = true;
     if (line.blank || isOnlyComment(scanned, line)) continue;
-    if (!isMarkdownLine(line)) return null;
-    // A heading immediately after means the section is empty - a setext one
-    // too, whose text line does not start with `#` and read as the status.
-    if (opensHeading(scanned, line.line)) return null;
+    // Code or a heading ends the section, and before any line it leaves it
+    // empty - a setext heading too, whose text line does not start with `#`
+    // and read as the status.
+    if (!isMarkdownLine(line) || opensHeading(scanned, line.line)) return first;
     const trimmed = line.content.trim();
     const offset = line.contentStart + line.content.indexOf(trimmed);
-    // Bullet lists under Status are a status history; take the first entry.
+    // A list under Status is a status history, read entry by entry.
     const cleaned = trimmed.replace(/^[-*+]\s+/, '');
     const start = offset + (trimmed.length - cleaned.length);
-    return { text: cleaned, start, end: start + cleaned.length };
+    const reading = { text: cleaned, start, end: start + cleaned.length };
+    const opens = fresh || cleaned !== trimmed;
+    fresh = false;
+    if (first === null) {
+      // A first line that retires the document already says what any later one could.
+      if (phaseOf(cleaned) === 'retired') return reading;
+      first = reading;
+      continue;
+    }
+    if (opens && opensRetired(cleaned)) return reading;
   }
-  return null;
+  return first;
 }
 
 /* -------------------------------------------------------------------------- */

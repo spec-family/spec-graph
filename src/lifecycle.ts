@@ -185,6 +185,30 @@ const RETIRING_DIRECTORIES: ReadonlySet<string> = new Set([
  */
 const RECORD_DIRECTORIES: ReadonlySet<string> = new Set(['changes/archive']);
 
+/**
+ * Words that turn the status word after them into none: `Not Accepted` and
+ * `not implemented` read as active, from the very word they deny. A word
+ * after one, or after one and `yet`, is not read; the phrases a row above
+ * spells with one, `not-planned` and `not-yet-decided`, still are.
+ */
+const NEGATIONS: ReadonlySet<string> = new Set(['not']);
+
+/**
+ * A status a template offers as a choice: MADR writes
+ * `{proposed | rejected | accepted | deprecated | … | superseded by ADR-0123}`
+ * in its template, and read as a status it was retired, superseded by an
+ * ADR-0123 nobody wrote. A brace opens it and a bar is inside, closed or not:
+ * MADR 4.0's own template never closes the brace.
+ */
+const TEMPLATE_CHOICE = /^[\s*_`"']*\{[^}\n]*\|/;
+
+/**
+ * A file named a template is one: `adr-template.md`, `0000-template.md`,
+ * `template.md`. Its status is the template's placeholder, and is not read.
+ * The word whole, so `templates` and `templating` are not one.
+ */
+const TEMPLATE_FILE = /(?:^|[^\p{L}\p{N}])template(?:[^\p{L}\p{N}]|$)/iu;
+
 /** Front-matter keys that may carry a status, in order of preference. */
 export const STATUS_KEYS: readonly string[] = ['status', 'state', 'stage', 'lifecycle', 'phase', 'adr-status'];
 
@@ -202,7 +226,8 @@ export function normaliseStatus(raw: string): string {
   // An underscore between two letters joins two words - `not_planned`,
   // `in_progress` - where one at either end of a word is emphasis. Stripped
   // with the emphasis, it ran the two words into one that is neither.
-  return raw
+  // Struck text is what the status was: `~~Proposed~~ Accepted` is accepted.
+  return withoutStruck(raw)
     .replace(/<[^>]*>/g, ' ')
     .replace(/(?<=[\p{L}\p{N}])_(?=[\p{L}\p{N}])/gu, ' ')
     .replace(/[`*_~"'#]/g, '')
@@ -224,8 +249,12 @@ export function normaliseStatus(raw: string): string {
  */
 export function phaseOf(raw: string | null | undefined): Phase {
   if (raw === null || raw === undefined) return 'unknown';
+  if (isTemplateChoice(raw)) return 'unknown';
   const text = normaliseStatus(raw);
-  const words = new Set(text.split(' '));
+  const tokens = text.split(' ');
+  const denied = (at: number): boolean =>
+    NEGATIONS.has(tokens[at - 1] ?? '') || (tokens[at - 1] === 'yet' && NEGATIONS.has(tokens[at - 2] ?? ''));
+  const words = new Set(tokens.filter((_, at) => !denied(at)));
   const hyphenated = text.replace(/ /g, '-');
 
   for (const [phase, terms] of VOCABULARY) {
@@ -238,6 +267,35 @@ export function phaseOf(raw: string | null | undefined): Phase {
     }
   }
   return 'unknown';
+}
+
+/**
+ * Whether a line of a status section opens with a word that retires a
+ * document: the history adr-tools writes, `Accepted` and then `Superseded by
+ * [2. Second](0002-second.md)` below it, is retired. Only the opening word, so a
+ * sentence that mentions an approach rejected elsewhere retires nothing.
+ */
+export function opensRetired(raw: string): boolean {
+  if (isTemplateChoice(raw)) return false;
+  const text = normaliseStatus(raw);
+  const terms = VOCABULARY.find(([phase]) => phase === 'retired')![1];
+  return terms.some((term) => `${text.replace(/ /g, '-')}-`.startsWith(`${term}-`));
+}
+
+/** Whether a status is a template's offer of choices rather than one of them. */
+export function isTemplateChoice(raw: string): boolean {
+  return TEMPLATE_CHOICE.test(raw);
+}
+
+/** Whether a file's name says it is a template, whose status is a placeholder. */
+export function isTemplateFile(posixPath: string): boolean {
+  // The extension is no word of the name, and a word of it never holds a dot.
+  return TEMPLATE_FILE.test(posixPath.slice(posixPath.lastIndexOf('/') + 1).replace(/\.[^.]*$/, ''));
+}
+
+/** A status with its struck text taken out. */
+function withoutStruck(raw: string): string {
+  return raw.replace(/~~[^~\n]*~~/g, ' ');
 }
 
 /** Whether a document in this phase can take on a new open obligation. */
@@ -297,10 +355,12 @@ export function phaseFromPath(posixPath: string): Phase {
  */
 export function supersessionTargetsIn(raw: string): string[] {
   const out: string[] = [];
+  // A template's choices name no successor, and struck text names none any more.
+  if (isTemplateChoice(raw)) return out;
   // The tail runs to the end of the line, not of the string: a status that
   // wraps onto a second line still names its successor on the first.
   const pattern = /(?:super[sc]eded|replaced|obsoleted)\s*(?:by|with|through)?\s*[:\-–—]?\s*(.+)/i;
-  const match = pattern.exec(raw.replace(/[`*_]/g, ''));
+  const match = pattern.exec(withoutStruck(raw).replace(/[`*_]/g, ''));
   if (!match) return out;
   const tail = match[1] as string;
   // A list punctuated full-width, `ADR-0003，ADR-0004`, is split as one

@@ -1102,16 +1102,23 @@ function buildRegion(context: RegionInput): BuiltRegion {
   );
 
   // Relations a table declares by column, typed by the header the author wrote.
-  const references: ReferenceCandidate[] = region.relations.map((relation) => ({
-    kind: relation.kind,
-    from: document.id,
-    target: relation.target,
-    origin: 'front-matter',
-    declaredAt: at(relation.start, relation.end),
-    raw: `${relation.column}: ${relation.target}`,
-    inverted: relation.inverted,
-    opportunistic: false,
-  }));
+  // A target the cell lists is as deliberate as front matter. A clause of
+  // prose there cites what prose cites, the identifiers written in it, and
+  // failing those it may be a document's name; neither is reported unless
+  // prose would be.
+  const references = region.relations.flatMap((relation): ReferenceCandidate[] => {
+    const declared = {
+      kind: relation.kind,
+      from: document.id,
+      declaredAt: at(relation.start, relation.end),
+      raw: `${relation.column}: ${relation.target}`,
+      inverted: relation.inverted,
+    };
+    if (!relation.prose) return [{ ...declared, target: relation.target, origin: 'front-matter', opportunistic: false }];
+    const cited = bareReferencesIn(relation.target);
+    if (cited.length === 0) return [{ ...declared, target: relation.target, origin: 'front-matter', opportunistic: true }];
+    return cited.map((bare) => ({ ...declared, target: bare.text, origin: 'text', opportunistic: true }));
+  });
 
   return {
     region,
@@ -2371,7 +2378,11 @@ function findBareReferences(scanned: ScannedDocument, links: readonly Link[]): B
     cursor = end;
   }
   text += source.slice(cursor);
+  return bareReferencesIn(text);
+}
 
+/** The identifiers a text cites as prose does, with their offsets in it. */
+function bareReferencesIn(text: string): BareReference[] {
   const out: BareReference[] = [];
   for (const m of text.matchAll(BARE_REF)) {
     const written = m[0];
@@ -2384,11 +2395,10 @@ function findBareReferences(scanned: ScannedDocument, links: readonly Link[]): B
     if (NOT_A_FAMILY.has(family)) continue;
     if (family.length < 2) continue;
     const start = m.index;
-    // A token glued to a path separator or an extension is not a citation. At
-    // either end of the text the stand-in need only be neither `/` nor `.`.
-    const before = text[start - 1] ?? ' ';
-    const after = text[start + written.length] ?? ' ';
-    if (before === '/' || before === '.' || after === '/') continue;
+    // A token glued to a path separator or an extension is not a citation.
+    // Past either end of the text there is no character, so neither.
+    const before = text[start - 1];
+    if (before === '/' || before === '.' || text[start + written.length] === '/') continue;
     out.push({ text: written, start, end: start + written.length });
   }
   return out;

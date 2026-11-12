@@ -209,6 +209,22 @@ records.
   answers as it did at every offset. What extraction returns is byte for
   byte as before; no exit code and no JSON field changes.
 
+- **A sentence in a relation column is prose, not a list of documents.** A
+  register row's `Blocked on`, `Depends on` or `Blocks` cell was split at
+  every `,`, `;` and `and`, and each piece resolved as a document:
+  `Finalization of ADR-032`, `ADR-040 clause 2` and `Nothing — implementable
+  now` were a broken reference each, `Measurement against a live replica;
+  absent, the metric is observed and not alarmed` four, and one corpus's
+  plans 13. A clause between semicolons is a list now only where each piece
+  between its commas is an identifier or a word with a digit, a dot or a
+  slash in it, as `0007-sharding` and `adr/0007.md` are. Any other is
+  prose: it relates the row to the identifiers written in it, `ADR-032`
+  there, or else to a document it names whole, and is reported only where
+  prose would be, for an identifier in a family the corpus has. A plain
+  word, `sharding`, still reaches the document of that name, and is no
+  longer reported where none has it. It only reports less: no exit code and
+  no JSON field changes.
+
 ## 0.25.0
 
 `ignoreStatus` names the documents whose own status is not read, as

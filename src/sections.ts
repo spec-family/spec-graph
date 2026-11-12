@@ -52,6 +52,12 @@ export interface TableRelation {
   readonly end: number;
   /** The column header that gave it its meaning, for the diagnostic. */
   readonly column: string;
+  /**
+   * A clause of prose rather than a target the cell lists: `Finalization of
+   * ADR-032`, `Nothing - implementable now`. It names what it cites as prose
+   * does, and nothing it does not reach.
+   */
+  readonly prose: boolean;
 }
 
 export interface SpecificationRegion {
@@ -293,6 +299,7 @@ export function findTableRegions(scanned: ScannedDocument): SpecificationRegion[
             start: target.start,
             end: target.end,
             column: (table.headers[column] as TableCell).text,
+            prose: target.prose,
           });
         }
       }
@@ -390,29 +397,47 @@ function normaliseHeader(text: string): string {
     .trim();
 }
 
-/** Splits a cell into the identifiers it lists, keeping each one's offset. */
-function splitTargets(cell: TableCell): { text: string; start: number; end: number }[] {
-  const out: { text: string; start: number; end: number }[] = [];
+/**
+ * Splits a cell into the targets it lists and the clauses of prose it holds,
+ * keeping each one's offset.
+ *
+ * A cell in a relation column is usually a list, `ADR-0001, ADR-0002 and
+ * ADR-0003`, and sometimes a sentence: `Finalization of ADR-032`, `Measurement
+ * against a live replica; absent, the metric is observed and not alarmed`.
+ * Split at its commas, the sentence was four targets, each a broken reference.
+ * So a clause, the text between semicolons, is a list only when every piece
+ * between its commas and `and`s is a target's shape; any other clause is prose
+ * and stays whole.
+ */
+function splitTargets(cell: TableCell): { text: string; start: number; end: number; prose: boolean }[] {
+  const out: { text: string; start: number; end: number; prose: boolean }[] = [];
   // Every target is reported at the cell's span. A cell is short, and an offset
   // recovered back through a flattening is an offset that can drift.
-  const push = (raw: string): void => {
+  const push = (raw: string, prose: boolean): void => {
     const target = raw.trim();
     if (target.length === 0 || EMPTY_CELL.test(target)) return;
-    out.push({ text: target, start: cell.start, end: cell.end });
+    out.push({ text: target, start: cell.start, end: cell.end, prose });
   };
-  const prose = (segment: string): void => {
-    for (const piece of flatten(segment).split(/\s*(?:[,;]|\band\b)\s*/i)) push(piece);
+  const read = (segment: string): void => {
+    for (const clause of flatten(segment).split(';')) {
+      const pieces = clause.split(/,|\band\b/i).map((piece) => piece.trim());
+      if (pieces.every((piece) => piece.length === 0 || EMPTY_CELL.test(piece) || isListed(piece))) {
+        for (const piece of pieces) push(piece, false);
+      } else {
+        push(clause, true);
+      }
+    }
   };
 
   // Links are taken out whole rather than flattened with everything else: a
   // path would otherwise be cut in half by its own slash, and its underscores
   // stripped as emphasis.
-  // `matchAll` scans a copy of the pattern. `prose` calls `flatten`, which
+  // `matchAll` scans a copy of the pattern. `read` calls `flatten`, which
   // drives the shared one, and one /g regex advanced from inside its own scan
   // resets its cursor and never terminates.
   let last = 0;
   for (const match of cell.text.matchAll(MARKDOWN_LINK)) {
-    prose(cell.text.slice(last, match.index));
+    read(cell.text.slice(last, match.index));
     // Both groups always take part in a match, so the `?? ''` below and in the
     // label are for the type.
     const destination = (match[2] ?? '').trim();
@@ -420,13 +445,27 @@ function splitTargets(cell: TableCell): { text: string; start: number; end: numb
     // target is called (ADR-0008). In a column the author has already typed,
     // the destination is the claim - `[see](adr/0050.md)` is a dependency on
     // that file, not on the word "see". An external or in-page destination
-    // names no document here, so the label is what is left to try.
+    // names no document here, so the label is what is left to try, and read
+    // as any other text in the cell: `[ADR-0001](https://...)` is a target,
+    // `[the tracking issue](https://...)` prose.
     const local = destination.length > 0 && !destination.startsWith('#') && !isExternal(destination);
-    push(local ? destination : (match[1] ?? ''));
+    if (local) push(destination, false);
+    else read(match[1] ?? '');
     last = match.index + match[0].length;
   }
-  prose(cell.text.slice(last));
+  read(cell.text.slice(last));
   return out;
+}
+
+/**
+ * Whether a piece of a cell is written as a target is: an identifier,
+ * `ADR-0007`, `ADR 7` or `S-1`, or one word with a digit, a dot or a slash in
+ * it, as a file's name or a path has, `0007-sharding` or `adr/0007.md`. A
+ * plain word, `sharding` or `Nothing`, is as likely a word as a name, so it
+ * is read as prose, which still reaches a document of that name.
+ */
+function isListed(piece: string): boolean {
+  return parsePrefixedRef(piece) !== null || /^[^\s]*[\d./][^\s]*$/.test(piece);
 }
 
 /** Reduces a cell to its text: link labels rather than link syntax. */

@@ -29,6 +29,15 @@ header you wrote:
 | ADR-0002 | Cache eviction | Accepted   | ADR-0001   | -             |
 ```
 
+A relation cell is a list, split at `,`, `;` and `and`: identifiers, paths
+and links, each as deliberate as front matter. A sentence there is prose,
+not a list — `Finalization of ADR-032`, `Nothing — implementable now`. The
+text between semicolons is a clause, and it is prose when any piece between
+its commas is neither an identifier nor a word with a digit, a dot or a slash
+in it, as a file's name or a path has. Prose relates the row to the
+identifiers written in it, `ADR-032` there, or else to the document the
+whole clause names, and is reported only where prose would be.
+
 Findings point at the declaring cell, not at the file. A cell that is empty or
 holds only a placeholder — `-`, `—`, `n/a`, `none`, `nil`, `TBD` — says nothing.
 A status cell is read as a status line under a heading is, so

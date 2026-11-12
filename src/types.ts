@@ -535,6 +535,29 @@ export interface MisreadKey {
 
 export type Severity = 'error' | 'warn' | 'info' | 'off';
 
+/**
+ * The severity a word names: `error`, `warn`, `info` or `off`, or `warning`
+ * and `note`, the words spec-guard and spec-harness print for the middle two,
+ * which each tool of the family takes for the other's (round 29's D8; spec-
+ * core's ADR-0005). `null` for any other word, which is refused where it is
+ * written. A report still prints `warn` and `info`: what a JSON field holds
+ * does not change.
+ */
+export function severityNamed(word: unknown): Severity | null {
+  switch (word) {
+    case 'error':
+    case 'warn':
+    case 'info':
+    case 'off':
+      return word;
+    case 'warning':
+      return 'warn';
+    case 'note':
+      return 'info';
+  }
+  return null;
+}
+
 export type RuleId =
   | 'ghost-handover'
   | 'stale-premise'

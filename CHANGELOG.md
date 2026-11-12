@@ -42,6 +42,13 @@ records.
   configuration that would check it. Both go to stderr, in every format,
   and change no exit code.
 
+- **The spellings the family's other tools write are taken.** A severity of
+  `warning` or `note` is `warn` or `info`, in `--rule`, in `severities` and
+  in a project rule's `severity`, where each was refused; `--format pretty`
+  is `--format human`; and an option that takes a value takes it after `=`,
+  `--format=json`, where that was an unknown option. Nothing is renamed: a
+  report, and the JSON, still print `warn` and `info` (round 29's D8).
+
 ### Changed
 
 - **Markdown between 4 and 20 MiB is now read.** spec-graph read no file

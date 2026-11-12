@@ -29,7 +29,7 @@
 import { attributesOf, parseQuery, QueryError, SELECTOR_KEYS, type Match, type QuerySpec } from './select.js';
 import type { SpecGraph } from './graph.js';
 import type { ProjectRuleId, Severity } from './types.js';
-import { PROJECT_RULE_PREFIX } from './types.js';
+import { PROJECT_RULE_PREFIX, severityNamed } from './types.js';
 
 /* -------------------------------------------------------------------------- */
 /* Shapes                                                                     */
@@ -182,8 +182,8 @@ function compileOne(
     return null;
   }
 
-  const declared = body['severity'] ?? 'warn';
-  if (declared !== 'error' && declared !== 'warn' && declared !== 'info' && declared !== 'off') {
+  const declared = severityNamed(body['severity'] ?? 'warn');
+  if (declared === null) {
     problems.push(`${where}: "severity" must be error, warn, info or off`);
     return null;
   }

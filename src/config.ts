@@ -25,7 +25,7 @@ import { compileProjectRules, type ProjectRule } from './project-rules.js';
 import { RULE_IDS } from './rules.js';
 import { REGISTER_NEEDS } from './registers.js';
 import { dispositionOfStateWord, KNOWN_STATE_WORDS } from './state.js';
-import { isProjectRule, type AnyRuleId, type ClaimsConfig, type OrientationConfig, type ProtocolsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
+import { isProjectRule, severityNamed, type AnyRuleId, type ClaimsConfig, type OrientationConfig, type ProtocolsConfig, type RegistersConfig, type RuleId, type Severity } from './types.js';
 
 /** File names looked for, in order. The first that exists is the one used. */
 export const CONFIG_FILES: readonly string[] = Object.freeze([
@@ -325,11 +325,12 @@ function readFields(raw: Record<string, unknown>, source: string): LoadedConfig 
           problems.push(`${source}: unknown rule "${rule}" in "severities"`);
           continue;
         }
-        if (level !== 'error' && level !== 'warn' && level !== 'info' && level !== 'off') {
+        const severity = severityNamed(level);
+        if (severity === null) {
           problems.push(`${source}: "severities.${rule}" must be error, warn, info or off`);
           continue;
         }
-        severities[rule as AnyRuleId] = level;
+        severities[rule as AnyRuleId] = severity;
       }
       config.severities = severities;
     }

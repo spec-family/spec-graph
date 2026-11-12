@@ -330,13 +330,14 @@ describe('a file the configuration leaves out of the sweep', () => {
     }
   });
 
-  it('would name the six values of src/types.ts, the file a comment once left out as holding types alone', async () => {
+  it('would name the values of src/types.ts, the file a comment once left out as holding types alone', async () => {
     const source = readFileSync(path.join(ROOT, 'src/types.ts'), 'utf8');
     expect(valuesOf(source, parse).map((value) => /^export (?:const|function) (\w+)/.exec(value.text)?.[1])).toEqual([
       'DISPOSITIONS',
       'OPENNESS_OF',
       'EDGE_TRAITS',
       'EDGE_KINDS',
+      'severityNamed',
       'isProjectRule',
       'PROJECT_RULE_PREFIX',
     ]);

@@ -59,7 +59,7 @@ import {
 import { foldDriveLetter, holdsBackslashInName, isAbsolutePath, joinPosix, toPosix } from './paths.js';
 import { formatRef } from './source.js';
 import { execute, parseQuery, QueryError, renderMatch, type Match, type QuerySpec } from './select.js';
-import { isProjectRule, type AnyRuleId, type RuleId, type Severity, type SpecNode } from './types.js';
+import { isProjectRule, severityNamed, type AnyRuleId, type RuleId, type Severity, type SpecNode } from './types.js';
 import { displayWidth } from './vendor/spec-core/text/index.js';
 
 export const EXIT_OK = 0;
@@ -457,6 +457,30 @@ function readersOf(option: string): readonly Command[] | undefined {
   return undefined;
 }
 
+/**
+ * Whether an option takes a value, which `--option=value` may give in one
+ * word. A function and not a table, for the reason `readersOf` is one.
+ */
+function takesValue(option: string): boolean {
+  switch (option) {
+    case '--root':
+    case '--ignore':
+    case '--ignore-ref':
+    case '--family':
+    case '--ignore-family':
+    case '--history':
+    case '--baseline':
+    case '--record-baseline':
+    case '--format':
+    case '--graph-format':
+    case '--rule':
+    case '--max':
+    case '--max-warnings':
+      return true;
+  }
+  return false;
+}
+
 interface Beside {
   /** The option this one is not read beside. */
   readonly option: string;
@@ -636,6 +660,16 @@ export function parseArgs(argv: readonly string[], cwd: string): CliOptions {
       continue;
     }
 
+    // `--format=json` is `--format json`, as the family's other tools take it
+    // (D8), for an option that takes a value; any other given one that way is
+    // an option this one does not know.
+    const equals = arg.indexOf('=');
+    if (arg.startsWith('--') && equals > 2 && takesValue(arg.slice(0, equals))) {
+      args.splice(i, 1, arg.slice(0, equals), arg.slice(equals + 1));
+      i -= 1;
+      continue;
+    }
+
     given.add(arg);
     switch (arg) {
       case '-h':
@@ -724,18 +758,20 @@ export function parseArgs(argv: readonly string[], cwd: string): CliOptions {
         break;
       case '--format': {
         const value = next(arg, i);
+        // `pretty` is the name spec-guard gives the report for a person (D8).
+        const named = value === 'pretty' ? 'human' : value;
         if (
-          value !== 'human' &&
-          value !== 'json' &&
-          value !== 'sarif' &&
-          value !== 'markdown' &&
-          value !== 'gitlab' &&
-          value !== 'github'
+          named !== 'human' &&
+          named !== 'json' &&
+          named !== 'sarif' &&
+          named !== 'markdown' &&
+          named !== 'gitlab' &&
+          named !== 'github'
         ) {
           throw new UsageError(`--format must be human, json, sarif, markdown, gitlab or github, got "${value}"`);
         }
-        format = value;
-        once(arg, value, () => value);
+        format = named;
+        once(arg, value, () => named);
         i += 1;
         break;
       }
@@ -756,7 +792,7 @@ export function parseArgs(argv: readonly string[], cwd: string): CliOptions {
         const before = value.slice(0, equals);
         const after = value.slice(equals + 1);
         const id = before as AnyRuleId;
-        const level = after as Severity;
+        const level = severityNamed(after);
         // A project rule is taken on its namespace here and checked for real
         // once the configuration defining it has been read: arguments are
         // parsed before any file is opened, and a flag has to be usable on that
@@ -764,13 +800,14 @@ export function parseArgs(argv: readonly string[], cwd: string): CliOptions {
         if (!RULE_IDS.includes(id as RuleId) && !isProjectRule(id)) {
           throw new UsageError(`unknown rule "${id}"\n  known rules: ${RULE_IDS.join(', ')}`);
         }
-        if (!SEVERITIES.includes(level)) {
-          throw new UsageError(`unknown severity "${level}", expected one of: ${SEVERITIES.join(', ')}`);
+        if (level === null) {
+          throw new UsageError(`unknown severity "${after}", expected one of: ${SEVERITIES.join(', ')}`);
         }
         severities[id] = level;
         // The id is the key and is read as written, so the severity alone
-        // tells two values apart, and it is read as written too.
-        once(arg, value, () => value, `${arg} ${id}`, 'a rule has one severity');
+        // tells two values apart, read as the severity it names: `warn` and
+        // `warning` are one.
+        once(arg, value, () => `${id}=${level}`, `${arg} ${id}`, 'a rule has one severity');
         i += 1;
         break;
       }

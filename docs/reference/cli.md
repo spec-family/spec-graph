@@ -37,6 +37,12 @@ spec-graph diff <before> <after>     Compare two JSON graph exports.
 --verbose               Include parse problems
 ```
 
+The spellings the family's other tools write are taken for these: a severity
+of `warning` or `note` is `warn` or `info`, in `--rule`, in `severities` and
+in a project rule's `severity`; `--format pretty` is `--format human`; and an
+option that takes a value takes it after `=` as well, `--format=json`. A
+report still prints `warn` and `info`.
+
 Exit codes: `0` clean, `1` findings, `2` the tool could not run. A mistyped flag
 never masquerades as a passing build, and neither does a pattern that matches
 nothing, a configuration file that did not load, or a `--baseline` that is not

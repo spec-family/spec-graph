@@ -168,13 +168,21 @@ export interface Heading {
    * without any comment in it. Code spans are kept as written.
    */
   readonly text: string;
-  /** GitHub's slug of `text`. */
+  /** The slug of `text` that spec-graph's item ids are made of (`slugify`). */
   readonly slug: string;
   /**
-   * The anchor GitHub gives the heading: its slug, with `-1`, `-2` and so on
-   * appended for the second and later headings that slug the same.
+   * `slug`, with `-1`, `-2` and so on appended for the second and later
+   * headings that slug the same, as GitHub counts them.
    */
   readonly anchor: string;
+  /**
+   * The anchor GitHub gives the heading (`githubSlug`), counted as it counts
+   * them, among the headings whose GitHub slug is known; `null` where the
+   * heading's text as rendered depends on more than the heading. It differs
+   * from `anchor` where the text holds `_`, a tab, a no-break space, a link,
+   * an image, a tag, a character reference or emphasis made of `_`.
+   */
+  readonly githubAnchor: string | null;
   /** Offset of the heading line's content, after any block-quote markers. */
   readonly start: number;
   /** Offset just past the heading line, or past a setext heading's underline. */

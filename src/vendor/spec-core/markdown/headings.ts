@@ -6,18 +6,22 @@
  * code span in it is kept and a comment after it is not.
  */
 
+import { renderedText } from './inline.js';
 import { isMarkdown, isSpaceOrTab, visibleLead, type Layout } from './layout.js';
 import { atxLevel, isThematicBreak, leadIndex, listMarker, setextUnderline } from './syntax.js';
 import type { Heading, HeadingForm, HtmlComment, MarkdownScan, ScannedLine, Section, Table } from './types.js';
 
 /**
- * GitHub's slug of a heading's text: lower case, punctuation dropped, every
- * whitespace character a hyphen.
+ * The slug spec-graph's item ids are made of: lower case, punctuation
+ * dropped, every whitespace character a hyphen.
  *
  * spec-graph's slug, with two of its steps taken out because a later step
  * did their work: it dropped Markdown's punctuation and then all punctuation,
  * and trimmed before and after. What remains gives the same slug for every
- * text. It drops `_`, which GitHub keeps.
+ * text. It is close to GitHub's and is not GitHub's: it drops `_`, which
+ * GitHub keeps, hyphenates a tab or a no-break space, which GitHub drops,
+ * and reads the text as written, where GitHub reads it as rendered. An id
+ * made of it is kept as it is, and {@link githubSlug} is GitHub's.
  */
 export function slugify(text: string): string {
   return (
@@ -31,8 +35,31 @@ export function slugify(text: string): string {
   );
 }
 
+/** What GitHub keeps of a heading's text, once lower case: no other character reaches its anchor. */
+const OUTSIDE_GITHUB_SLUG = /[^\p{Alphabetic}\p{M}\p{Nd}\p{Pc} -]/gu;
+
+/**
+ * GitHub's slug of a heading's text, which its anchor is: the text as
+ * rendered, each character in lower case, every character dropped but
+ * letters, marks, decimal digits, connector punctuation such as `_`,
+ * hyphens and spaces, and each space a hyphen. `null` where the text as
+ * rendered depends on more than the heading (`renderedText`).
+ *
+ * Measured against GitHub's own renderer, its Markdown API, on 2026-11-12
+ * (tests/markdown/github-anchors.ts). Each character is lowered on its own,
+ * as GitHub lowers it: `ΣΑΣ` is `σασ`, where a whole string lowered at
+ * once ends in a final sigma.
+ */
+export function githubSlug(text: string): string | null {
+  const shown = renderedText(text);
+  if (shown === null) return null;
+  let lower = '';
+  for (const char of shown) lower += char.toLowerCase();
+  return lower.replace(OUTSIDE_GITHUB_SLUG, '').replaceAll(' ', '-');
+}
+
 /** A heading before GitHub's anchors are counted, which needs every heading. */
-export type Unanchored = Omit<Heading, 'anchor'>;
+export type Unanchored = Omit<Heading, 'anchor' | 'githubAnchor'>;
 
 /**
  * ATX headings: `#` to `######` opening a line, after at most three spaces.
@@ -109,7 +136,11 @@ export function findHeadings(layout: Layout, atx: readonly Unanchored[], tables:
 
   const all = [...atx, ...setext].sort((a, b) => a.line - b.line);
   const occurrences = new Map<string, number>();
-  return all.map((h) => ({ ...h, anchor: anchorOf(occurrences, h.slug) }));
+  const githubOccurrences = new Map<string, number>();
+  return all.map((h) => {
+    const github = githubSlug(h.text);
+    return { ...h, anchor: anchorOf(occurrences, h.slug), githubAnchor: github === null ? null : anchorOf(githubOccurrences, github) };
+  });
 }
 
 /** A line that can be the text of a setext heading. */

@@ -45,6 +45,24 @@ reported on stderr as `spec-graph: unexpected error:` with its stack. So is a
 stdout its reader closed before all of the output was written, as a pipeline
 into `head` does: the answer did not arrive, and one line on stderr says so.
 
+**A check says on stderr what it read nothing of** and would have read if
+asked, whatever its format and its exit code:
+
+```text
+spec-graph: adrs/ and decisions/ hold Markdown the default patterns do not read
+  name them in "patterns" to check them: "adrs/**/*.md", "decisions/**/*.md"
+spec-graph: CLAUDE.md is here and "orientation" is not configured, so no path or command it names is looked for
+  add "orientation": { "files": ["CLAUDE.md"] } to the configuration
+```
+
+The first is said of a directory at the root named as a family's documents
+are, `adrs/`, `decisions/`, `rfc/`, `keps/`, `proposals/`, `design/` and the
+rest of the family directories, that holds Markdown the run read none of,
+and only where the run reads the default patterns: a list of its own says
+what it means to read. The second is said of `AGENTS.md` and `CLAUDE.md` at
+the root where `orientation` is not configured
+([Orientation](orientation.md)).
+
 **An input that is set and names nothing is refused**: exit `2` and one line
 that names it, never a run that reads it as if it had not been given. An unset
 variable in `--family "$FAMILIES"` is the usual way to write one:

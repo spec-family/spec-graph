@@ -29,6 +29,19 @@ records.
   `onOversized`, `analyse` takes `maxFileSize`, and `AnalysisResult` has
   `skipped` and `maxFileSize`.
 
+- **A check says on stderr what it read nothing of.** The default patterns
+  read `adr/`, `rfcs/` and `specs/` and left `adrs/`, `decisions/`, `rfc/`,
+  `keps/`, `proposals/` and `design/` unread without a word, and a run over
+  a repository that keeps its decisions there reported a consistent graph
+  of the few documents it did read. A directory at the root named as a
+  family's documents are, holding Markdown the run read none of, is now
+  named with the patterns that would read it, where the run reads the
+  default patterns. And `orientation` holds the paths and commands an
+  agent's instructions name to the repository only where it is configured:
+  `AGENTS.md` or `CLAUDE.md` at the root without it is named, with the
+  configuration that would check it. Both go to stderr, in every format,
+  and change no exit code.
+
 ### Changed
 
 - **Markdown between 4 and 20 MiB is now read.** spec-graph read no file

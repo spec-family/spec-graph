@@ -18,7 +18,7 @@ import type { SpecGraph } from './graph.js';
 import type { ProjectRule } from './project-rules.js';
 import { MAX_FILE_SIZE } from './glob.js';
 import { formatRef } from './source.js';
-import { DEFAULT_SEVERITIES, RULE_DESCRIPTIONS, RULE_IDS } from './rules.js';
+import { DEFAULT_SEVERITIES, RULE_DECISIONS, RULE_DESCRIPTIONS, RULE_IDS } from './rules.js';
 import { displayWidth } from './vendor/spec-core/text/index.js';
 import type { AnalysisResult } from './runner.js';
 import type {
@@ -637,6 +637,7 @@ export function formatSarif(
               rules: fired.map(([id, description, level]) => ({
                 id,
                 shortDescription: { text: description },
+                ...ruleHelp(id, description),
                 defaultConfiguration: { level: sarifLevel(level) },
               })),
             },
@@ -811,12 +812,29 @@ export function formatGithub(
   return result.diagnostics
     .map((diagnostic) => {
       const title = escalated.has(diagnostic.rule) ? `${diagnostic.rule} (strict)` : diagnostic.rule;
-      const place = `file=${escapeProperty(diagnostic.at.file)},line=${diagnostic.at.span.start.line}`;
+      // The column puts the annotation under the citation, not at the line's start.
+      const place = `file=${escapeProperty(diagnostic.at.file)},line=${diagnostic.at.span.start.line},col=${diagnostic.at.span.start.column}`;
       return `::${githubLevel(diagnostic.severity)} ${place},title=${escapeProperty(title)}::${escapeData(
         `${diagnostic.message}. ${diagnostic.hint}`,
       )}\n`;
     })
     .join('');
+}
+
+/**
+ * Where a code scanning alert sends a reader who asks why: the decision
+ * record behind a built-in rule, which `spec-graph rules --explain` names
+ * too. Code scanning shows `help` on the alert and links `helpUri`; without
+ * them the alert carried a one-line description and nowhere to go. A project
+ * rule's reasoning is the repository's own, and has neither.
+ */
+function ruleHelp(id: AnyRuleId, description: string): { helpUri?: string; help?: { text: string; markdown: string } } {
+  if (!RULE_IDS.includes(id as RuleId)) return {};
+  const uri = `https://github.com/spec-family/spec-graph/blob/main/${RULE_DECISIONS[id as RuleId]}`;
+  return {
+    helpUri: uri,
+    help: { text: `${description}. The decision behind the rule: ${uri}`, markdown: `${description}. [The decision behind the rule](${uri}).` },
+  };
 }
 
 function githubLevel(severity: Severity): 'error' | 'warning' | 'notice' {

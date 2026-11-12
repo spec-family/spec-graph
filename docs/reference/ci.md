@@ -51,7 +51,10 @@ pins like these current.
 Findings land as comments on the changed lines, and they persist across commits
 without drifting, because the `partialFingerprints` spec-graph writes are the
 same identity a baseline is keyed on — the rule, the specification, and the
-citation, with no line number in it (ADR-0012).
+citation, with no line number in it (ADR-0012). Each built-in rule that fired
+carries `helpUri` and `help`, which code scanning shows on the alert: the
+decision record behind the rule, as `spec-graph rules --explain` names it. A
+project rule's reasoning is the repository's own, and has neither.
 
 ## Annotations, with `--format github`
 
@@ -64,13 +67,14 @@ diff, with no upload step:
 ```
 
 ```text
-::error file=docs/adr/0003-event-log.md,line=13,title=ghost-handover::open obligation delegates to ADR-0002, which is retired. nothing will be read from ADR-0002 again - re-home this in a live document, or close it here
+::error file=docs/adr/0003-event-log.md,line=13,col=65,title=ghost-handover::open obligation delegates to ADR-0002, which is retired. nothing will be read from ADR-0002 again - re-home this in a live document, or close it here
 ```
 
 - An `error` finding is an `error`, a `warn` a `warning` and an `info` a
   `notice`, as spec-guard writes them, and one only `--strict` made an error is
   titled `ghost-handover (strict)`.
-- The message carries the hint.
+- The message carries the hint, and the annotation the column the finding
+  starts at, so it sits under the citation.
 - `%` and line breaks are escaped everywhere, and `:` and `,` in the file and
   the title, as GitHub reads them.
 - A clean run writes nothing.

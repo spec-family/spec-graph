@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/spec-family/spec-core",
-  "commit": "92e46d47d02418e0622946b61ce6ae61cc67cd43",
+  "commit": "102cec9973dc8b8d5a2bceb45c00326eb69eb0e0",
   "modules": {
     "markdown": {
       "files": {
@@ -8,8 +8,9 @@
         "claims.ts": "sha256-01940c7983340ac21cb7fbe8e858bc2a4236f0855126501f0e84618a1a56dd7a",
         "commits.ts": "sha256-83150e29b6e9025a98f14ead9c6390d8776ac416f81494dbb2753b231f8a8a1c",
         "frontmatter.ts": "sha256-e4cdf9b5ef5886b6b4b439790c4fbc4fbbd0f2dd90ee1971ab794bbdebd5af8d",
-        "headings.ts": "sha256-70c68c677556f44354204b9c00fd5a465d9051f348b41ed70c0187456bab0eb1",
-        "index.ts": "sha256-e2e832f84d4866eef955b80960bb05f9bd1a5841231245e9d13efba0b8798d4f",
+        "headings.ts": "sha256-2df74ea85ffc7e38b2fe109c9632b8e7fbc8e22010ed3294785c95500705dd5e",
+        "index.ts": "sha256-1b3cc91c6f286196390162a1f01eba3f1e539e7d987ba19c66193fae8c136a13",
+        "inline.ts": "sha256-5c88360a5e0bab1535b8bf2990fe612c190a764e2988b88b3c6d5b234d1f2928",
         "layout.ts": "sha256-11293f9961ce7fcc672743e72945dcaa0a1475a8adea166ea10fa9c542cd6f75",
         "links.ts": "sha256-b940c3907f031f7b5929b00d8e91233c25191702ea1b9832b60b6a355e76f4d1",
         "lists.ts": "sha256-ac2fa8e5c35ca0b17b2727f4a3d9b52edb56ebb7392955d79aa029bc3ae11ea6",
@@ -17,7 +18,7 @@
         "scan.ts": "sha256-458205f1dbfdad1b66db374a39dc9f2fc1ea1d27e70e5a5c8e0e5d38fbdd2dc5",
         "syntax.ts": "sha256-9331a2594dfec7a2bab7194fa88ffb35c2f1c0f45676f2c442b7854594c73cc9",
         "tables.ts": "sha256-7981389b636987c95f9b610e9553bf3e1a931418fa2154bd591fd93c57e0b145",
-        "types.ts": "sha256-c42a4c40b2ea1808a084204d63297528d8e62bfc04240889fbd1cf52c568b660"
+        "types.ts": "sha256-3afd6c4df3a005bb2511e73714bfd9a232e379789148fca3b1b17c5a814f2d44"
       }
     },
     "path": {

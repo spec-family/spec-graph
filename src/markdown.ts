@@ -81,6 +81,14 @@ export function referenceLinks(scanned: ScannedDocument): Link[] {
  * link written against the rendered page uses the anchor; one written by hand
  * uses the slug, and for any heading but a repeat the two are one.
  *
+ * And the anchor GitHub itself gives the heading, spec-core's `githubAnchor`:
+ * it keeps `_`, and slugs the text as rendered, a link's text without its
+ * URL. `#snake_case_name` and release-please's `## [1.2.0](url) (date)`,
+ * `#120-date`, were broken references against the slug alone. Beside the
+ * slug and not in its place, so every link and baseline entry written
+ * against the slug still binds; none where the anchor depends on more than
+ * the heading's line.
+ *
  * And the anchors a document declares for itself, which round 29's
  * evaluation found reported as broken on real repositories: an `{#id}` a
  * heading ends with, as kramdown, Pandoc and Docusaurus read it, with the
@@ -94,6 +102,7 @@ export function anchorsOf(headings: readonly Heading[], structure = ''): Set<str
   for (const heading of headings) {
     out.add(heading.slug);
     out.add(heading.anchor);
+    if (heading.githubAnchor !== null) out.add(heading.githubAnchor);
     const declared = HEADING_ID.exec(heading.text);
     if (declared !== null) {
       out.add(declared[1]!.toLowerCase());

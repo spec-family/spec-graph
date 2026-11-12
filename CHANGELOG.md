@@ -89,6 +89,16 @@ records.
   underscore, `#snake_case_name`, waits for spec-core's slug. No exit code
   and no JSON field changes.
 
+- **A heading answers to the anchor GitHub gives it.** spec-core at
+  102cec9 gives every heading GitHub's own anchor beside spec-graph's slug,
+  and a `#anchor` now binds to either. Those that stop being false reds:
+  `#snake_case_name` and `#why-remove-restricted_std`, whose underscore
+  spec-graph's slug drops; headings whose rendered text differs from what is
+  written, such as release-please's `## [1.2.0](url) (2026-11-12)`, which
+  GitHub anchors as `#120-2026-11-12`; and the repeats GitHub counts on its
+  own slugs, `#a_b-1`. The slug, the anchors written against it and item
+  ids are unchanged. No exit code and no JSON field changes.
+
 - **A word that numbers a part names no family, and a template's title
   names no file.** Spec Kit with no configuration gave 34 errors on a real
   repository, 33 of them `"Phase 2" does not resolve to any document`: one

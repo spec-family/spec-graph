@@ -1422,6 +1422,70 @@ runners of 19 to 28. Main's at 1308cf0 took 73m16s, on runners of 18 to 28
 seconds, and its three before 86m06s to 91m16s, the longest shard 27m30s
 to 28m04s.
 
+### 2026-11-12: the order's record, shared between a sweep's workers
+
+The record of the entry before was kept in the worker's memory, so a worker
+Stryker starts in place of one that timed out began with none, where on
+vitest 4 it read the cache file every worker rewrote after each run. Static
+mutants run last in each shard, after the timeouts, so mostly on such
+workers, and in spec-core that is what held them above vitest 4.
+spec-core found it in an experiment and took the fix first (its
+[ADR-0007](https://github.com/spec-family/spec-core/blob/main/docs/adr/0007-verification.md),
+the entry of 2026-11-12, and
+[ADR-0008](https://github.com/spec-family/spec-core/blob/main/docs/adr/0008-toolchain.md),
+amended 2026-11-12): its static mutants' tests before their kills came to
+23,734 to 29,259 in main's seven sweeps with the record in memory alone,
+against 11,731 to 17,936 on vitest 4, and with the record shared 17,664 in
+its experiment and 17,621 in the sweep of its pull request, spec-core#77.
+
+**What changed.** `vitest.mutation.config.ts` shares the record as
+spec-core's does: where the process is one of Stryker's workers
+(`STRYKER_MUTATOR_WORKER`), through `.vitest-order-record.json` in the
+folder it runs in, the shard's sandbox, read once when the worker loads
+the configuration and written whole after each run, through a file of the
+process's own renamed over it. A process that is not a worker reads and
+writes none. No workflow changes. `tests/mutation-shards.test.ts` holds it
+as spec-core's test does: vitest made as Stryker's runner makes it, in
+processes of their own in a sandbox of two files, and the functions that
+name, read and write the file as a library.
+
+**What it measured.** Main's two newest full sweeps, of 1402f08, the base
+of the pull request, and 91d9761 (runs 43212826092 and 43192049789), beside
+the pull request's full sweep of 32a73db, dispatched on its branch (run
+43218271645):
+
+| | 91d9761 | 1402f08 | 32a73db |
+| --- | --- | --- | --- |
+| Score | 96.95% over 11,820 | 96.64% over 12,136 | 96.64% over 12,136 |
+| Undetected | 360 | 408 | 408 |
+| The static mutants' tests before their kills | 342,875 | 375,836 | 371,163 |
+| Static mutants killed, and after more than 200 tests | 1,825, 261 | 1,857, 268 | 1,857, 279 |
+| Per static kill | 187.9 | 202.4 | 199.9 |
+| Tests to a kill, not static | 16.08 | 16.17 | 16.23 |
+| Four shards, the slowest (minutes) | 70.6, 22.5 | 111.7, 37.9 | 96.4, 27.0 |
+
+- **The score is main's, and so is the count of undetected mutants.** Ten
+  have another verdict than in main's sweep of the same source, each
+  survived in one and timed out in the other, which counts as detected.
+  Five of `src/identity.ts`, at 310, 452, 460 and 468, timed out here and
+  survived in main's sweeps of 1402f08, 91d9761, bd9b3cd and 1fb6cf3; five,
+  the two static mutants of `src/glob.ts` 271, `src/identity.ts` 429 and
+  `src/lifecycle.ts` 293, timed out in main's sweep of 1402f08 alone and
+  survived here and in the other three. A surviving mutant runs every test
+  that covers it whatever the order, so these are mutants at the edge of
+  their timeout, and each sweep has its own.
+- **The record moved nothing here.** The static mutants ran 199.9 tests to a
+  kill, against 202.4 in main's sweep of the same source and 186.0 to 202.4
+  in its four newest, and the files moved both ways: `src/lifecycle.ts`
+  18% fewer, `src/sections.ts` 16% more. What a worker started after a
+  timeout begins with does not decide these kills, and this sweep does not
+  say what does; the entry before found the order after the file that
+  failed last to be vitest 5's times of whole files.
+- **The shards took 96.4 minutes, the slowest 27.0 against the job's 60.**
+  Main's sweep of the same source took 111.7, one shard 37.9, and its sweep
+  of 91d9761, with 316 mutants fewer, 70.6. The record costs a worker one
+  read and each run one write of a small file, seconds over a sweep.
+
 ## Open Questions
 
 - [x] Should the `Regex` mutator be scoped? At 57.9% it was among the weakest.

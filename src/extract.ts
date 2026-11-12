@@ -39,6 +39,7 @@ import {
   referenceLinks,
   scanMarkdown,
   slugify,
+  type Heading,
   type Link,
   type ListItem,
   type ScannedDocument,
@@ -1771,16 +1772,49 @@ function isObligation(item: ListItem, inObligationSection: boolean, directive: D
 
 /** The heading path enclosing an offset, outermost first. */
 function sectionPathAt(scanned: ScannedDocument, offset: number): string[] {
-  const path: { level: number; text: string }[] = [];
-  for (const heading of scanned.headings) {
-    // A heading opening exactly at the offset would be a reference or an item
-    // starting on a `#` or on the first word of a setext heading - and a heading
-    // that begins with a reference is no section name either way.
-    if (heading.start > offset) break;
-    while (path.length > 0 && path[path.length - 1]!.level >= heading.level) path.pop();
-    path.push({ level: heading.level, text: heading.text });
+  const { starts, paths } = sectionsOf(scanned.headings);
+  // The last heading that opens at or before the offset. A heading opening
+  // exactly at it would be a reference or an item starting on a `#` or on
+  // the first word of a setext heading - and a heading that begins with a
+  // reference is no section name either way.
+  let low = 0;
+  let high = starts.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (starts[middle]! > offset) high = middle;
+    else low = middle + 1;
   }
-  return path.map((entry) => entry.text);
+  return low === 0 ? [] : paths[low - 1]!.slice();
+}
+
+/**
+ * Each heading's start, and the path it opens, built once for a document's
+ * headings: every reference and every item asks for its section, and walking
+ * the headings above each of them read a changelog of 16,000 lines, one
+ * heading in twenty, in ten times the elements a quarter of it took.
+ *
+ * The cache changes how fast an answer arrives and never the answer: a
+ * mutant that builds the index again on every call, or never keeps it, is
+ * equivalent but for its cost, which tests/growth.test.ts holds and the
+ * sweep does not run.
+ */
+const sections = new WeakMap<readonly Heading[], { readonly starts: readonly number[]; readonly paths: readonly (readonly string[])[] }>();
+
+function sectionsOf(headings: readonly Heading[]): { readonly starts: readonly number[]; readonly paths: readonly (readonly string[])[] } {
+  const known = sections.get(headings);
+  if (known !== undefined) return known;
+  const starts: number[] = [];
+  const paths: string[][] = [];
+  const path: Heading[] = [];
+  for (const heading of headings) {
+    while (path.length > 0 && path[path.length - 1]!.level >= heading.level) path.pop();
+    path.push(heading);
+    starts.push(heading.start);
+    paths.push(path.map((entry) => entry.text));
+  }
+  const index = { starts, paths };
+  sections.set(headings, index);
+  return index;
 }
 
 /**

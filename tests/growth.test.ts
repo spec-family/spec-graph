@@ -7,11 +7,12 @@ import type { Source } from '../src/runner.js';
  * take longer than what it reads (CLAUDE.md).
  *
  * A guard on the shape of the cost, which a bound in seconds cannot hold.
- * Two stages grew with the square of their input, and a bound in seconds
- * caught neither: each reading of a citation was compared with every one
- * before it, and an anchor that addresses nothing asked every node of the
- * graph which were under its document - two in each of 8,000 documents took
- * 42.5 seconds, and 3.2 without them.
+ * Three stages grew with the square of their input, and a bound in seconds
+ * caught none: each reading of a citation was compared with every one before
+ * it, an anchor that addresses nothing asked every node of the graph which
+ * were under its document - two in each of 8,000 documents took 42.5
+ * seconds, and 3.2 without them - and each reference and item walked every
+ * heading above it for its section.
  *
  * Counted, not timed. The ratio of two timings held the shape on a quiet
  * machine and not on a busy one: a stage that reads 4.4 here read 9.6 on a
@@ -25,10 +26,11 @@ import type { Source } from '../src/runner.js';
  * over. That is a loop however it is written but an indexed `for`, and the
  * body of one of those visits something.
  *
- * A stage in proportion to its input reads 4.0 here. The two that grew
- * with its square read 13.6 and 15.9, counted the same way on the build
- * before the fix. The bar is 6: a count does not vary, so the bar leaves no
- * room for noise, only for a sort, whose comparisons grow by 5 at most at
+ * A stage in proportion to its input reads 4.0 here. One changelog of
+ * 1,000 lines and one of 4,000 read 15.3 before the readings were compared
+ * by key, and 6.4 until the section was looked up; the anchors read 15.9
+ * before they were. The bar is 6: a count does not vary, so the bar leaves
+ * no room for noise, only for a sort, whose comparisons grow by 5 at most at
  * these sizes.
  *
  * The sweep leaves this file out (vitest.mutation.config.ts): replacing an
@@ -123,7 +125,7 @@ const anchors = (documents: number): Source[] =>
 describe('four times the input', () => {
   it('visits about four times the elements to read one file', async () => {
     const { extractSpecifications } = await import('../src/extract.js');
-    expect(growth(changelog(250), changelog(1000), extractSpecifications)).toBeLessThan(6);
+    expect(growth(changelog(1000), changelog(4000), extractSpecifications)).toBeLessThan(6);
   });
 
   it('visits about four times the elements to resolve anchors that address nothing', async () => {

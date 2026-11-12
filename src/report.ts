@@ -381,17 +381,21 @@ function unreadNotice(count: number): string {
  * anywhere, and a link to it was told to widen a pattern that already
  * reached it. Under `--verbose` the problems above name the first kind.
  */
+/** A size as a person reads it: whole mebibytes as such, anything else in bytes. */
+function size(bytes: number): string {
+  const mebibytes = bytes / (1024 * 1024);
+  return Number.isInteger(mebibytes) ? `${mebibytes} MiB` : `${bytes} bytes`;
+}
+
 function leftOutNotices(result: AnalysisResult, verbose: boolean): string[] {
   const notices: string[] = [];
   const duplicates = result.summary.duplicateIdFiles ?? 0;
   if (duplicates > 0) {
     notices.push(`${duplicates} ${plural(duplicates, 'file')} left out for a duplicate id${verbose ? '' : ' (--verbose names them)'}`);
   }
-  const oversized = result.oversized ?? [];
-  if (oversized.length > 0) {
-    notices.push(
-      `${oversized.length} ${plural(oversized.length, 'file')} over ${MAX_FILE_SIZE / (1024 * 1024)} MiB not read: ${oversized.map((entry) => entry.file).join(', ')}`,
-    );
+  const skipped = result.skipped ?? [];
+  if (skipped.length > 0) {
+    notices.push(`${skipped.length} ${plural(skipped.length, 'file')} over ${size(result.maxFileSize ?? MAX_FILE_SIZE)} not read: ${skipped.map((entry) => entry.path).join(', ')}`);
   }
   return notices;
 }
@@ -841,6 +845,8 @@ export function formatJson(
       ...(options.baseline === undefined ? {} : { baseline: options.baseline }),
       summary: result.summary,
       files: result.files,
+      // As spec-guard names a path it passes over; always present, as `suppressed` is.
+      skipped: result.skipped ?? [],
       // Absent where no register is configured: JSON.stringify drops an undefined field.
       registers: result.registers,
       // The audit trail for what configuration silenced. Always present, unlike

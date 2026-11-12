@@ -47,8 +47,14 @@ export const DEFAULT_IGNORED_DIRECTORIES: readonly string[] = Object.freeze([
   '__pycache__',
 ]);
 
-/** Files larger than this are skipped: a specification is not a binary. */
-export const MAX_FILE_SIZE = 4 * 1024 * 1024;
+/**
+ * Files larger than this are skipped: a specification is not a binary.
+ *
+ * The family's limit, spec-guard's, which spec-core's ADR-0005 records: one
+ * file over 4 MiB was read by one tool and passed over by the other, and the
+ * pipeline is linear in what it reads, so the smaller limit spared nothing.
+ */
+export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export interface WalkedFile {
   /** Repository-relative POSIX path. */

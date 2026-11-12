@@ -645,6 +645,14 @@ export interface AnalysisSummary {
    * in them was checked. A run reading sources from disk always gives it.
    */
   readonly duplicateIdFiles?: number | undefined;
-  /** Files the patterns name that were not read for their size. A run reading from disk always gives it. */
-  readonly oversizedFiles?: number | undefined;
+}
+
+/**
+ * A file the patterns name that a run did not read, as spec-guard names one
+ * it passes over: its path, why, and its size in bytes.
+ */
+export interface SkippedFile {
+  readonly path: string;
+  readonly reason: 'size';
+  readonly bytes: number;
 }

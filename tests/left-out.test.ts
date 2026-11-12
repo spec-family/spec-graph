@@ -9,7 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * given in many folders. Each was left out with a warning among the parse
  * problems, printed under `--verbose` alone, and its broken links with it. A
  * Markdown file over 4 MiB was not read, with no word anywhere, and a link
- * to it was told to widen a pattern that already reached it.
+ * to it was told to widen a pattern that already reached it. The limit is
+ * the family's now, spec-guard's 20 MiB; the tests below set a small one.
  *
  * The pipeline is imported inside each test: a module that throws while it
  * loads fails no test, and a sweep reads that as a survived mutant.
@@ -18,7 +19,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // Named for the process: Stryker runs a test file in several workers at once,
 // in one sandbox, and a fixed path is one they write and delete under each other.
 const ROOT = `tests/fixtures/.tmp/left-out-${process.pid}`;
-const BIG = 4 * 1024 * 1024 + 1;
+/** The limit the tests set, so no file of megabytes is written for them. */
+const LIMIT = 1024;
+const BIG = `# Log\n\n${'x'.repeat(LIMIT)}\n`;
 
 const files: Record<string, string> = {
   'dup/docs/a/notes.md': '# Notes\n\nSee [missing](gone.md).\n',
@@ -27,6 +30,7 @@ const files: Record<string, string> = {
   'dup/docs/kept.md': '# Kept\n',
   'regions/docs/register.md': '# Register\n\n## REQ-1: One\n\nStatus: open\n\n## REQ-1: Again\n\nStatus: open\n',
   'big/docs/a.md': '# A\n\nThe history is in [the log](log.md).\n',
+  'big/docs/log.md': BIG,
   'clean/docs/a.md': '# A\n',
 };
 
@@ -35,7 +39,6 @@ beforeAll(async () => {
     await mkdir(`${ROOT}/${path.slice(0, path.lastIndexOf('/'))}`, { recursive: true });
     await writeFile(`${ROOT}/${path}`, text);
   }
-  await writeFile(`${ROOT}/big/docs/log.md`, `# Log\n\n${'x'.repeat(BIG)}\n`);
 });
 
 afterAll(async () => {
@@ -44,7 +47,7 @@ afterAll(async () => {
 
 async function check(corpus: string) {
   const { analyse } = await import('../src/runner.js');
-  return analyse({ root: `${ROOT}/${corpus}`, patterns: ['docs/**/*.md'] });
+  return analyse({ root: `${ROOT}/${corpus}`, patterns: ['docs/**/*.md'], maxFileSize: LIMIT });
 }
 
 async function human(corpus: string, verbose = false): Promise<string[]> {
@@ -64,9 +67,9 @@ describe('files left out for a duplicate id', () => {
   it('are counted in the JSON summary, as files and not as the sections of one', async () => {
     const { formatJson } = await import('../src/report.js');
     const summary = (corpus: string) => check(corpus).then((result) => JSON.parse(formatJson(result)).summary);
-    expect(await summary('dup')).toMatchObject({ duplicateIdFiles: 2, oversizedFiles: 0 });
+    expect(await summary('dup')).toMatchObject({ duplicateIdFiles: 2 });
     // A section whose id was taken leaves only itself out, and its file stays.
-    expect(await summary('regions')).toMatchObject({ duplicateIdFiles: 0, oversizedFiles: 0 });
+    expect(await summary('regions')).toMatchObject({ duplicateIdFiles: 0 });
   });
 
   it('say nothing where every file reached the graph', async () => {
@@ -76,14 +79,26 @@ describe('files left out for a duplicate id', () => {
 });
 
 describe('a file over the size a run reads', () => {
-  it('is named in every report, with its size in the JSON', async () => {
-    expect(await human('big')).toEqual(['! 1 file over 4 MiB not read: docs/log.md']);
+  it('is named in every report, and skipped in the JSON with why and its size, as spec-guard names one', async () => {
+    expect(await human('big')).toEqual(['! 1 file over 1024 bytes not read: docs/log.md']);
     const { formatJson, formatMarkdown } = await import('../src/report.js');
     const result = await check('big');
     const json = JSON.parse(formatJson(result));
-    expect([json.summary.oversizedFiles, json.files]).toEqual([1, ['docs/a.md']]);
-    expect(result.oversized).toEqual([{ file: 'docs/log.md', bytes: Buffer.byteLength(`# Log\n\n${'x'.repeat(BIG)}\n`) }]);
-    expect(formatMarkdown(result)).toContain('1 file over 4 MiB not read: docs/log.md.');
+    expect([json.skipped, json.files]).toEqual([[{ path: 'docs/log.md', reason: 'size', bytes: Buffer.byteLength(BIG) }], ['docs/a.md']]);
+    expect(formatMarkdown(result)).toContain('1 file over 1024 bytes not read: docs/log.md.');
+    // Present where nothing was skipped, as `suppressed` is.
+    expect(JSON.parse(formatJson(await check('clean'))).skipped).toEqual([]);
+  });
+
+  it('is over 20 MiB unless a run says otherwise, the limit spec-guard has', async () => {
+    const { MAX_FILE_SIZE } = await import('../src/glob.js');
+    const { analyse } = await import('../src/runner.js');
+    const { formatReport } = await import('../src/report.js');
+    expect(MAX_FILE_SIZE).toBe(20 * 1024 * 1024);
+    const result = await analyse({ root: `${ROOT}/big`, patterns: ['docs/**/*.md'] });
+    expect([result.maxFileSize, result.skipped, result.files]).toEqual([MAX_FILE_SIZE, [], ['docs/a.md', 'docs/log.md']]);
+    const said = formatReport({ ...result, skipped: [{ path: 'docs/huge.md', reason: 'size', bytes: MAX_FILE_SIZE + 1 }] }, { ascii: true });
+    expect(said).toContain('! 1 file over 20 MiB not read: docs/huge.md');
   });
 
   it('is no finding where a link names it, which no pattern would bring into reach', async () => {

@@ -59,8 +59,11 @@ records.
   Static mutants run last, mostly on such workers. The workers of one shard
   now share the record through a file in Stryker's sandbox, read once when
   a worker starts and written whole after each run, as spec-core's do
-  (ADR-0007, 2026-11-12). Development tooling only: nothing spec-graph
-  reports changed. Upgrading: nothing to do.
+  (ADR-0007, 2026-11-12). Here the sweep of the change read as main's of
+  the same source: the score, the undetected mutants' count, and 371,163
+  tests before the static mutants' kills against 375,836. Development
+  tooling only: nothing spec-graph reports changed. Upgrading: nothing to
+  do.
 
 ### Fixed
 

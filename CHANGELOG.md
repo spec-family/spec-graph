@@ -34,6 +34,18 @@ records.
   exports and baseline entries; record a baseline again once. No exit code
   and no JSON field changes.
 
+- **A run takes time in proportion to what it reads again.** Two stages
+  grew with the square of their input. Each reading of a citation in a file
+  was compared with every reading kept before it, folding both spellings
+  each time: one changelog of 876 KB took 5.8 seconds and backstage's
+  `docs/**` 31 to 36, and a synthetic changelog of 1,500 lines took 7.0
+  seconds where it now takes 0.13. Each anchor that addressed nothing asked
+  every node of the graph which were under its document: two in each of
+  8,000 documents took 42.5 seconds, and 3.2 without them. Both are now
+  linear, and a test holds four times the input to about four times the
+  time. The findings, the JSON and the graph export are byte for byte as
+  before on eight repositories.
+
 ## 0.25.0
 
 `ignoreStatus` names the documents whose own status is not read, as

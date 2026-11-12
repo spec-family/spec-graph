@@ -1974,55 +1974,76 @@ function extractReferences(context: ReferenceContext): ReferenceCandidate[] {
  * Only overlapping spans collapse. Two sentences citing the same missing
  * document are two citations, and silently reporting one of them would leave
  * the other to be discovered on the next run.
+ *
+ * Linear in the candidates but for one sort of each set that read alike.
+ * Every candidate was compared with every one kept before it, and folded
+ * both spellings each time: a changelog of 1,500 lines took 1.2 seconds and
+ * one of 3,000 took 4.0, nine tenths of it here.
  */
 function withoutOverlaps(candidates: readonly ReferenceCandidate[]): ReferenceCandidate[] {
-  // A mutant that seeds this with a value that is no candidate is equivalent:
-  // it belongs to no node, so `belongsTo` leaves it out of every document's
-  // references, and it overlaps nothing it could replace.
-  const out: ReferenceCandidate[] = [];
-  for (const candidate of candidates) {
-    // Today the only readings that can overlap are a status line and the prose
-    // inside it, by one owner, and where they disagree they disagree on kind and
-    // direction together. So the kind, owner and direction tests below cannot
-    // be told apart one by one; each is here for a reader that differs in one.
-    const index = out.findIndex(
-      (other) =>
-        other.kind === candidate.kind &&
-        other.from === candidate.from &&
-        other.inverted === candidate.inverted &&
-        normaliseRef(other.target) === normaliseRef(candidate.target) &&
-        overlapping(other.declaredAt, candidate.declaredAt),
-    );
-    if (index === -1) {
-      out.push(candidate);
-      continue;
+  // Only readings of one target, by one owner, in one direction, of one kind
+  // can be one citation, so each is compared only with those. Today the only
+  // readings that can overlap are a status line and the prose inside it, and
+  // where they disagree they disagree on kind and direction together: the
+  // kind, owner and direction in the key cannot be told apart one by one, and
+  // each is there for a reader that differs in one.
+  const alike = new Map<string, number[]>();
+  candidates.forEach((candidate, at) => {
+    // Kind, direction and folded target hold no space, so the owner is the rest.
+    const key = `${candidate.kind} ${String(candidate.inverted)} ${normaliseRef(candidate.target)} ${candidate.from}`;
+    const set = alike.get(key);
+    if (set === undefined) alike.set(key, [at]);
+    else set.push(at);
+  });
+
+  // Each run of spans that overlap is one citation. It takes the place of its
+  // first reading and is its narrowest, because that points at the text that
+  // has to change: the status reader runs before prose scanning, so the
+  // place is the status line's and the reading the prose's. Of two as narrow
+  // the one earlier in the text is kept: alike in everything a reader sees,
+  // which is kept cannot matter.
+  const kept = new Map<number, ReferenceCandidate>();
+  const dropped = new Set<number>();
+  for (const set of alike.values()) {
+    // Only saves the sort: a run of one is left as it is.
+    if (set.length === 1) continue;
+    const order = [...set].sort((a, b) => offset(candidates[a]!) - offset(candidates[b]!) || a - b);
+    let run: number[] = [];
+    // Any value no span starts below: an empty run is left as it is.
+    let reach = -1;
+    const close = (): void => {
+      if (run.length < 2) return;
+      const place = Math.min(...run);
+      let best = place;
+      for (const at of run) if (width(candidates[at]!.declaredAt) < width(candidates[best]!.declaredAt)) best = at;
+      for (const at of run) if (at !== place) dropped.add(at);
+      kept.set(place, candidates[best]!);
+    };
+    for (const at of order) {
+      const span = candidates[at]!.declaredAt.span;
+      // Offsets alone: every candidate here was built from one scan of one
+      // file. Spans that only touch never occur between two readings of one
+      // target, so whether touching counts as overlapping decides nothing.
+      if (span.start.offset >= reach) {
+        close();
+        run = [];
+      }
+      run.push(at);
+      reach = Math.max(reach, span.end.offset);
     }
-    const held = out[index] as ReferenceCandidate;
-    // The status reader runs before prose scanning, so today the wider span is
-    // always the one already held and this comparison always replaces it. It is
-    // written as a comparison rather than an unconditional swap because which
-    // reader runs first is not a property worth depending on, and a mutant that
-    // makes it unconditional is equivalent only by that accident. Two of the
-    // same width that match are one value written twice in one list, alike in
-    // everything, so which of them is kept cannot matter.
-    if (width(candidate.declaredAt) < width(held.declaredAt)) out[index] = candidate;
+    close();
   }
+
+  const out: ReferenceCandidate[] = [];
+  candidates.forEach((candidate, at) => {
+    if (!dropped.has(at)) out.push(kept.get(at) ?? candidate);
+  });
   return out;
 }
 
-const width = (ref: SourceRef): number => ref.span.end.offset - ref.span.start.offset;
+const offset = (candidate: ReferenceCandidate): number => candidate.declaredAt.span.start.offset;
 
-/**
- * Whether two spans cover any of the same text.
- *
- * Offsets alone, with no file comparison: every candidate here was built from
- * one scan of one file, so there is no second file for them to be offsets into.
- * Spans that only touch never occur between two readings of one target, so
- * whether touching counts as overlapping decides nothing.
- */
-function overlapping(a: SourceRef, b: SourceRef): boolean {
-  return a.span.start.offset < b.span.end.offset && b.span.start.offset < a.span.end.offset;
-}
+const width = (ref: SourceRef): number => ref.span.end.offset - ref.span.start.offset;
 
 /**
  * The item whose block contains an offset, if any.

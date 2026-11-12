@@ -640,7 +640,7 @@ describe("the order a mutant's test files run in", () => {
     expect(runs.map(({ failed }) => failed)).toEqual([false, true, true, true, true]);
   });
 
-  it("is the sweep's alone, over the suite `npm test` runs less the three files no mutant reaches", () => {
+  it("is the sweep's alone, over the suite `npm test` runs less the four files it leaves out", () => {
     const unit = unitSuite.test!;
     const { exclude, sequence, reporters, ...sweep } = mutationSuite.test!;
     expect(sequence).toEqual({ sequencer: QuickestFirst });
@@ -653,7 +653,7 @@ describe("the order a mutant's test files run in", () => {
       testTimeout: unit.testTimeout,
       hookTimeout: unit.hookTimeout,
     });
-    expect(exclude).toEqual(['tests/mutation-shards.test.ts', 'tests/mutation-unmeasured.test.ts', 'tests/bin.test.ts', '**/node_modules/**']);
+    expect(exclude).toEqual(['tests/mutation-shards.test.ts', 'tests/mutation-unmeasured.test.ts', 'tests/bin.test.ts', 'tests/growth.test.ts', '**/node_modules/**']);
     // So are the reporters it names: vitest's default, which the tests below
     // hold to what vitest makes of it, and the one that keeps the order's
     // record.

@@ -355,6 +355,62 @@ describe('a relation cell', () => {
   });
 });
 
+describe('a relation cell written as prose', () => {
+  // Plans and todo registers write a sentence where a register writes a list.
+  // Split at its commas and each piece resolved as a document, one corpus's
+  // `Blocked on` column was 13 broken references.
+  const blocked = (cell: string) => {
+    const result = analyse({
+      ...register(...table('ID | Status | Blocked on', 'ADR-0001 | Accepted | -', 'ADR-0003 | Accepted | -', `ADR-0002 | Accepted | ${cell}`)),
+      'docs/sharding.md': '---\nstatus: accepted\n---\n\n# Sharding\n',
+    });
+    return {
+      to: result.graph.out('ADR-0002', ['blocked-by']).map((e) => `${e.to} ${e.origin}`).sort(),
+      findings: result.diagnostics.map((d) => `${d.rule} ${d.target ?? ''}`),
+    };
+  };
+
+  it('relates the row to the identifiers it cites, and to nothing else in it', () => {
+    expect(blocked('Finalization of ADR-0001')).toEqual({ to: ['ADR-0001 text'], findings: [] });
+    expect(blocked('ADR-0003 clause 2')).toEqual({ to: ['ADR-0003 text'], findings: [] });
+  });
+
+  it('is not split at its commas, and names nothing it does not reach', () => {
+    expect(blocked('Measurement against a live replica; absent, the metric is observed and not alarmed')).toEqual({ to: [], findings: [] });
+    expect(blocked('Nothing — implementable now')).toEqual({ to: [], findings: [] });
+    expect(blocked('[the tracking issue](https://example.test/1)')).toEqual({ to: [], findings: [] });
+  });
+
+  it('reports an identifier it cites that names nothing only in a family the corpus has, as prose does', () => {
+    expect(blocked('Waiting on ADR-0099').findings).toEqual(['broken-reference ADR-0099']);
+    expect(blocked('Waiting on RFC-0099')).toEqual({ to: [], findings: [] });
+  });
+
+  it('reaches a document it names whole, and says nothing of a name no document has', () => {
+    expect(blocked('sharding')).toEqual({ to: ['sharding front-matter'], findings: [] });
+    expect(blocked('caching')).toEqual({ to: [], findings: [] });
+  });
+
+  it('is prose when any piece of it is, so a list beside a sentence still cites its identifiers', () => {
+    expect(blocked('ADR-0001, then the cache work')).toEqual({ to: ['ADR-0001 text'], findings: [] });
+  });
+
+  it('leaves a list of targets as deliberate as front matter, clause by clause', () => {
+    expect(blocked('ADR-0001; ADR-0003').to).toEqual(['ADR-0001 front-matter', 'ADR-0003 front-matter']);
+    expect(blocked('ADR-0099; review of the plan')).toEqual({ to: [], findings: ['broken-reference ADR-0099'] });
+    // A word with a digit, a slash or a dot in it is written as a file's name
+    // or a path is, so one that names nothing is reported.
+    for (const target of ['0099-missing', 'notes/plan', 'missing.md']) {
+      expect(blocked(target).findings, target).toEqual([`broken-reference ${target}`]);
+    }
+  });
+
+  it('runs the way its column does', () => {
+    const { graph } = analyse(register(...table('ID | Status | Blocks', 'ADR-0001 | Accepted | -', 'ADR-0002 | Accepted | Release of ADR-0001')));
+    expect(graph.out('ADR-0001', ['blocked-by']).map((e) => e.to)).toEqual(['ADR-0002']);
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* The exported helpers                                                       */
 /* -------------------------------------------------------------------------- */

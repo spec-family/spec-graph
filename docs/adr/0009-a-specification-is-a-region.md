@@ -93,6 +93,17 @@ Three further details keep the model honest:
   two forms of one register disagreed about what it said. The status cell is
   read as that status line is read now, which is what "the same way" above
   promised.
+
+  *Amended 2026-11-12.* **A sentence in a relation cell is prose, not a
+  list.** Plans and todo registers write `Finalization of ADR-032` in a
+  `Blocked on` column where a register writes `ADR-0001, ADR-0002`. Split
+  at its commas, each piece of the sentence was a deliberate target, and one
+  corpus had 13 broken references for it. A clause, the text between
+  semicolons, is a list only when every piece between its commas and `and`s
+  is written as a target is: an identifier, or a word with a digit, a dot or
+  a slash in it. Any other clause is read as prose is, for the identifiers
+  in it and for the document it names whole, and reported only as prose is
+  ([ADR-0006](0006-false-positives-cost-more.md)).
 - **A link in such a cell is read by its destination, not its label.** A link
   states where its target lives; the label states only what it is called
   ([ADR-0008](0008-wiki-links-carry-no-path.md)). `[see](adr/0050.md)` is a

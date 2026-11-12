@@ -76,6 +76,21 @@ const TEMPLATE_NAMES: ReadonlySet<string> = new Set([
  */
 const TEMPLATE_DIRECTORIES: ReadonlySet<string> = new Set(['checklists', 'contracts']);
 
+/**
+ * Words that number the parts of a plan, a book or a release, never documents
+ * of a family, in lower case.
+ *
+ * `# Phase 1: Foundations` opens a roadmap's first part. Read as PHASE-1, it
+ * made PHASE a family, and every "lands in Phase 2" anywhere in the corpus a
+ * citation of a document nobody would write: 33 of the 34 errors Spec Kit's
+ * own layout gave with no configuration, from one `# Phase 0 Research`. `v`
+ * is `docs/releases/v1.2.0.md`, which was V-1, and so were 301 other release
+ * notes of one repository, all but one of them left out of the graph. A title
+ * or a file name opening with one of these names no family, and prose citing
+ * one is prose (ADR-0004).
+ */
+export const NOT_A_FAMILY_OF_DOCUMENTS: ReadonlySet<string> = new Set(['phase', 'stage', 'sprint', 'week', 'part', 'chapter', 'v']);
+
 /** Front-matter keys that may carry an explicit identifier, in preference order. */
 export const ID_KEYS: readonly string[] = ['id', 'adr', 'adr-id', 'rfc', 'rfc-id', 'kep-number', 'number', 'slug'];
 
@@ -147,6 +162,8 @@ export function identify(input: IdentityInput): DocumentIdentity {
   const ownsFile = input.includePathAliases !== false;
   const stem = fileStem(input.path);
   const directoryFamily = familyFromPath(input.path);
+  const templateNamed =
+    ownsFile && (TEMPLATE_NAMES.has(ownName(input.path).toLowerCase()) || TEMPLATE_DIRECTORIES.has(parentName(input.path).toLowerCase()));
   const aliases = new Set<string>();
 
   const add = (value: string | null | undefined): void => {
@@ -180,7 +197,7 @@ export function identify(input: IdentityInput): DocumentIdentity {
   // identifier; take the leading token rather than the whole stem. Only for the
   // file's own identity: the name names the file, and a region reading its
   // number is the collision ADR-0009 forbids, reached by a second route.
-  if (ownsFile) consider(leadingToken(stem), true);
+  if (ownsFile) consider(unlessAPart(leadingToken(stem)), true);
 
   // A title is prose *about* a document, so it names one only where nothing has
   // named it yet, and where it does not it registers no alias either - an alias
@@ -202,7 +219,12 @@ export function identify(input: IdentityInput): DocumentIdentity {
   // include the title's own. `false` decides nothing, since an identifier a
   // heading opens with always starts with letters; it says a bare number in a
   // title would name nothing.
-  consider(ownsFile ? headingId(input.heading) : null, false);
+  //
+  // A template's file is named by its path whatever its title opens with: the
+  // template writes the title too, and Spec Kit's `# Phase 0 Research` in every
+  // feature's `research.md` was PHASE-0, the first of them the only one the
+  // graph kept (ADR-0030, amended 2026-11-12).
+  consider(ownsFile && !templateNamed ? unlessAPart(headingId(input.heading)) : null, false);
 
   const numbered = candidates[0];
   const family = numbered?.family ?? directoryFamily;
@@ -225,7 +247,7 @@ export function identify(input: IdentityInput): DocumentIdentity {
     // with it the difference between this branch and the next, is reached only
     // by a caller identifying an empty path.
     id = stem.length > 0 ? stem : String(number);
-  } else if (ownsFile && (TEMPLATE_NAMES.has(ownName(input.path).toLowerCase()) || TEMPLATE_DIRECTORIES.has(parentName(input.path).toLowerCase()))) {
+  } else if (templateNamed) {
     // Every feature of the layout has one, so the name is no name: two were one
     // id, and the later left the graph. At the root the path is the name.
     id = stripExtension(input.path);
@@ -425,6 +447,13 @@ function leadingToken(stem: string): string {
   const bare = /^(\d{1,6})(?:[\s._-]|$)/.exec(stem);
   if (bare) return bare[1] as string;
   return stem;
+}
+
+/** An identifier, unless what it opens with numbers a part rather than a document: `Phase 2`, `v1`. */
+function unlessAPart(token: string | null): string | null {
+  if (token === null) return null;
+  const family = PREFIXED_ID.exec(token.trim())?.[1];
+  return family !== undefined && NOT_A_FAMILY_OF_DOCUMENTS.has(family.toLowerCase()) ? null : token;
 }
 
 /** `# ADR-0007: Sharding the write path` -> `ADR-0007`. */

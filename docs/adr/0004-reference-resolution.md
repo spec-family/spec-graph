@@ -137,6 +137,23 @@ to is still that file's: `docs/a` is `docs/a.md` with its extension
 dropped, where `docs/a/README.md` was left out. It reports less, and
 binds no relation it did not, so it arrives in a patch.
 
+*Amended 2026-11-12.* **A word that numbers a part names no family.**
+`Phase`, `Stage`, `Sprint`, `Week`, `Part`, `Chapter` and `v` number the
+parts of a plan, a book or a release, not documents. A title or a file name
+that opens with one, `# Phase 1: Foundations` or `docs/releases/v1.2.0.md`,
+is named by its stem, and prose citing one is prose even where a document
+declares itself `PHASE-1`; a link, a front-matter value and a directive are
+still deliberate references. Spec Kit's `research.md` opens with `# Phase 0
+Research` in every feature: the first was PHASE-0, which made PHASE a
+family and every phase a plan names in prose a broken reference, 33 of 34
+errors on one repository with no configuration, and the others were PHASE-0
+too and left the graph. One repository's release notes were 302 files read
+as V-1, of which the graph kept one. The words are a table,
+`NOT_A_FAMILY_OF_DOCUMENTS` in `src/identity.ts`. A citation in prose that
+resolves to nothing is reported because its family is one here, so its hint
+names the flag that passes the family over and the file that made it one,
+the first read in it.
+
 Link constructs are blanked before prose is scanned for bare identifiers, so a
 citation written as `[ADR-7](https://example.com/adr-7)` yields one reference
 rather than three. This relies on the masking guarantee in

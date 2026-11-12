@@ -11,6 +11,29 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
+## Unreleased
+
+### Fixed
+
+- **A word that numbers a part names no family, and a template's title
+  names no file.** Spec Kit with no configuration gave 34 errors on a real
+  repository, 33 of them `"Phase 2" does not resolve to any document`: one
+  feature's `research.md` opened with `# Phase 0 Research`, was PHASE-0,
+  made PHASE a family, and every phase a plan named in prose was a citation;
+  the other features' `research.md` were PHASE-0 too and left the graph. A
+  file a template named (`spec.md`, `research.md`, a file in `checklists/`
+  and the rest) now takes no name from its title, and a title or file name
+  opening with `Phase`, `Stage`, `Sprint`, `Week`, `Part`, `Chapter` or
+  `v` names no family: `docs/releases/v1.2.0.md` is `v1.2.0`, where 302
+  release notes of one repository were all V-1 and the graph kept one.
+  Prose naming one of those words is prose. A citation in prose that
+  resolves to nothing has a hint naming `--ignore-family` and the file that
+  made its family one. ADR-0004 and ADR-0030 amended (2026-11-12).
+  Upgrading: such a document's id changes, from `PHASE-0` to
+  `specs/001-login/research` or from `V-1` to `v1.2.0`, in findings,
+  exports and baseline entries; record a baseline again once. No exit code
+  and no JSON field changes.
+
 ## 0.25.0
 
 `ignoreStatus` names the documents whose own status is not read, as

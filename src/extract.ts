@@ -27,6 +27,7 @@ import {
   withinOneEdit,
   type DocumentIdentity,
   ID_KEYS,
+  NOT_A_FAMILY_OF_DOCUMENTS,
 } from './identity.js';
 import { isStatusHeading, phaseFromPath, phaseOf, STATUS_KEYS, supersessionTargetsIn } from './lifecycle.js';
 import {
@@ -655,8 +656,12 @@ const OBLIGATION_SECTIONS: ReadonlySet<string> = new Set([
  * The corpus filter in `resolve.ts` is the real defence; this list only keeps
  * the obvious noise out of the candidate set. A single letter - `v2`, `x86`,
  * `p99` - is not here because no prefix that short is ever read as a family.
+ * The words that number a part rather than a document come first: `Phase 2`
+ * is prose wherever a document declares itself PHASE-1, and a title or a file
+ * name opening with one names no family (`identity.ts`).
  */
 const NOT_A_FAMILY: ReadonlySet<string> = new Set([
+  ...NOT_A_FAMILY_OF_DOCUMENTS,
   'ver',
   'version',
   'pp',

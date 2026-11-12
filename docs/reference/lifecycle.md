@@ -23,7 +23,20 @@ status is read in English (`status: superseded`):
 - a `docs/adr/archive/` directory
 
 `Accepted, later superseded by ADR-0009` is retired: retirement is terminal, so
-a retirement word anywhere wins.
+a retirement word anywhere wins. In a `## Status` section that keeps a
+history, a later paragraph or list entry that opens with one wins too:
+
+```md
+## Status
+
+Accepted
+
+Superseded by [2. Second](0002-second.md)
+```
+
+is retired, and superseded by ADR-0002. `The option deprecated in ADR-0002
+stays` under `Accepted` is not: only a paragraph or an entry that opens with
+the word retires the document.
 
 Front matter is read as YAML reads it, and a value YAML would not read -
 `status: Superseded by ADR-9: see notes`, where a plain value cannot hold `: ` -
@@ -35,12 +48,21 @@ value and it is read.
 <summary>Every status word, and where a status is looked for</summary>
 
 A word counts whole and in any case, once emphasis, links, HTML, emoji and dates
-are stripped, so `Unapproved` is not `approved`. A hyphenated word matches
+are stripped, so `Unapproved` is not `approved`. Struck text is stripped
+too, so `~~Proposed~~ Accepted` is accepted, and a word after `not` or
+`not yet` is not read, so `Not Accepted` and `Not implemented` are no
+status at all. A hyphenated word matches
 spaced, or joined by an underscore, as well: `signed-off` reads `Signed off` and
 `signed_off`. A status holding words from two rows takes the higher row, except
 that `provisionally accepted` is a draft, and so are `to be decided`,
 `not decided` and `not yet decided`, and the same of `settled` and `resolved`:
 the question is still open.
+
+A template's value is no status. `{proposed | rejected | accepted | … |
+superseded by ADR-0123}`, a brace and a bar inside it, closed or not, as
+MADR's template writes, offers every status and is none of them, and names
+no successor. Nor is the status of a file named a template, the word whole
+in its name: `adr-template.md`, `0000-template.md`, `template.md`.
 
 | Phase | Status words |
 | --- | --- |
@@ -54,7 +76,7 @@ the question is still open.
 | --- | --- |
 | Front matter, the first key present | `status`, `state`, `stage`, `lifecycle`, `phase`, `adr-status` |
 | A section, under the heading, with or without a colon | `Status`, `State`, `Stage`, `Lifecycle`, `Current status` |
-| A two-column table above the first `##`, in the cell right of the first key in the left column, the header row included | `Status`, `State` |
+| A two-column table above the first `##`, in the cell right of the first key in the left column, the header row included; or a table of one row written across, in the cell under the key | `Status`, `State` |
 | A label opening a line above the first `##`, the first one, where none of the three above is written | `Status:`, `**Status**:`, `**Status:**` |
 | A directory, for a document that declares no status | `archive`, `archived`, `attic`, `deprecated`, `graveyard`, `historical`, `obsolete`, `rejected`, `retired`, `superseded`, `superceded`, `withdrawn` |
 
@@ -63,9 +85,13 @@ The table is where many teams put a document's fields, `| Status | Accepted |`:
 - It is read where a `## Status` section is, after one: a document with both is
   read from the section, and front matter still wins over either.
 - A key is compared whole, in any case, emphasis stripped.
-- A table with more columns, one under a heading below the title, and one
-  spec-graph reads as a register are never read for the document's status: a
-  legend or a register describes other things.
+- A table written across, `| Status | Date |` over the one row
+  `| Accepted | 2026-03-01 |`, holds the status under the key, whatever its
+  number of columns: its header names a status key, its other headers are
+  names and no status, and it has one row alone.
+- Any other table with more columns, one under a heading below the title,
+  and one spec-graph reads as a register are never read for the document's
+  status: a legend or a register describes other things.
 
 The label is the line spec-guard reads, so the two tools agree on a document's
 status: not in a list, a quote, single emphasis, code or a comment, and not

@@ -77,6 +77,29 @@ records.
   already used; the file was reached and not read for its size, which the
   new line names. No exit code and no JSON field changes meaning.
 
+- **A status is read as a history writes it, a template offers it and a
+  table written across holds it.** ADR-0002 amended (2026-11-12).
+  - A `## Status` section is read whole for its retirement: adr-tools
+    writes `Accepted` and then `Superseded by [2. Second](...)` below it,
+    and the first line alone read the document as live, with the
+    supersession reported as unacknowledged. A later paragraph or list
+    entry that opens with a retirement word is the status now, and names
+    the successor; a sentence that only mentions one retires nothing.
+  - `Not Accepted` and `Not implemented` are no status, where they were
+    active: a word after `not` or `not yet` is not read.
+  - MADR's template value `{proposed | … | superseded by ADR-0123}` is no
+    status and names no successor, closed or not; it was retired, with a
+    broken reference to ADR-0123. A file named a template,
+    `adr-template.md` or `0000-template.md`, declares no status.
+  - `~~Proposed~~ Accepted` is accepted, where the label read it as
+    unknown: struck text is what the status was.
+  - A table written across, `| Status | Date |` over one row, holds the
+    status in that row; it was read down, and the status was "Date".
+
+  Each reports less or reads a status that was unknown. No exit code and
+  no JSON field changes. The MADR 2 list form, `* Status: accepted`, is
+  still not read, as spec-guard does not read it.
+
 ## 0.25.0
 
 `ignoreStatus` names the documents whose own status is not read, as

@@ -1674,10 +1674,19 @@ function pathsOf(
   for (const span of scanned.codeSpans) {
     const path = pathIn(scanned.text.slice(span.start, span.end).replace(/^`+|`+$/g, '').trim(), extensions);
     if (path === null) continue;
+    if (EXAMPLE.test(scanned.text.slice(scanned.text.lastIndexOf('\n', span.start - 1) + 1, span.start))) continue;
     out.push({ owner: ownerOf(items, span.start) ?? ownerAt(span.start), path, at: at(span.start, span.end) });
   }
   return out;
 }
+
+/**
+ * A line that has just said "e.g.", with nothing after it but other code
+ * spans and the words and commas of a list: what follows is an example of a
+ * kind of file, `e.g. \`docs/adr/0001-x.md\``, and names none of the
+ * repository's (ADR-0029, amended 2026-11-12).
+ */
+const EXAMPLE = /\be\.\s?g\.[,:]?(?:[\s,+&/]|`[^`\n]*`|\b(?:or|and)\b)*$/i;
 
 /** The commands an orientation document names in its code spans, one per name each runs. */
 function commandsOf(

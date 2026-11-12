@@ -1,5 +1,25 @@
 {
-  "patterns": ["docs/**/*.md", "README.md", "CONTRIBUTING.md", "CLAUDE.md"],
+  "patterns": [
+    "docs/**/*.md",
+    "README.md",
+    "CONTRIBUTING.md",
+    "CLAUDE.md"
+  ],
+  "orientation": {
+    "files": [
+      "CLAUDE.md",
+      "CONTRIBUTING.md"
+    ],
+    "extensions": [
+      ".md",
+      ".ts",
+      ".mjs",
+      ".json"
+    ],
+    "roots": [
+      "src"
+    ]
+  },
   "rules": {
     "adr-declares-a-status": {
       "query": "document[path^=docs/adr][phase=unknown]",

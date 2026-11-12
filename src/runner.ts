@@ -12,7 +12,7 @@ import { readFile } from 'node:fs/promises';
 
 import { MANIFESTS, namesIn, type CommandKind } from './commands.js';
 import { extractSpecifications, type ExtractedDocument } from './extract.js';
-import { createGlobMatcher, createReferenceFilter, MAX_FILE_SIZE, walkFiles, type WalkedFile } from './glob.js';
+import { createGlobMatcher, createReferenceFilter, MAX_FILE_SIZE, pathsByName, walkFiles, type WalkedFile } from './glob.js';
 import { buildGraph, type SpecGraph } from './graph.js';
 import { isFamilyName } from './identity.js';
 import { isNegation, negationRefusal } from './config.js';
@@ -175,6 +175,8 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
       isIgnoredReference: createReferenceFilter(options.ignoreReferences ?? []),
       isIgnoredFamily: createFamilyFilter(options.families, options.ignoreFamilies),
       manifestFor: createManifestReader(root),
+      isGitIgnored: createGitIgnoreCheck(root),
+      pathsNamed: createNameIndex(root),
       severities: options.severities,
       projectRules: options.projectRules,
       maxRelated: options.maxRelated,
@@ -430,6 +432,79 @@ function finish(
     ...(registers === undefined ? {} : { registers: summariseRegisters(corpus, registers) }),
     skipped: oversized.map((file): SkippedFile => ({ path: file.path, reason: 'size', bytes: file.size })),
     maxFileSize,
+  };
+}
+
+/**
+ * Whether git ignores a repository-relative path, as the `.gitignore` of the
+ * root and of each directory above the path say, the nearer file's later
+ * line deciding (ADR-0029, amended 2026-11-12).
+ *
+ * Asked only of a path an orientation document names that the repository
+ * does not hold: `.claude/settings.local.json` is in no clone but its
+ * writer's, and was a finding in every other. A line is read as git reads it
+ * - `!` gives a path back, a trailing `/` names a directory, a `/` before the
+ * end anchors it to the file's directory, and a name without one matches at
+ * any depth - and a line the path dialect refuses is passed over. A file
+ * inside a directory git ignores cannot be given back by git; given back
+ * here, it is looked for, which only reports more. Each file is read once.
+ */
+export function createGitIgnoreCheck(root: string): (path: string) => boolean {
+  const read = new Map<string, readonly { readonly negated: boolean; readonly matches: (path: string) => boolean }[]>();
+  const linesIn = (directory: string) => {
+    const known = read.get(directory);
+    if (known !== undefined) return known;
+    let text = '';
+    try {
+      text = readFileSync(`${root}/${directory === '' ? '' : `${directory}/`}.gitignore`, 'utf8');
+    } catch {
+      // No .gitignore here, or none that can be read: it ignores nothing.
+    }
+    const rules = [];
+    for (const raw of text.split(/\r?\n/)) {
+      let line = raw.trimEnd();
+      if (line === '' || line.startsWith('#')) continue;
+      const negated = line.startsWith('!');
+      if (negated) line = line.slice(1);
+      line = line.replace(/^\\(?=[#!])/, '');
+      line = line.replace(/\/+$/, '');
+      if (line === '') continue;
+      const anchored = line.includes('/');
+      const glob = anchored ? line.replace(/^\/+/, '') : `**/${line}`;
+      try {
+        // A directory is ignored with what is beneath it. A trailing `/` is
+        // passed over: a path that is not there cannot say it is no directory.
+        rules.push({ negated, matches: createGlobMatcher([glob, `${glob}/**`]) });
+      } catch {
+        // A line the path dialect refuses ignores nothing here.
+      }
+    }
+    read.set(directory, rules);
+    return rules;
+  };
+  return (path) => {
+    const segments = path.split('/');
+    let ignored = false;
+    for (let depth = 0; depth < segments.length; depth += 1) {
+      const below = segments.slice(depth).join('/');
+      for (const rule of linesIn(segments.slice(0, depth).join('/'))) if (rule.matches(below)) ignored = !rule.negated;
+    }
+    return ignored;
+  };
+}
+
+/**
+ * The repository-relative paths of the files and directories each name is,
+ * read the first time one is asked for, past the directories a walk skips.
+ * Asked only for a bare name an orientation document names that the
+ * repository does not hold where the document said: `release.yml` is most
+ * likely the one `.github/workflows/` holds, if it holds the only one.
+ */
+export function createNameIndex(root: string): (name: string) => readonly string[] {
+  let byName: ReadonlyMap<string, readonly string[]> | null = null;
+  return (name) => {
+    byName ??= pathsByName(root);
+    return byName.get(name) ?? [];
   };
 }
 

@@ -216,6 +216,14 @@ export interface RuleOptions {
   /** Whether the repository holds a path, a file or a directory (ADR-0029). */
   readonly pathExists?: ((path: string) => boolean) | undefined;
   /**
+   * Whether git ignores a repository-relative path: a local file a
+   * switchboard names is in no clone but its writer's, and is not looked for
+   * (ADR-0029, amended 2026-11-12).
+   */
+  readonly isGitIgnored?: ((path: string) => boolean) | undefined;
+  /** The repository-relative paths of the files and directories a name is, which a hint names where there is one. */
+  readonly pathsNamed?: ((name: string) => readonly string[]) | undefined;
+  /**
    * The manifest nearest a directory that declares a kind of name - the
    * `package.json`, Makefile or justfile a command run there reads - or
    * nothing where none is there (ADR-0029). Without it no command is looked for.
@@ -1093,11 +1101,14 @@ export interface OrientationCheck {
  * one (ADR-0029, amended 2026-11-08).
  */
 function readsAsWords(mention: PathMention, bare: string, pathExists: (path: string) => boolean): boolean {
+  const absolute = bare.startsWith('/');
   // An extension is a dot after a name's first character: `.config` is a name.
-  if (mention.path.endsWith('/') || bare.slice(bare.lastIndexOf('/') + 1).lastIndexOf('.') > 0) return false;
+  // An absolute path is held to its first directory whatever it ends in:
+  // `/etc/nginx/nginx.conf` is the host's, and the repository holds no `etc`.
+  if (!absolute && (mention.path.endsWith('/') || bare.slice(bare.lastIndexOf('/') + 1).lastIndexOf('.') > 0)) return false;
   const first = bare.split('/').filter((part) => part !== '')[0]!;
   if (first === '.' || first === '..') return false;
-  const places = bare.startsWith('/') ? [first] : [normalisePosix(joinPosix(dirnamePosix(mention.at.file), first)), first];
+  const places = absolute ? [first] : [normalisePosix(joinPosix(dirnamePosix(mention.at.file), first)), first];
   return !places.some((place) => pathExists(place));
 }
 
@@ -1119,20 +1130,41 @@ function missingPaths(corpus: ResolvedCorpus, options: RuleOptions, emit: Emit):
     // Every document read has its set, empty where it marks nothing.
     const allowed = corpus.pathsAllowed.get(mention.at.file)!;
     if (allowed.has(mention.path) || allowed.has(bare)) continue;
-    const candidates = bare.startsWith('/') ? [bare.slice(1)] : [normalisePosix(joinPosix(dirnamePosix(mention.at.file), bare)), normalisePosix(bare)];
-    // A bare file name is looked for under each root as well; a path with a slash is where it says.
-    if (!bare.includes('/')) candidates.push(...orientation.roots.map((root) => normalisePosix(joinPosix(root, bare))));
-    if (candidates.some((candidate) => candidate !== '..' && !candidate.startsWith('../') && pathExists(candidate))) continue;
+    const absolute = bare.startsWith('/');
+    const candidates = absolute ? [bare.slice(1)] : [normalisePosix(joinPosix(dirnamePosix(mention.at.file), bare)), normalisePosix(bare)];
+    // Looked for under each root as well, a path of several segments too:
+    // `src/client.ts` in a switchboard about one package of a monorepo is
+    // that package's. A path written from the document, `./x` or `../x`, is
+    // where it says, and so is an absolute one.
+    if (!absolute && !/^\.\.?\//.test(bare)) candidates.push(...orientation.roots.map((root) => normalisePosix(joinPosix(root, bare))));
+    const inside = candidates.filter((candidate) => candidate !== '..' && !candidate.startsWith('../'));
+    if (inside.some((candidate) => pathExists(candidate))) continue;
     if (readsAsWords(mention, bare, pathExists)) continue;
+    if (inside.some((candidate) => options.isGitIgnored?.(candidate) === true)) continue;
     emit('missing-path', () => ({
       message: `\`${mention.path}\` names no file or directory the repository holds`,
       at: mention.at,
       nodes: [mention.owner],
       target: mention.path,
       related: [],
-      hint: `correct it, or mark it in the document: <!-- @spec-path created="${mention.path}" --> for one this work creates, external="${mention.path}" for one in another repository`,
+      hint: missingPathHint(mention.path, bare, options),
     }));
   }
+}
+
+/**
+ * What to do about a path the repository does not hold. A bare name that one
+ * file elsewhere has is most likely that file, written as switchboards write
+ * them, and `roots` is the setting that finds it there: `release.yml` for
+ * `.github/workflows/release.yml`. Two or more, and which is meant is a guess.
+ */
+function missingPathHint(path: string, bare: string, options: RuleOptions): string {
+  const found = bare.includes('/') ? [] : (options.pathsNamed?.(bare) ?? []);
+  if (found.length === 1) {
+    const directory = dirnamePosix(found[0]!);
+    return `it is ${found[0]!}: write that path, or add "${directory}" to "orientation.roots"`;
+  }
+  return `correct it, or mark it in the document: <!-- @spec-path created="${path}" --> for one this work creates, external="${path}" for one in another repository`;
 }
 
 /** A manifest's path, and the names it declares, or `null` where it may declare more than it says. */

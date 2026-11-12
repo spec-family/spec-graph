@@ -15,9 +15,19 @@ exist. Name those documents, and what they name is held to the repository:
   off.
 - A path with a `/` and no extension, not ending in `/`, is looked for only
   where the directory it opens with is there: `TCP/IP` and `origin/main`
-  are words or a ref, `src/payments` is a path when `src` is.
-- It is looked for from the document's directory, from the root, and, for a
-  bare file name, under each of `roots`. `missing-path` where none holds it.
+  are words or a ref, `src/payments` is a path when `src` is. An absolute
+  path is held to its first directory whatever it ends in:
+  `/etc/nginx/nginx.conf` is the host's where the repository holds no
+  `etc`.
+- A code span after "e.g.", and each after it in the same list, is an
+  example: ``(e.g. `foo.ts` + `foo.test.ts`)`` names no file.
+- It is looked for from the document's directory, from the root, and, unless
+  it is written from the document (`./x`, `../x`) or from the root (`/x`),
+  under each of `roots`, a path of several segments as well as a bare name.
+  A path the repository's `.gitignore` files ignore is not looked for.
+  `missing-path` where none holds it. Where a bare name is one file or
+  directory elsewhere in the repository, the hint names it and the root
+  that would find it.
 - `<!-- @spec-path created="docs/plan.md" external="dist/cli.js" -->` marks a
   path the document's work creates, or another repository's.
 - A commit it names is looked for in git, as a checklist's is.

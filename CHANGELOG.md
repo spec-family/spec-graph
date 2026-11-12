@@ -166,6 +166,16 @@ records.
   no JSON field changes. The MADR 2 list form, `* Status: accepted`, is
   still not read, as spec-guard does not read it.
 
+- **One long file is read in time in proportion to its length.** Each
+  reference and each item looked up its section by walking every heading
+  above it, so a file of many headings took time in their square: a
+  changelog of 64,000 lines, 5 MB with a heading every twenty lines, took
+  10.4 seconds, and one four times as long, under the 20 MiB limit, would
+  have taken about two minutes. It now takes 3.1. The section is read off
+  an index of the document's headings, built once, and `sectionPathAt`
+  answers as it did at every offset. What extraction returns is byte for
+  byte as before; no exit code and no JSON field changes.
+
 ## 0.25.0
 
 `ignoreStatus` names the documents whose own status is not read, as

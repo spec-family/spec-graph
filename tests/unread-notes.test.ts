@@ -39,6 +39,23 @@ const repositories: Record<string, Record<string, string>> = {
     'AGENTS.md': '# Agents\n\nRun `npm test`.\n',
     'CLAUDE.md': '# Claude\n\nSee `AGENTS.md`.\n',
   },
+  single: {
+    'decisions/0001-one-writer.md': '# One writer\n',
+    'AGENTS.md': '# Agents\n',
+  },
+  // Made in the reverse of the order they are named in, and in two cases:
+  // a listing in the order of making, or sorted without regard to case, is
+  // neither.
+  many: {
+    'spec/0001-a.md': '# A\n',
+    'proposals/0001-a.md': '# A\n',
+    'prd/0001-a.md': '# A\n',
+    'keps/0001-a.md': '# A\n',
+    'decisions/0001-a.md': '# A\n',
+    'adrs/0001-a.md': '# A\n',
+    'Enhancements/0001-a.md': '# A\n',
+    'Designs/0001-a.md': '# A\n',
+  },
   oriented: {
     '.spec-graph.json': '{ "orientation": { "files": ["CLAUDE.md"] } }\n',
     'README.md': '# Readme\n',
@@ -88,6 +105,17 @@ describe('a family directory the default patterns do not read', () => {
     expect(await unreadFamilyDirectories(`${ROOT}/configured`, ['docs/guide.md'])).toEqual(['decisions']);
     expect(await unreadFamilyDirectories(`${ROOT}/configured`, ['docs/guide.md', 'decisions/0001-one-writer.md'])).toEqual([]);
     expect(await unreadFamilyDirectories(`${ROOT}/nowhere`, [])).toEqual([]);
+    expect(await stderr('single')).toBe(
+      'spec-graph: decisions/ holds Markdown the default patterns do not read\n' +
+        '  name it in "patterns" to check it: "decisions/**/*.md"\n' +
+        'spec-graph: AGENTS.md is here and "orientation" is not configured, so no path or command it names is looked for\n' +
+        '  add "orientation": { "files": ["AGENTS.md"] } to the configuration\n',
+    );
+  });
+
+  it('are named in the order of their names, by code unit, whatever order the host lists them in', async () => {
+    const { unreadFamilyDirectories } = await import('../src/runner.js');
+    expect(await unreadFamilyDirectories(`${ROOT}/many`, [])).toEqual(['Designs', 'Enhancements', 'adrs', 'decisions', 'keps', 'prd', 'proposals', 'spec']);
   });
 
   it('is not named where the run reads patterns of its own, from the command line or the configuration', async () => {

@@ -478,7 +478,11 @@ function resolveOne(
     const missing = dangle(candidate, reason, found.near);
     // Prose that reads as a citation is reported only in a family a document
     // has, so where the family is the mistake - `Phase 2` read after a
-    // `# Phase 1` - the hint has to say which document that is.
+    // `# Phase 1` - the hint has to say which document that is. Every reading
+    // of prose is opportunistic, so it reaches here only through
+    // `worthReporting` above: a prefixed id, of a family the index holds and
+    // has a first document for. The `?.` and the two tests for `undefined`
+    // are there for the type, and the mutants that drop them are equivalent.
     const family = candidate.origin === 'text' ? parsePrefixedRef(bare)?.family : undefined;
     const startedBy = family === undefined ? undefined : index.startedBy.get(family);
     return family === undefined || startedBy === undefined ? missing : { ...missing, family: { name: family, startedBy } };
@@ -820,6 +824,10 @@ type IdsUnder = (documentId: string) => readonly string[];
  */
 function idsUnder(nodes: ReadonlyMap<string, SpecNode>): IdsUnder {
   let byPrefix: Map<string, string[]> | null = null;
+  // The map saves building it again and never changes what it holds, so a
+  // mutant that builds it on every call is equivalent but for its cost. One
+  // that looks for the first `#` as an empty string adds the prefix `''`,
+  // which is no document's id: equivalent too.
   return (documentId) => {
     if (byPrefix === null) {
       byPrefix = new Map();

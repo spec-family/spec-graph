@@ -410,13 +410,15 @@ async function reachable(root: string, base: string, followSymlinks: boolean | u
  * of the repository. A directory that cannot be read holds nothing here.
  */
 export function pathsByName(root: string): Map<string, string[]> {
-  const base = toPosix(root).replace(/\/+$/, '');
+  // Only ever joined to the path of a directory, the root's being empty: a
+  // separator doubled, or left at the end, names the same directory.
+  const base = toPosix(root);
   const byName = new Map<string, string[]>();
   const pending = [''];
   for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
-    let entries: Dirent[] = [];
+    let entries: Dirent[];
     try {
-      entries = readdirSync(directory === '' ? base : `${base}/${directory}`, { withFileTypes: true });
+      entries = readdirSync(`${base}/${directory}`, { withFileTypes: true });
     } catch {
       continue;
     }
@@ -425,6 +427,8 @@ export function pathsByName(root: string): Map<string, string[]> {
       const directoryHere = entry.isDirectory();
       if (directoryHere && DEFAULT_IGNORED_DIRECTORIES.includes(entry.name)) continue;
       if (!directoryHere && !entry.isFile()) continue;
+      // Only saves a listing: a file read as a directory fails to list, and
+      // is passed over as an unreadable directory is.
       if (directoryHere) pending.push(path);
       const paths = byName.get(entry.name);
       if (paths === undefined) byName.set(entry.name, [path]);
@@ -552,16 +556,14 @@ export async function walkFiles(options: WalkOptions): Promise<WalkedFile[]> {
   // none: equivalent.
   let inside = new Set<string>();
 
-  // A file the walk reaches twice, through a link and by its path, is told of once.
-  const oversized = new Set<string>();
+  // No file is reached twice by one path: a directory is read once, above, and
+  // a link reaches what it leads to under a path of its own. So each file over
+  // the limit is told of once. Every call is made inside a `try` that passes a
+  // file over when it throws, so a mutant that calls a callback nobody gave
+  // leaves the file out as the walk does: equivalent.
   const take = (file: WalkedFile): void => {
-    if (file.size <= maxSize) {
-      out.set(file.path, file);
-      return;
-    }
-    if (oversized.has(file.path)) return;
-    oversized.add(file.path);
-    options.onOversized?.(file);
+    if (file.size <= maxSize) out.set(file.path, file);
+    else options.onOversized?.(file);
   };
   const walk = async (relative: string): Promise<void> => {
     const absolute = relative.length === 0 ? root : `${root}/${relative}`;
@@ -629,9 +631,16 @@ export async function walkFiles(options: WalkOptions): Promise<WalkedFile[]> {
     await walk(base);
   }
 
-  // No two paths are equal, since they are the keys of `out`, so the order
-  // needs only `<`, and `<=` would read the same.
-  return [...out.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
+  return [...out.values()].sort(byPath);
+}
+
+/**
+ * The order of files by path, for a list in which no two share one, as the
+ * keys of a map do: the order then needs only `<`, and `<=` would read the
+ * same.
+ */
+export function byPath(a: { readonly path: string }, b: { readonly path: string }): number {
+  return a.path < b.path ? -1 : 1;
 }
 
 /**

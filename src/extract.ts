@@ -1303,6 +1303,9 @@ function statusAcross(table: ScannedDocument['tables'][number]): TableCell | und
   const column = table.headers.findIndex(isStatusKey);
   if (column === -1) return null;
   const named = (cell: TableCell): boolean => cell.text.length > 0 && phaseOf(cell.text) === 'unknown';
+  // The status key is a name of its own too, since neither key reads as a
+  // phase, so a mutant that asks it as well is equivalent: passing over its
+  // column says which header the rule is about.
   if (!table.headers.every((cell, at) => at === column || named(cell))) return null;
   return table.rows[0]!.cells[column];
 }
@@ -1351,8 +1354,9 @@ function statusLabel(
     const raw = written.trim();
     const start = line.end - written.trimStart().length;
     // Struck text is what the status was, and the word after it what it is:
-    // `~~Proposed~~ Accepted` opens with a word once the strike is read.
-    const readable = /^[*_]*[a-zA-Z]/.test(text.replace(/^(?:~~[^~\n]*~~\s*)+/, ''));
+    // `~~Proposed~~ Accepted` opens with a word once the strike is read, and
+    // so does `**~~Proposed~~ Accepted**`, emphasis and all.
+    const readable = /^[*_]*(?:~~[^~\n]*~~\s*)*[*_]*[a-zA-Z]/.test(text);
     return { raw, text, readable, start, end: start + raw.length };
   }
   return null;
@@ -1378,6 +1382,8 @@ function statusSectionBody(
   headingLine: number,
 ): { text: string; start: number; end: number } | null {
   let first: { text: string; start: number; end: number } | null = null;
+  // The first line opens a paragraph, though whether it does is asked only of
+  // the lines after it: a mutant that starts this false is equivalent.
   let fresh = true;
   for (const line of scanned.lines) {
     if (line.line <= headingLine) continue;
@@ -1685,7 +1691,9 @@ function pathsOf(
   for (const span of scanned.codeSpans) {
     const path = pathIn(scanned.text.slice(span.start, span.end).replace(/^`+|`+$/g, '').trim(), extensions);
     if (path === null) continue;
-    if (EXAMPLE.test(scanned.text.slice(scanned.text.lastIndexOf('\n', span.start - 1) + 1, span.start))) continue;
+    // The line the span opens on, up to it. A span opens with a backtick, so
+    // the line break nearest its start is the one before it.
+    if (EXAMPLE.test(scanned.text.slice(scanned.text.lastIndexOf('\n', span.start) + 1, span.start))) continue;
     out.push({ owner: ownerOf(items, span.start) ?? ownerAt(span.start), path, at: at(span.start, span.end) });
   }
   return out;
@@ -2118,14 +2126,24 @@ function withoutOverlaps(candidates: readonly ReferenceCandidate[]): ReferenceCa
   for (const set of alike.values()) {
     // Only saves the sort: a run of one is left as it is.
     if (set.length === 1) continue;
-    const order = [...set].sort((a, b) => offset(candidates[a]!) - offset(candidates[b]!) || a - b);
+    // The sort is stable, and a set lists its readings in the order they were
+    // read, so readings at one offset stay in that order.
+    const order = [...set].sort((a, b) => offset(candidates[a]!) - offset(candidates[b]!));
     let run: number[] = [];
-    // Any value no span starts below: an empty run is left as it is.
+    // Where the first span starts decides nothing: it closes the empty run or
+    // joins it, and either leaves the run empty until it is pushed. So a
+    // mutant that starts this at 1 is equivalent.
     let reach = -1;
     const close = (): void => {
+      // Only saves work: a run of one keeps itself, and the empty run before
+      // the first span keeps nothing under a place any candidate has.
       if (run.length < 2) return;
       const place = Math.min(...run);
       let best = place;
+      // The status line starts no later than the prose inside it and is the
+      // wider, so today the narrowest of a run is the last in offset order: a
+      // mutant that keeps the last of a run is equivalent only by that. Two
+      // as narrow are one value written twice, alike in everything.
       for (const at of run) if (width(candidates[at]!.declaredAt) < width(candidates[best]!.declaredAt)) best = at;
       for (const at of run) if (at !== place) dropped.add(at);
       kept.set(place, candidates[best]!);

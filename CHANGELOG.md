@@ -114,7 +114,10 @@ records.
   - A code span after "e.g.", and each after it in the same list, is an
     example and names no file.
   - A path the repository's `.gitignore` files ignore is not looked for,
-    such as `.claude/settings.local.json`.
+    such as `.claude/settings.local.json`. Each line is read as
+    `git check-ignore` reads it: a comment, a `\#` or `\!` anywhere in it,
+    spaces at either end, and a line that opens or ends with two slashes
+    and so names nothing.
   - A bare name that one file or directory elsewhere has is still a
     finding, and its hint names the path and the root that would find it:
     `it is .github/workflows/release.yml: write that path, or add
@@ -197,8 +200,9 @@ records.
     status and names no successor, closed or not; it was retired, with a
     broken reference to ADR-0123. A file named a template,
     `adr-template.md` or `0000-template.md`, declares no status.
-  - `~~Proposed~~ Accepted` is accepted, where the label read it as
-    unknown: struck text is what the status was.
+  - `~~Proposed~~ Accepted` is accepted, and so is
+    `**~~Proposed~~ Accepted**`, where the label read each as unknown:
+    struck text is what the status was.
   - A table written across, `| Status | Date |` over one row, holds the
     status in that row; it was read down, and the status was "Date".
 

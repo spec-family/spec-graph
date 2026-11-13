@@ -32,6 +32,9 @@ const files: Record<string, string> = {
   'big/docs/a.md': '# A\n\nThe history is in [the log](log.md).\n',
   'big/docs/log.md': BIG,
   'clean/docs/a.md': '# A\n',
+  'two/docs/a.md': '# A\n',
+  'two/docs/log.md': BIG,
+  'two/CLAUDE.md': BIG,
 };
 
 beforeAll(async () => {
@@ -75,6 +78,16 @@ describe('files left out for a duplicate id', () => {
   it('say nothing where every file reached the graph', async () => {
     expect(await human('clean')).toEqual([]);
     expect(await human('regions')).toEqual([]);
+    const { formatReport } = await import('../src/report.js');
+    expect(formatReport(await check('clean'), { ascii: true }).split('\n').filter((line) => line.startsWith('!'))).toEqual([]);
+  });
+
+  it('are counted and named alike in the Markdown report, each notice a paragraph of its own', async () => {
+    const { formatMarkdown, formatReport } = await import('../src/report.js');
+    const result = await check('dup');
+    expect(formatMarkdown(result).endsWith('\n\n2 files left out for a duplicate id (--verbose names them).\n')).toBe(true);
+    expect(formatMarkdown(result, { verbose: true })).toContain('\n2 files left out for a duplicate id.\n\n');
+    expect(formatReport(result, { ascii: true })).toContain('\n! 2 files left out for a duplicate id (--verbose names them)\n\n');
   });
 });
 
@@ -86,8 +99,11 @@ describe('a file over the size a run reads', () => {
     const json = JSON.parse(formatJson(result));
     expect([json.skipped, json.files]).toEqual([[{ path: 'docs/log.md', reason: 'size', bytes: Buffer.byteLength(BIG) }], ['docs/a.md']]);
     expect(formatMarkdown(result)).toContain('1 file over 1024 bytes not read: docs/log.md.');
-    // Present where nothing was skipped, as `suppressed` is.
+    // Present where nothing was skipped, as `suppressed` is, from a result
+    // that carries no list as well.
     expect(JSON.parse(formatJson(await check('clean'))).skipped).toEqual([]);
+    const { skipped, ...carried } = await check('clean');
+    expect([skipped, JSON.parse(formatJson(carried)).skipped]).toEqual([[], []]);
   });
 
   it('is over 20 MiB unless a run says otherwise, the limit spec-guard has', async () => {
@@ -99,6 +115,15 @@ describe('a file over the size a run reads', () => {
     expect([result.maxFileSize, result.skipped, result.files]).toEqual([MAX_FILE_SIZE, [], ['docs/a.md', 'docs/log.md']]);
     const said = formatReport({ ...result, skipped: [{ path: 'docs/huge.md', reason: 'size', bytes: MAX_FILE_SIZE + 1 }] }, { ascii: true });
     expect(said).toContain('! 1 file over 20 MiB not read: docs/huge.md');
+  });
+
+  it('is named in the order of the paths, whichever walk met it', async () => {
+    const { analyse } = await import('../src/runner.js');
+    const { formatReport } = await import('../src/report.js');
+    // The patterns are walked first, and the orientation files after them.
+    const result = await analyse({ root: `${ROOT}/two`, patterns: ['docs/**/*.md'], orientation: { files: ['CLAUDE.md'] }, maxFileSize: LIMIT });
+    expect(result.skipped?.map((file) => file.path)).toEqual(['CLAUDE.md', 'docs/log.md']);
+    expect(formatReport(result, { ascii: true })).toContain('! 2 files over 1024 bytes not read: CLAUDE.md, docs/log.md\n');
   });
 
   it('is no finding where a link names it, which no pattern would bring into reach', async () => {
@@ -118,5 +143,11 @@ describe('the walk', () => {
     });
     expect(walked.map((file) => file.path)).toEqual(['docs/c/notes.md', 'docs/kept.md']);
     expect(told.sort()).toEqual(['docs/a/notes.md 33', 'docs/b/notes.md 33']);
+  });
+
+  it('leaves such a file out where nobody asked to be told of it', async () => {
+    const { walkFiles } = await import('../src/glob.js');
+    const walked = await walkFiles({ root: `${ROOT}/dup`, patterns: ['docs/**/*.md'], maxFileSize: 10 });
+    expect(walked.map((file) => file.path)).toEqual(['docs/c/notes.md', 'docs/kept.md']);
   });
 });

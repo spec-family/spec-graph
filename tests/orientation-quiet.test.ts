@@ -1,4 +1,5 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { AnalyseSourcesOptions } from '../src/runner.js';
@@ -39,6 +40,8 @@ const MARK = (path: string): string =>
 describe('a path of several segments', () => {
   it('is looked for under each root, as a bare name is', async () => {
     expect(await findings('Start at `src/client.ts`.')).toEqual([]);
+    // Only a path that opens with `./` or `../` is written from the document.
+    expect(await findings('Start at `src/../src/client.ts`.')).toEqual([]);
   });
 
   it('is where it says when written from the document or from the root', async () => {
@@ -64,6 +67,17 @@ describe('a path after "e.g."', () => {
     expect(await findings('Decisions are numbered (e.g. `docs/adr/0001-first.md`).')).toEqual([]);
     expect(await findings('Tests sit beside code (e.g., `foo.ts` + `foo.test.ts`, or `bar.ts` and `bar.test.ts`).')).toEqual([]);
     expect(await findings('Name it E.G.: `ghost.md`.')).toEqual([]);
+    expect(await findings('Spelled apart, e. g. `ghost.md`.')).toEqual([]);
+  });
+
+  it('is one on the first line of a document as well', async () => {
+    const { analyseSources, createOrientationCheck } = await import('../src/runner.js');
+    const { diagnostics } = analyseSources([{ path: 'CLAUDE.md', text: 'E.g. `ghost.md` is a guide.\n' }], {
+      orientation: createOrientationCheck(CONFIG),
+      fileExists: (path) => FILES.has(path),
+      isDirectory: (path) => DIRECTORIES.has(path),
+    });
+    expect(diagnostics.filter((d) => d.rule === 'missing-path')).toEqual([]);
   });
 
   it('is not an example once the sentence moves on, or after "i.e."', async () => {
@@ -106,17 +120,38 @@ const ROOT = `tests/fixtures/.tmp/orientation-quiet-${process.pid}`;
 
 beforeAll(async () => {
   const files: Record<string, string> = {
-    '.gitignore': '# local\nreports/\n*.local.json\n!keep.local.json\n/build-out\ndocs/drafts/\n\\#hash\n[\n',
+    '.gitignore': [
+      '# local',
+      'reports/',
+      '*.local.json   ',
+      '!keep.local.json',
+      '/build-out',
+      'docs/drafts/',
+      '\\#hash',
+      '#comment',
+      '\\#notes/x',
+      'a\\#b',
+      '  lead',
+      'foo//',
+      '//twice/x',
+      '/',
+      '[',
+      '',
+    ].join('\n'),
     'pkg/.gitignore': 'cache\n!reports/kept.md\n',
+    'own/.gitignore': '*\n',
     'pkg/src/app.ts': '',
     'docs/guide.md': '',
     '.github/workflows/release.yml': '',
     'node_modules/dep/release.yml': '',
+    'pkg/docs/guide.md': '',
   };
   for (const [path, text] of Object.entries(files)) {
     await mkdir(`${ROOT}/${path.slice(0, path.lastIndexOf('/') + 1)}`, { recursive: true });
     await writeFile(`${ROOT}/${path}`, text);
   }
+  // A junction on Windows, which needs no privilege, and a symbolic link elsewhere.
+  await symlink(resolve(`${ROOT}/docs`), `${ROOT}/linked`, 'junction');
 });
 
 afterAll(async () => {
@@ -154,6 +189,20 @@ describe("the repository's .gitignore files", () => {
     ]);
   });
 
+  // Each read against `git check-ignore --no-index` over the same lines.
+  it('read a line as git does: a comment, an escape anywhere, spaces at either end, and the slashes that leave it naming nothing', async () => {
+    const { createGitIgnoreCheck } = await import('../src/runner.js');
+    const ignored = createGitIgnoreCheck(ROOT);
+    const asked = ['#comment', '#notes/x', 'a#b', 'a/#b', '  lead', 'lead', 'foo', 'foo/x', 'twice/x', 'any/thing'];
+    expect(asked.filter(ignored)).toEqual(['#notes/x', 'a#b', '  lead']);
+  });
+
+  it("leave a directory's own file to what is beneath it", async () => {
+    const { createGitIgnoreCheck } = await import('../src/runner.js');
+    const ignored = createGitIgnoreCheck(ROOT);
+    expect([ignored('own'), ignored('own/x')]).toEqual([false, true]);
+  });
+
   it('ignore nothing where there are none', async () => {
     const { createGitIgnoreCheck } = await import('../src/runner.js');
     expect(createGitIgnoreCheck(`${ROOT}/docs`)('reports/x')).toBe(false);
@@ -161,15 +210,22 @@ describe("the repository's .gitignore files", () => {
 });
 
 describe('the paths each name is', () => {
-  it('are every file and directory the walk reaches, past the ones it skips', async () => {
+  it('are every file and directory the walk reaches, past the ones it skips and past links', async () => {
     const { createNameIndex } = await import('../src/runner.js');
     const named = createNameIndex(ROOT);
-    expect([named('release.yml'), named('src'), named('guide.md'), named('dep'), named('ghost')]).toEqual([
+    // The walk meets them in the order the host lists a directory.
+    expect([named('release.yml'), named('src'), [...named('guide.md')].sort(), named('dep'), named('ghost'), named('linked')]).toEqual([
       ['.github/workflows/release.yml'],
       ['pkg/src'],
-      ['docs/guide.md'],
+      ['docs/guide.md', 'pkg/docs/guide.md'],
+      [],
       [],
       [],
     ]);
+  });
+
+  it('are none where the root cannot be read', async () => {
+    const { createNameIndex } = await import('../src/runner.js');
+    expect(createNameIndex(`${ROOT}/nowhere`)('docs')).toEqual([]);
   });
 });

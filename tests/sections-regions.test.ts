@@ -186,9 +186,9 @@ describe('a register kept as a table', () => {
 
   it('reads an empty or placeholder status cell as no status, and an empty title cell as no title', () => {
     const { graph } = analyse(
-      register(...table('ID | Title | Status', 'ADR-0001 |  |  ', 'ADR-0002 | Two | -', 'ADR-0003 | Three | n/a')),
+      register(...table('ID | Title | Status', 'ADR-0001 |  |  ', 'ADR-0002 | Two | -', 'ADR-0003 | Three | n/a', 'ADR-0004 | Four | NA')),
     );
-    for (const id of ['ADR-0001', 'ADR-0002', 'ADR-0003']) {
+    for (const id of ['ADR-0001', 'ADR-0002', 'ADR-0003', 'ADR-0004']) {
       expect([graph.document(id)?.rawStatus, graph.document(id)?.statusAt]).toEqual([null, null]);
     }
     expect(graph.document('ADR-0001')?.title).toBe('ADR-0001');

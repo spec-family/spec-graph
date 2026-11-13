@@ -539,6 +539,10 @@ export async function unreadFamilyDirectories(root: string, read: readonly strin
     return [];
   }
   const unread: string[] = [];
+  // Node lists a directory sorted by byte on every host but Windows, where
+  // NTFS lists it without regard to case. So a mutant that drops the sort
+  // survives the sweep, which runs on Linux, and fails tests/unread-notes on
+  // the Windows legs of the suite.
   for (const name of names.sort()) {
     if (read.some((path) => path.startsWith(`${name}/`))) continue;
     if ((await walkFiles({ root, patterns: [`${name}/**/*.md`] })).length > 0) unread.push(name);

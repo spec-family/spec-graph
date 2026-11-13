@@ -58,6 +58,11 @@ describe('a word that numbers a part', () => {
     expect([identity.id, identity.family, identity.number]).toEqual([id, null, null]);
   });
 
+  it('names no family as a file whose name opens with a space, read past it as an identifier is', async () => {
+    const identity = await identify(file('docs/plans/ Phase 2.md'));
+    expect([identity.id, identity.family, identity.number]).toEqual([' Phase 2', null, null]);
+  });
+
   it('leaves the family of its directory, with no number in it', async () => {
     const identity = await identify(file('docs/adr/phase-2.md'));
     expect([identity.id, identity.family, identity.number]).toEqual(['phase-2', 'ADR', null]);

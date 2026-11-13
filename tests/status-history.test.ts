@@ -116,8 +116,10 @@ describe('a template', () => {
     expect(offers.map(supersessionTargetsIn)).toEqual([[], [], []]);
     // A brace with no choice in it is decoration, and a bar outside one a table.
     expect(['{draft}', 'Accepted | 2026-01-01'].map(phaseOf)).toEqual(['draft', 'active']);
-    // Only a status that opens with the offer is one.
+    // Only a status that opens with the offer is one, past emphasis and the
+    // space inside it.
     expect(phaseOf('Accepted: the {fast | safe} option')).toBe('active');
+    expect(phaseOf('** {proposed | accepted}**')).toBe('unknown');
   });
 
   it('is a file named one, whose status is not read', async () => {
@@ -129,6 +131,8 @@ describe('a template', () => {
       false,
       false,
     ]);
+    // The extension is the last dot's, and no word of the name.
+    expect(['docs/a.template.md', 'docs/notes.template', 'docs/x.md.template'].map(isTemplateFile)).toEqual([true, false, false]);
   });
 
   it("leaves MADR's own template with no status and no finding", async () => {

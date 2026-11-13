@@ -285,6 +285,8 @@ describe('identity', () => {
     expect(parsePrefixedRef('ADR-0007')).toEqual({ family: 'ADR', number: 7 });
     expect(parsePrefixedRef('kep 1234')).toEqual({ family: 'KEP', number: 1234 });
     expect(parsePrefixedRef('sharding')).toBeNull();
+    // Past every mark an identifier may open with, not the first alone.
+    expect(parsePrefixedRef('([ADR-0007')).toEqual({ family: 'ADR', number: 7 });
     expect(parseBareRef('#0007')).toBe(7);
     expect(parseBareRef('ADR-7')).toBeNull();
   });

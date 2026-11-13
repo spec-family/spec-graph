@@ -53,11 +53,14 @@ describe('a word that numbers a part', () => {
     ['docs/releases/v1.2.0.md', 'v1.2.0'],
     ['docs/releases/v1.10.0-changelog.md', 'v1.10.0-changelog'],
     ['book/chapter-07/README.md', 'chapter-07'],
-    // A name that opens with a space is read past it, as an identifier is.
-    ['docs/plans/ Phase 2.md', ' Phase 2'],
   ])('names no family as the file %s, which is named by its stem', async (path, id) => {
     const identity = await identify(file(path));
     expect([identity.id, identity.family, identity.number]).toEqual([id, null, null]);
+  });
+
+  it('names no family as a file whose name opens with a space, read past it as an identifier is', async () => {
+    const identity = await identify(file('docs/plans/ Phase 2.md'));
+    expect([identity.id, identity.family, identity.number]).toEqual([' Phase 2', null, null]);
   });
 
   it('leaves the family of its directory, with no number in it', async () => {

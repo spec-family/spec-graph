@@ -11,7 +11,21 @@ the family's
 [versioning policy](https://github.com/spec-family/spec-core/blob/main/docs/adr/0009-versions-before-1-0.md)
 records.
 
-## Unreleased
+## 0.26.0
+
+Every report says what a run read nothing in: the files it left out for a
+duplicate id, the files over the size limit, now the family's 20 MiB, and on
+stderr the family directories and agents' instructions it left unchecked. A
+word that numbers a part, `Phase 2`, names no family, and a template's title
+names no file; a status is read as a history, a template, struck text and a
+table written across write it; an anchor binds as GitHub, an HTML `id` and a
+`{#id}` give it; an orientation document is held only to this repository's
+paths; and a sentence in a relation column is prose. A run takes time in
+proportion to what it reads, and the spellings the family's other tools
+write are taken. The copy of spec-core is at 102cec9. Markdown between 4 and
+20 MiB is now read and can report findings it did not, and a document whose
+id came from a part's title has a new id. No exit code and no JSON field
+changes; the JSON gains `skipped` and `summary.duplicateIdFiles`.
 
 ### Added
 

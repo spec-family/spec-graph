@@ -12,7 +12,7 @@ import { readFile } from 'node:fs/promises';
 
 import { MANIFESTS, namesIn, type CommandKind } from './commands.js';
 import { extractSpecifications, type ExtractedDocument } from './extract.js';
-import { createGlobMatcher, createReferenceFilter, MAX_FILE_SIZE, pathsByName, walkFiles, type WalkedFile } from './glob.js';
+import { byPath, createGlobMatcher, createReferenceFilter, MAX_FILE_SIZE, pathsByName, walkFiles, type WalkedFile } from './glob.js';
 import { buildGraph, type SpecGraph } from './graph.js';
 import { isFamilyDirectory, isFamilyName } from './identity.js';
 import { isNegation, negationRefusal } from './config.js';
@@ -184,7 +184,7 @@ export async function analyse(options: AnalyseOptions): Promise<AnalysisResult> 
     walked.map((file) => file.path),
     started,
     checks.registers,
-    [...oversized.values()].sort((a, b) => (a.path < b.path ? -1 : 1)),
+    [...oversized.values()].sort(byPath),
     maxFileSize,
   );
 }
@@ -450,27 +450,41 @@ function finish(
  * here, it is looked for, which only reports more. Each file is read once.
  */
 export function createGitIgnoreCheck(root: string): (path: string) => boolean {
-  const read = new Map<string, readonly { readonly negated: boolean; readonly matches: (path: string) => boolean }[]>();
+  // Keyed by the directory's path with a `/` after it, the root's being empty.
+  // The cache saves reading a file again and never changes what it says, so
+  // a mutant that never keeps an entry, or never finds one, is equivalent.
+  const read = new Map<string, { readonly negated: boolean; readonly matches: (path: string) => boolean }[]>();
   const linesIn = (directory: string) => {
     const known = read.get(directory);
     if (known !== undefined) return known;
-    let text = '';
+    const rules: { readonly negated: boolean; readonly matches: (path: string) => boolean }[] = [];
+    read.set(directory, rules);
+    let text: string;
     try {
-      text = readFileSync(`${root}/${directory === '' ? '' : `${directory}/`}.gitignore`, 'utf8');
+      text = readFileSync(`${root}/${directory}.gitignore`, 'utf8');
     } catch {
       // No .gitignore here, or none that can be read: it ignores nothing.
+      return rules;
     }
-    const rules = [];
     for (const raw of text.split(/\r?\n/)) {
+      // A blank line reaches the test below, empty, as a lone `/` does.
       let line = raw.trimEnd();
-      if (line === '' || line.startsWith('#')) continue;
+      if (line.startsWith('#')) continue;
       const negated = line.startsWith('!');
       if (negated) line = line.slice(1);
-      line = line.replace(/^\\(?=[#!])/, '');
-      line = line.replace(/\/+$/, '');
-      if (line === '') continue;
+      // git reads a backslash as escaping the character after it; the path
+      // dialect reads one as a separator. Before `#` or `!`, the two escapes
+      // a .gitignore needs, it is taken out wherever it stands: `\#notes` is
+      // the name `#notes`, and `a\#notes` the name `a#notes`.
+      line = line.replace(/\\(?=[#!])/g, '');
+      // git takes one trailing `/` as saying the line names a directory, and a
+      // line still ending in one names nothing.
+      if (line.endsWith('/')) line = line.slice(0, -1);
+      if (line === '' || line.endsWith('/')) continue;
       const anchored = line.includes('/');
-      const glob = anchored ? line.replace(/^\/+/, '') : `**/${line}`;
+      // git roots a line at the `/` it opens with, and one that opens with two
+      // names nothing, as the dialect reads a pattern still opening with one.
+      const glob = anchored ? line.replace(/^\//, '') : `**/${line}`;
       try {
         // A directory is ignored with what is beneath it. A trailing `/` is
         // passed over: a path that is not there cannot say it is no directory.
@@ -479,15 +493,16 @@ export function createGitIgnoreCheck(root: string): (path: string) => boolean {
         // A line the path dialect refuses ignores nothing here.
       }
     }
-    read.set(directory, rules);
     return rules;
   };
   return (path) => {
     const segments = path.split('/');
     let ignored = false;
+    let directory = '';
     for (let depth = 0; depth < segments.length; depth += 1) {
       const below = segments.slice(depth).join('/');
-      for (const rule of linesIn(segments.slice(0, depth).join('/'))) if (rule.matches(below)) ignored = !rule.negated;
+      for (const rule of linesIn(directory)) if (rule.matches(below)) ignored = !rule.negated;
+      directory += `${segments[depth]}/`;
     }
     return ignored;
   };
@@ -569,9 +584,9 @@ export function createManifestReader(root: string): (directory: string, kind: Co
  * twice is a second document under the same id.
  */
 function joinWalks(first: readonly WalkedFile[], second: readonly WalkedFile[]): WalkedFile[] {
-  const byPath = new Map([...first, ...second].map((file) => [file.path, file]));
+  const files = new Map([...first, ...second].map((file) => [file.path, file]));
   // Sorted as strings are, by code unit, which is the order a walk gives.
-  return [...byPath.keys()].sort().map((path) => byPath.get(path)!);
+  return [...files.keys()].sort().map((path) => files.get(path)!);
 }
 
 /** Reads files with bounded concurrency, skipping ones that cannot be read. */

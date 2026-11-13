@@ -252,6 +252,9 @@ export function phaseOf(raw: string | null | undefined): Phase {
   if (isTemplateChoice(raw)) return 'unknown';
   const text = normaliseStatus(raw);
   const tokens = text.split(' ');
+  // A read before the first token is undefined, and the `''` that stands in
+  // for it is there for the type: it is no negation, and nor is the text a
+  // mutant puts in its place, so that mutant is equivalent.
   const denied = (at: number): boolean =>
     NEGATIONS.has(tokens[at - 1] ?? '') || (tokens[at - 1] === 'yet' && NEGATIONS.has(tokens[at - 2] ?? ''));
   const words = new Set(tokens.filter((_, at) => !denied(at)));
@@ -278,6 +281,8 @@ export function phaseOf(raw: string | null | undefined): Phase {
 export function opensRetired(raw: string): boolean {
   if (isTemplateChoice(raw)) return false;
   const text = normaliseStatus(raw);
+  // Retirement is the table's first entry, which is what makes it win in
+  // `phaseOf`, so a mutant that takes the first entry is equivalent.
   const terms = VOCABULARY.find(([phase]) => phase === 'retired')![1];
   return terms.some((term) => `${text.replace(/ /g, '-')}-`.startsWith(`${term}-`));
 }

@@ -108,7 +108,8 @@ describe('a line spec-guard does not read as the status label', () => {
   it('is a status that cannot be read, where its value begins with no word, and decides', () => {
     // spec-guard reads the first run of letters: a date, a code span, a quote
     // or a symbol first leaves none, and the document is not withdrawn.
-    for (const value of ['2026-11-01 superseded', '`superseded`', '"superseded"', '✅ superseded', '']) {
+    // Nor does struck text before one, which is what the status was.
+    for (const value of ['2026-11-01 superseded', '`superseded`', '"superseded"', '✅ superseded', '', '~~Draft~~ 2026-11-01 superseded']) {
       expect(status(doc('# Cache design', '', `Status: ${value}`, '', '## Context'))).toBe(`unknown ${JSON.stringify(value)}`);
     }
     // The first label decides, whether or not it can be read.

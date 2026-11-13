@@ -69,8 +69,32 @@ describe('--option=value', () => {
     ]);
   });
 
+  it('is the option and its value for each option that takes one', async () => {
+    const { parseArgs } = await import('../src/cli.js');
+    const given: [readonly string[], string, string][] = [
+      [[], '--root', 'sub'],
+      [[], '--ignore', 'docs/drafts'],
+      [[], '--ignore-ref', 'trap *'],
+      [[], '--family', 'ADR'],
+      [[], '--ignore-family', 'RFC'],
+      [[], '--history', 'docs/log/**'],
+      [[], '--baseline', 'base.json'],
+      [[], '--record-baseline', 'base.json'],
+      [[], '--format', 'sarif'],
+      [['graph'], '--graph-format', 'mermaid'],
+      [[], '--rule', 'broken-reference=off'],
+      [[], '--max', '2'],
+      [[], '--max-warnings', '3'],
+    ];
+    for (const [before, option, value] of given) {
+      expect(parseArgs([...before, `${option}=${value}`], '/repo')).toEqual(parseArgs([...before, option, value], '/repo'));
+    }
+  });
+
   it('is refused for a value that is none, and for an option that takes none', async () => {
     const { parseArgs } = await import('../src/cli.js');
+    // Nor is an option one letter longer than one that takes a value.
+    expect(() => parseArgs(['--formats'], '/repo')).toThrow('unknown option "--formats"');
     expect(() => parseArgs(['--root='], '/repo')).toThrow('--root expects a directory, got ""');
     expect(() => parseArgs(['--format=xml'], '/repo')).toThrow('--format must be human, json, sarif, markdown, gitlab or github, got "xml"');
     expect(() => parseArgs(['--strict=true'], '/repo')).toThrow('unknown option "--strict=true"');

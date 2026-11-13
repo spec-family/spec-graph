@@ -664,7 +664,7 @@ export function parseArgs(argv: readonly string[], cwd: string): CliOptions {
     // (D8), for an option that takes a value; any other given one that way is
     // an option this one does not know.
     const equals = arg.indexOf('=');
-    if (arg.startsWith('--') && equals > 2 && takesValue(arg.slice(0, equals))) {
+    if (equals !== -1 && takesValue(arg.slice(0, equals))) {
       args.splice(i, 1, arg.slice(0, equals), arg.slice(equals + 1));
       i -= 1;
       continue;

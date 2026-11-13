@@ -68,12 +68,27 @@ describe('an anchor an HTML element declares', () => {
     ]);
   });
 
+  it('offers nothing in its place where the document holds no item, however loosely it reads', async () => {
+    const { analyseSources } = await import('../src/runner.js');
+    const files = { ...target('Text.'), 'docs/a.md': '# A\n\n[1](target.md#-) [2](target.md#here)\n' };
+    const found = analyseSources(Object.entries(files).map(([path, text]): Source => ({ path, text }))).diagnostics;
+    expect(found.map((d) => d.hint)).toEqual(['check the heading or item id it is meant to address', 'check the heading or item id it is meant to address']);
+  });
+
   it('is the region\'s that holds it, in a register', async () => {
     const files = {
       'docs/register.md': '# Register\n\n## REQ-1: One\n\nStatus: open\n\n<a id="one-note"></a>\n\n## REQ-2: Two\n\nStatus: open\n',
       'docs/a.md': '# A\n\nSee [one](register.md#one-note).\n',
     };
     expect(await broken(files)).toEqual([]);
+  });
+
+  it("is not another region's of the same register", async () => {
+    const files = {
+      'docs/register.md': '# Register\n\n## REQ-1: One\n\nStatus: open\n\n<a id="one-note"></a>\n\n## REQ-2: Two\n\nStatus: open\n',
+      'docs/a.md': '---\ndepends-on: [REQ-1#one-note, REQ-2#one-note]\n---\n\n# A\n',
+    };
+    expect(await broken(files)).toEqual(['REQ-2#one-note']);
   });
 });
 

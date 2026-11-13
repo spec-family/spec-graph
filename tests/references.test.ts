@@ -215,6 +215,24 @@ describe('one written citation is one reference', () => {
     expect(found[0]?.at.span.start.column).toBe(15);
   });
 
+  it('is one beside a later sentence that cites the same missing document the same way', () => {
+    const files = { 'docs/adr/0002-sharding.md': `${SUPERSEDED}\n\n## Context\n\nThis was superseded by ADR-0003 in May.\n` };
+    const found = analyse(files).diagnostics.filter((d) => d.rule === 'broken-reference');
+    expect(found.map((d) => `${d.at.span.start.line}:${d.at.span.start.column}`)).toEqual(['5:15', '9:24']);
+  });
+
+  it('takes the place of the first reading, before what the document cites after it', () => {
+    const { graph } = analyse({
+      'docs/adr/0002-sharding.md': `${SUPERSEDED}\n\n## Context\n\nSee [the notes](0004-notes.md).\n`,
+      'docs/adr/0003-many.md': ['# ADR-0003: Many writers', '', '## Status', '', 'accepted'].join('\n'),
+      'docs/adr/0004-notes.md': ['# ADR-0004: Notes', '', '## Status', '', 'accepted'].join('\n'),
+    });
+    expect(graph.edges.filter((e) => e.from === 'ADR-0002' || e.to === 'ADR-0002').filter((e) => e.kind !== 'contains').map((e) => `${e.from} -${e.kind}-> ${e.to}`)).toEqual([
+      'ADR-0003 -supersedes-> ADR-0002',
+      'ADR-0002 -references-> ADR-0004',
+    ]);
+  });
+
   it('still resolves to one edge when the target exists', () => {
     const { graph } = analyse({
       'docs/adr/0002-sharding.md': SUPERSEDED,

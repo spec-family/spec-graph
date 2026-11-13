@@ -99,6 +99,8 @@ describe('a status word denied', () => {
       'draft',
       'active',
     ]);
+    // A denial reaches the word after it, and the one after that past `yet` alone.
+    expect(phaseOf('Not deprecated, accepted')).toBe('active');
   });
 });
 
@@ -114,6 +116,8 @@ describe('a template', () => {
     expect(offers.map(supersessionTargetsIn)).toEqual([[], [], []]);
     // A brace with no choice in it is decoration, and a bar outside one a table.
     expect(['{draft}', 'Accepted | 2026-01-01'].map(phaseOf)).toEqual(['draft', 'active']);
+    // Only a status that opens with the offer is one.
+    expect(phaseOf('Accepted: the {fast | safe} option')).toBe('active');
   });
 
   it('is a file named one, whose status is not read', async () => {
@@ -153,10 +157,19 @@ describe('struck text', () => {
   it('is what the status was, and the word after it what it is', async () => {
     expect(await one('# A\n\n**Status**: ~~Proposed~~ Accepted\n')).toBe('ADR-0001 active "~~Proposed~~ Accepted"');
     expect(await one('# A\n\nStatus: ~~Accepted~~\n')).toBe('ADR-0001 unknown "~~Accepted~~"');
+    // Struck twice, struck with no space after it, and struck inside emphasis.
+    expect(await one('# A\n\nStatus: ~~Draft~~ ~~Proposed~~ Accepted\n')).toBe('ADR-0001 active "~~Draft~~ ~~Proposed~~ Accepted"');
+    expect(await one('# A\n\nStatus: ~~Proposed~~Accepted\n')).toBe('ADR-0001 active "~~Proposed~~Accepted"');
+    expect(await one('# A\n\nStatus: **~~Proposed~~ Accepted**\n')).toBe('ADR-0001 active "**~~Proposed~~ Accepted**"');
+    // A hint in a comment after the strike is no status, as one before a value is not.
+    expect(await one('# A\n\nStatus: ~~Draft~~ <!-- proposed | accepted -->\n')).toBe('ADR-0001 unknown "~~Draft~~ <!-- proposed | accepted -->"');
     const { phaseOf, supersessionTargetsIn } = await lifecycle();
     expect(['~~Superseded~~ Accepted', '~~Accepted~~ ~~Draft~~ Superseded by ADR-2'].map(phaseOf)).toEqual(['active', 'retired']);
     expect(supersessionTargetsIn('~~Superseded by ADR-1~~ Accepted')).toEqual([]);
     expect(supersessionTargetsIn('~~Accepted~~ Superseded by ADR-2')).toEqual(['ADR-2']);
+    // Struck text keeps the words on either side of it apart, written against them or not.
+    expect(phaseOf('Proposed~~Draft~~Accepted')).toBe(phaseOf('Proposed Accepted'));
+    expect(phaseOf('Proposed~~Draft~~Accepted')).not.toBe('unknown');
   });
 });
 
